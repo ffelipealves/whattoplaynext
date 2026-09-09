@@ -31,11 +31,18 @@ approximate matching.
 ## Project status
 
 The approved planning baseline is complete and implementation has started with
-Milestone 0. The repository foundation is organized as a monorepo with empty
-application directories ready for the web, API, and generated contract.
+Milestone 0. The Next.js web foundation is available in `apps/web`; the API and
+generated-contract directories are reserved for the next increments.
 
 ## Development
 
 The initial development environment uses Node.js 22.23.2, pnpm 11.19.0, and
 Python 3.14.7. See [CONTRIBUTING.md](CONTRIBUTING.md) for the repository layout,
 setup status, and contribution rules.
+
+To run the current web application:
+
+```bash
+pnpm install
+pnpm --filter web dev
+```

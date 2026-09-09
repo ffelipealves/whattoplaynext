@@ -25,11 +25,28 @@ packages/
 docs/                     # product and engineering documentation
 ```
 
-## Current setup
+## Install
 
-Application installation and execution commands will be added as the web and
-API foundations are created in M0.2 and M0.3. No Twitch or IGDB credential is
-required for the repository foundation.
+```bash
+pnpm install
+```
+
+## Web application
+
+```bash
+pnpm --filter web dev
+pnpm --filter web lint
+pnpm --filter web typecheck
+pnpm --filter web test
+pnpm --filter web build
+```
+
+The development server exposes the English route at <http://localhost:3000/en>
+and the Brazilian Portuguese route at <http://localhost:3000/pt-br>. No Twitch
+or IGDB credential is required for the web foundation.
+
+API installation and execution commands will be added in M0.3. Root-level
+quality commands will be added when monorepo tooling is consolidated in M0.4.
 
 ## Commit convention
 
