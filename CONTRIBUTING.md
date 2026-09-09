@@ -9,7 +9,8 @@ TypeScript client.
 - Git 2.55 or newer;
 - Node.js 22.23.2;
 - pnpm 11.19.0;
-- Python 3.14.7.
+- Python 3.14.7;
+- Poetry 2.4.3.
 
 The pinned runtime versions reflect the initial development environment. Update
 the version files and this document together when upgrading a runtime.
@@ -45,8 +46,21 @@ The development server exposes the English route at <http://localhost:3000/en>
 and the Brazilian Portuguese route at <http://localhost:3000/pt-br>. No Twitch
 or IGDB credential is required for the web foundation.
 
-API installation and execution commands will be added in M0.3. Root-level
-quality commands will be added when monorepo tooling is consolidated in M0.4.
+## API application
+
+From `apps/api`, run:
+
+```bash
+poetry install
+poetry run fastapi dev src/whattoplaynext_api/main.py
+poetry run ruff format --check .
+poetry run ruff check .
+poetry run mypy
+poetry run pytest
+```
+
+Root-level quality commands will be added when monorepo tooling is consolidated
+in M0.4.
 
 ## Commit convention
 

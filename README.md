@@ -32,7 +32,8 @@ approximate matching.
 
 The approved planning baseline is complete and implementation has started with
 Milestone 0. The Next.js web foundation is available in `apps/web`; the API and
-generated-contract directories are reserved for the next increments.
+FastAPI foundation is available in `apps/api`; the generated-contract directory
+is reserved for a later increment.
 
 ## Development
 

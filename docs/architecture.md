@@ -83,6 +83,19 @@ be maintained as independent handwritten copies.
 
 ## 5. Domain boundary
 
+### 5.1 Internal API architecture
+
+The FastAPI application uses a selective hexagonal architecture. FastAPI routes
+are inbound adapters. Domain modules define small interfaces only at real seams,
+and external integrations such as IGDB and Redis provide adapters for those
+interfaces. Test fakes use the same seams as production adapters.
+
+Framework, provider, and cache types must not enter domain modules. The
+application composition root selects concrete adapters and passes dependencies
+to their consumers. A new interface is not introduced for logic that has only
+one implementation and no meaningful variation; this avoids pass-through
+layers while preserving dependency inversion where it provides leverage.
+
 The web application sends provider-neutral search criteria. It must not build
 IGDB-specific query strings.
 
