@@ -7,7 +7,7 @@ secondary locale.
 ## Development
 
 ```bash
-pnpm --filter web dev
+pnpm dev:web
 ```
 
 Open <http://localhost:3000/en>. The root route redirects to the English page;
@@ -16,8 +16,11 @@ the Portuguese foundation is available at <http://localhost:3000/pt-br>.
 ## Checks
 
 ```bash
-pnpm --filter web lint
-pnpm --filter web typecheck
-pnpm --filter web test
-pnpm --filter web build
+pnpm lint:web
+pnpm typecheck:web
+pnpm test:web
+pnpm build:web
 ```
+
+Run these commands from the repository root. `pnpm check` runs the complete
+web and API quality gate.

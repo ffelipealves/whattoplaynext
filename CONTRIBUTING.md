@@ -29,8 +29,39 @@ docs/                     # product and engineering documentation
 ## Install
 
 ```bash
-pnpm install
+pnpm run setup
 ```
+
+Poetry must be available on `PATH`. The setup command installs both the pnpm
+workspace and the API Poetry environment.
+
+## Root commands
+
+Run both development servers from the repository root:
+
+```bash
+pnpm dev
+```
+
+The web application is available at <http://localhost:3000> and the API at
+<http://localhost:8000>. Run either application independently with
+`pnpm dev:web` or `pnpm dev:api`.
+
+The repository exposes the same quality commands locally and in CI:
+
+```bash
+pnpm format
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm check
+```
+
+`pnpm format` rewrites files. `pnpm check` does not rewrite source files and
+runs formatting verification, linting, static typing, tests, and production
+builds for both applications.
 
 ## Web application
 
@@ -59,9 +90,6 @@ poetry run mypy
 poetry run pytest
 ```
 
-Root-level quality commands will be added when monorepo tooling is consolidated
-in M0.4.
-
 ## Development workflow
 
 Use pragmatic TDD for domain rules, use cases, API behavior, and bug fixes:
@@ -79,6 +107,22 @@ regression test whenever the failure is reproducible in automation.
 A failing test is not required first for documentation-only, generated-code,
 purely visual, or configuration changes. These changes must still receive the
 relevant automated checks or documented manual verification.
+
+Work in vertical slices that deliver one observable behavior through the
+necessary domain, application, adapter, and UI boundaries. Avoid building an
+entire horizontal layer in anticipation of future behavior.
+
+## Definition of done
+
+A delivery increment is done when:
+
+- its acceptance criteria are satisfied by an observable vertical slice;
+- relevant behavior is covered by automated tests through public seams;
+- `pnpm check` passes from the repository root;
+- generated artifacts are current and reproducible;
+- credentials and populated environment files are absent from the change;
+- affected behavioral, operational, or architectural documentation is current;
+- any required manual verification is recorded in the delivery summary.
 
 ## Commit convention
 

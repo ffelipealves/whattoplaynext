@@ -20,13 +20,13 @@ it does not introduce an artificial port.
 ## Install
 
 ```bash
-poetry install
+pnpm run setup
 ```
 
 ## Run
 
 ```bash
-poetry run fastapi dev src/whattoplaynext_api/main.py
+pnpm dev:api
 ```
 
 The health endpoint is available at <http://localhost:8000/api/v1/health>.
@@ -34,10 +34,13 @@ The health endpoint is available at <http://localhost:8000/api/v1/health>.
 ## Checks
 
 ```bash
-poetry run ruff format --check .
-poetry run ruff check .
-poetry run mypy
-poetry run pytest
+pnpm format:api:check
+pnpm lint:api
+pnpm typecheck:api
+pnpm test:api
+pnpm build:api
 ```
 
-No Twitch, IGDB, or Redis configuration is required for these checks.
+Run these commands from the repository root. `pnpm check` runs the complete
+web and API quality gate. No Twitch, IGDB, or Redis configuration is required
+for these checks.

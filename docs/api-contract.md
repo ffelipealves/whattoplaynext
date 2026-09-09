@@ -51,21 +51,21 @@ Example shape:
 
 Supported query parameters:
 
-| Parameter | Type | Meaning |
-| --- | --- | --- |
-| `name` | string | Partial title query |
-| `platform` | repeated string | OR within platform category |
-| `genre` | repeated string | OR within genre category |
-| `releaseFrom` | date | Inclusive lower release bound |
-| `releaseTo` | date | Inclusive upper release bound |
-| `minimumRating` | number | Combined IGDB rating from 0 to 100 |
-| `gameMode` | repeated string | OR within mode category |
-| `durationKind` | enum | `fast`, `normal`, or `completionist` |
-| `minimumDurationHours` | number | Inclusive lower duration bound |
-| `maximumDurationHours` | number | Inclusive upper duration bound |
-| `sort` | enum | Defaults to `popularity` |
-| `direction` | enum | `asc` or `desc`; sensible default depends on sort |
-| `page` | integer | Defaults to 1; maximum 100 |
+| Parameter              | Type            | Meaning                                           |
+| ---------------------- | --------------- | ------------------------------------------------- |
+| `name`                 | string          | Partial title query                               |
+| `platform`             | repeated string | OR within platform category                       |
+| `genre`                | repeated string | OR within genre category                          |
+| `releaseFrom`          | date            | Inclusive lower release bound                     |
+| `releaseTo`            | date            | Inclusive upper release bound                     |
+| `minimumRating`        | number          | Combined IGDB rating from 0 to 100                |
+| `gameMode`             | repeated string | OR within mode category                           |
+| `durationKind`         | enum            | `fast`, `normal`, or `completionist`              |
+| `minimumDurationHours` | number          | Inclusive lower duration bound                    |
+| `maximumDurationHours` | number          | Inclusive upper duration bound                    |
+| `sort`                 | enum            | Defaults to `popularity`                          |
+| `direction`            | enum            | `asc` or `desc`; sensible default depends on sort |
+| `page`                 | integer         | Defaults to 1; maximum 100                        |
 
 Response shape:
 
@@ -188,15 +188,15 @@ Every error uses this envelope:
 
 Initial stable codes:
 
-| HTTP | Code | Meaning |
-| ---: | --- | --- |
-| 400 | `INVALID_QUERY` | Query combination is invalid |
-| 404 | `GAME_NOT_FOUND` | Game ID is absent or excluded from MVP content types |
-| 422 | `VALIDATION_ERROR` | One or more parameter values are invalid |
-| 429 | `RATE_LIMITED` | Client must wait before another request |
-| 502 | `UPSTREAM_INVALID_RESPONSE` | Provider response could not be normalized safely |
-| 503 | `UPSTREAM_UNAVAILABLE` | Provider unavailable and no usable cache exists |
-| 504 | `UPSTREAM_TIMEOUT` | Provider exceeded the bounded deadline |
+| HTTP | Code                        | Meaning                                              |
+| ---: | --------------------------- | ---------------------------------------------------- |
+|  400 | `INVALID_QUERY`             | Query combination is invalid                         |
+|  404 | `GAME_NOT_FOUND`            | Game ID is absent or excluded from MVP content types |
+|  422 | `VALIDATION_ERROR`          | One or more parameter values are invalid             |
+|  429 | `RATE_LIMITED`              | Client must wait before another request              |
+|  502 | `UPSTREAM_INVALID_RESPONSE` | Provider response could not be normalized safely     |
+|  503 | `UPSTREAM_UNAVAILABLE`      | Provider unavailable and no usable cache exists      |
+|  504 | `UPSTREAM_TIMEOUT`          | Provider exceeded the bounded deadline               |
 
 Error messages are localized by the web application using the stable code. The
 API message is a safe English fallback and never includes provider payloads or

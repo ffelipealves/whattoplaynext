@@ -47,17 +47,17 @@ The product scope is defined in the
 [product requirements](product-requirements.md). This table records why the
 provider supports or blocks each data-dependent decision.
 
-| Capability | Decision | Provider evidence or limitation |
-| --- | --- | --- |
-| Core catalog filters | Use | IGDB has names, genres, platforms, releases, ratings, and modes. |
-| Campaign duration | Use as nullable | Time-to-beat exposes fast, normal, and completionist values with uneven coverage. |
-| Images | Use as nullable | Covers and screenshots are available but not guaranteed. |
-| Themes | Detail only | Taxonomy exists but does not reliably represent subjective mood. |
-| Difficulty | Exclude | No dependable normalized field. |
-| Subscriptions | Exclude | External identifiers do not prove current catalog entitlement. |
-| Prices and regional availability | Exclude | No suitable fresh cross-platform source in the selected provider. |
-| Portuguese catalog text | Do not promise | Localized source coverage is not guaranteed. |
-| Steam community tags | Exclude | Not a normalized cross-platform IGDB contract. |
+| Capability                       | Decision        | Provider evidence or limitation                                                   |
+| -------------------------------- | --------------- | --------------------------------------------------------------------------------- |
+| Core catalog filters             | Use             | IGDB has names, genres, platforms, releases, ratings, and modes.                  |
+| Campaign duration                | Use as nullable | Time-to-beat exposes fast, normal, and completionist values with uneven coverage. |
+| Images                           | Use as nullable | Covers and screenshots are available but not guaranteed.                          |
+| Themes                           | Detail only     | Taxonomy exists but does not reliably represent subjective mood.                  |
+| Difficulty                       | Exclude         | No dependable normalized field.                                                   |
+| Subscriptions                    | Exclude         | External identifiers do not prove current catalog entitlement.                    |
+| Prices and regional availability | Exclude         | No suitable fresh cross-platform source in the selected provider.                 |
+| Portuguese catalog text          | Do not promise  | Localized source coverage is not guaranteed.                                      |
+| Steam community tags             | Exclude         | Not a normalized cross-platform IGDB contract.                                    |
 
 ## 4. Alternatives considered
 

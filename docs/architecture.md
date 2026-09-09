@@ -147,13 +147,13 @@ Redis is a disposable optimization, not a source of truth.
 
 Initial configurable TTLs:
 
-| Resource | Fresh TTL |
-| --- | ---: |
-| Search response | 1 hour |
-| Game detail | 24 hours |
-| Genres, platforms, modes, and filter metadata | 7 days |
-| Empty/negative lookup | short, configurable |
-| Popular-game sitemap selection | 24 hours |
+| Resource                                      |           Fresh TTL |
+| --------------------------------------------- | ------------------: |
+| Search response                               |              1 hour |
+| Game detail                                   |            24 hours |
+| Genres, platforms, modes, and filter metadata |              7 days |
+| Empty/negative lookup                         | short, configurable |
+| Popular-game sitemap selection                |            24 hours |
 
 Cache keys are generated from a canonical serialization of validated criteria,
 API version, locale-sensitive presentation needs, and response schema version.
@@ -224,6 +224,8 @@ GitHub Actions must run formatting/linting, static typing, unit tests,
 integration tests, contract-generation verification, production builds, and a
 small critical Playwright suite. Production deploys only from the main branch
 after required checks pass. Secrets are scoped separately by environment.
+The root `pnpm check` command is the local and CI entry point for the complete
+quality gate so the two environments do not encode different validation rules.
 
 ## 14. Testing strategy
 

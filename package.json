@@ -1,6 +1,35 @@
 {
   "name": "whattoplaynext",
   "private": true,
+  "scripts": {
+    "setup": "pnpm install && poetry -C apps/api install",
+    "dev": "concurrently --kill-others-on-fail --names web,api \"pnpm dev:web\" \"pnpm dev:api\"",
+    "dev:web": "pnpm --filter web dev",
+    "dev:api": "poetry -C apps/api run fastapi dev src/whattoplaynext_api/main.py",
+    "format": "pnpm format:repo && pnpm format:api",
+    "format:check": "pnpm format:repo:check && pnpm format:api:check",
+    "format:repo": "prettier --write . --ignore-unknown",
+    "format:repo:check": "prettier --check . --ignore-unknown",
+    "format:api": "poetry -C apps/api run ruff format .",
+    "format:api:check": "poetry -C apps/api run ruff format --check .",
+    "lint": "pnpm lint:web && pnpm lint:api",
+    "lint:web": "pnpm --filter web lint",
+    "lint:api": "poetry -C apps/api run ruff check .",
+    "typecheck": "pnpm typecheck:web && pnpm typecheck:api",
+    "typecheck:web": "pnpm --filter web typecheck",
+    "typecheck:api": "poetry -C apps/api run mypy",
+    "test": "pnpm test:web && pnpm test:api",
+    "test:web": "pnpm --filter web test",
+    "test:api": "poetry -C apps/api run pytest",
+    "build": "pnpm build:web && pnpm build:api",
+    "build:web": "pnpm --filter web build",
+    "build:api": "poetry -P apps/api build",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "concurrently": "10.0.5",
+    "prettier": "3.9.6"
+  },
   "packageManager": "pnpm@11.19.0",
   "engines": {
     "node": ">=22.0.0 <25",

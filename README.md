@@ -44,6 +44,9 @@ setup status, and contribution rules.
 To run the current web application:
 
 ```bash
-pnpm install
-pnpm --filter web dev
+pnpm run setup
+pnpm dev
 ```
+
+Run the complete local quality gate with `pnpm check`. Individual web and API
+commands are documented in [CONTRIBUTING.md](CONTRIBUTING.md).

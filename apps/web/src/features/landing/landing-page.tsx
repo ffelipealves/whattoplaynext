@@ -44,7 +44,9 @@ export function LandingPage({ content, locale }: LandingPageProps) {
                 className="max-w-4xl font-[family-name:var(--font-display)] text-[clamp(3.7rem,8vw,8rem)] leading-[0.83] font-semibold tracking-[-0.075em]"
               >
                 <span className="block">{content.titleLead}</span>
-                <span className="block text-[#3157d5]">{content.titleEmphasis}</span>
+                <span className="block text-[#3157d5]">
+                  {content.titleEmphasis}
+                </span>
                 <span className="block">{content.titleEnd}</span>
               </h1>
 

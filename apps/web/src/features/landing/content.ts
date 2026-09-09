@@ -53,7 +53,8 @@ const content: Record<Locale, LandingContent> = {
       },
       {
         title: "Zero means zero",
-        description: "We suggest what to relax without sneaking in near matches.",
+        description:
+          "We suggest what to relax without sneaking in near matches.",
       },
     ],
   },
@@ -89,7 +90,8 @@ const content: Record<Locale, LandingContent> = {
       },
       {
         title: "Zero significa zero",
-        description: "Sugerimos o que flexibilizar sem inserir resultados aproximados.",
+        description:
+          "Sugerimos o que flexibilizar sem inserir resultados aproximados.",
       },
     ],
   },
