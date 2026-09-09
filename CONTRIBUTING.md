@@ -35,6 +35,29 @@ pnpm run setup
 Poetry must be available on `PATH`. The setup command installs both the pnpm
 workspace and the API Poetry environment.
 
+## Environment
+
+Copy `apps/api/.env.example` to `apps/api/.env` and
+`apps/web/.env.example` to `apps/web/.env.local`. The example files define the
+supported names and safe local defaults; the populated files remain ignored by
+Git.
+
+Variables prefixed with `NEXT_PUBLIC_` are included in the browser bundle and
+must never contain credentials. Twitch credentials are backend-only and must be
+configured as a pair. They may remain blank until work requiring live IGDB
+access begins.
+
+Start the local Redis service before developing cache-dependent behavior:
+
+```bash
+pnpm infra:up
+pnpm infra:status
+```
+
+Use `pnpm infra:logs` to follow Redis logs and `pnpm infra:down` to stop the
+container. The named volume is retained across normal stops. Redis binds only
+to the loopback interface and is not exposed to the local network.
+
 ## Root commands
 
 Run both development servers from the repository root:

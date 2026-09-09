@@ -13,6 +13,9 @@ pnpm dev:web
 Open <http://localhost:3000/en>. The root route redirects to the English page;
 the Portuguese foundation is available at <http://localhost:3000/pt-br>.
 
+Copy `.env.example` to `.env.local` when overriding local configuration. Every
+`NEXT_PUBLIC_` value is visible to browsers and must not contain a credential.
+
 ## Checks
 
 ```bash

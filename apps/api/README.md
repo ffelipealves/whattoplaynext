@@ -26,10 +26,19 @@ pnpm run setup
 ## Run
 
 ```bash
+pnpm infra:up
 pnpm dev:api
 ```
 
 The health endpoint is available at <http://localhost:8000/api/v1/health>.
+
+## Environment
+
+Copy `.env.example` to `.env`. `WTPN_REDIS_URL` has a safe local default;
+`WTPN_TWITCH_CLIENT_ID` and `WTPN_TWITCH_CLIENT_SECRET` are optional until live
+IGDB access is implemented, but must always be provided together. The settings
+loader treats blank example credentials as absent and masks the secret in model
+representations.
 
 ## Checks
 

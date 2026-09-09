@@ -177,6 +177,12 @@ and rate limiting run before provider access. Logs and analytics pass through
 explicit allow-lists/redaction, and public errors expose only stable codes and a
 correlation ID. The binding requirements are NFR-015 through NFR-023.
 
+Supported environment-variable names are committed only in `.env.example`
+files. Populated `.env` files remain untracked. Browser-visible configuration
+uses the `NEXT_PUBLIC_` prefix and never contains credentials; backend settings
+use `WTPN_`. Twitch credentials are validated as an all-or-nothing pair and the
+secret uses a redacting type in application configuration.
+
 ## 10. Rendering and SEO
 
 Next.js renders indexable routes and their metadata on the server. Search state
@@ -197,6 +203,7 @@ through NFR-027.
 
 ### Development and closed testing
 
+- Docker Compose with Redis bound to loopback for local development;
 - Vercel Hobby for the web application;
 - Render Free for the API, accepting cold starts;
 - Upstash Redis Free.

@@ -31,9 +31,9 @@ approximate matching.
 ## Project status
 
 The approved planning baseline is complete and implementation has started with
-Milestone 0. The Next.js web foundation is available in `apps/web`; the API and
-FastAPI foundation is available in `apps/api`; the generated-contract directory
-is reserved for a later increment.
+Milestone 0. The Next.js and FastAPI foundations, consolidated monorepo tooling,
+typed local configuration, and Redis development service are available. The
+generated-contract directory is reserved for a later increment.
 
 ## Development
 
@@ -45,6 +45,7 @@ To run the current web application:
 
 ```bash
 pnpm run setup
+pnpm infra:up
 pnpm dev
 ```
 
