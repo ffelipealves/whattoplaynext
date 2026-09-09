@@ -227,6 +227,20 @@ after required checks pass. Secrets are scoped separately by environment.
 
 ## 14. Testing strategy
 
+The project follows pragmatic test-driven development. Development of domain
+rules, use cases, API behavior, and bug fixes follows a small red-green cycle:
+write one failing behavioral test through an agreed public seam, implement only
+enough behavior to make it pass, and continue with the next vertical slice.
+Refactoring happens after the behavior is green and is reviewed separately.
+
+Tests describe observable outcomes and must remain stable when internals are
+reorganized. Mocks and fakes are reserved for system boundaries such as IGDB,
+Redis, time, and network failures; internal collaborators are exercised through
+their public interface. Purely visual, documentation-only, generated-code, and
+configuration changes do not require a failing test first, but still require
+the relevant automated or manual verification. Every bug fix starts with a
+regression test whenever the failure can be reproduced automatically.
+
 - pure unit tests for criteria normalization and strict filter semantics;
 - recorded or handcrafted IGDB fixtures for provider mapping;
 - no live IGDB dependency in the normal automated suite;

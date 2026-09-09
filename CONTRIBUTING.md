@@ -62,6 +62,24 @@ poetry run pytest
 Root-level quality commands will be added when monorepo tooling is consolidated
 in M0.4.
 
+## Development workflow
+
+Use pragmatic TDD for domain rules, use cases, API behavior, and bug fixes:
+
+1. Agree on the public seam and the observable behavior for the slice.
+2. Add one behavioral test and confirm that it fails for the expected reason.
+3. Implement the smallest vertical slice that makes the test pass.
+4. Repeat for the next behavior, then refactor while keeping the suite green.
+
+Test public interfaces rather than private methods or interactions between
+internal collaborators. Use mocks or fakes only at system boundaries such as
+IGDB, Redis, time, and network failures. Bug fixes should begin with a
+regression test whenever the failure is reproducible in automation.
+
+A failing test is not required first for documentation-only, generated-code,
+purely visual, or configuration changes. These changes must still receive the
+relevant automated checks or documented manual verification.
+
 ## Commit convention
 
 - Create one commit for each completed `M0.X` increment.
