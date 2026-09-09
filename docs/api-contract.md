@@ -1,0 +1,216 @@
+# Initial API Contract
+
+Status: design baseline, not generated code
+Base path: `/api/v1`
+
+FastAPI OpenAPI will become the executable source of truth. This document fixes
+public semantics before implementation; exact schema component names may be
+refined without changing the agreed behavior.
+
+## 1. Conventions
+
+- JSON uses camelCase at the public boundary.
+- Dates use ISO 8601 calendar dates.
+- Durations are returned in whole seconds and displayed as localized hours by
+  the web application.
+- Ratings use a 0–100 numeric scale.
+- Nullable source values are `null`; they are not replaced with zero.
+- List query parameters may repeat, for example
+  `platform=pc&platform=playstation-5`.
+- All responses can include `requestId` for support correlation.
+- Unknown parameters are rejected.
+
+## 2. Endpoints
+
+### `GET /api/v1/filters`
+
+Returns the allow-listed platform groups, genres, game modes, duration kinds,
+sort options, and public validation bounds required to build the form.
+
+Example shape:
+
+```json
+{
+  "platforms": [{ "id": "pc", "label": "PC" }],
+  "genres": [{ "id": "role-playing-rpg", "label": "Role-playing (RPG)" }],
+  "gameModes": [{ "id": "single-player", "label": "Single player" }],
+  "durationKinds": ["fast", "normal", "completionist"],
+  "sortOptions": ["popularity", "rating", "release-date", "duration", "title"],
+  "limits": {
+    "pageSize": 24,
+    "maximumPage": 100,
+    "minimumAutocompleteLength": 2,
+    "maximumNameLength": 100,
+    "minimumDurationHours": 1,
+    "maximumDurationHours": 1000
+  }
+}
+```
+
+### `GET /api/v1/games`
+
+Supported query parameters:
+
+| Parameter | Type | Meaning |
+| --- | --- | --- |
+| `name` | string | Partial title query |
+| `platform` | repeated string | OR within platform category |
+| `genre` | repeated string | OR within genre category |
+| `releaseFrom` | date | Inclusive lower release bound |
+| `releaseTo` | date | Inclusive upper release bound |
+| `minimumRating` | number | Combined IGDB rating from 0 to 100 |
+| `gameMode` | repeated string | OR within mode category |
+| `durationKind` | enum | `fast`, `normal`, or `completionist` |
+| `minimumDurationHours` | number | Inclusive lower duration bound |
+| `maximumDurationHours` | number | Inclusive upper duration bound |
+| `sort` | enum | Defaults to `popularity` |
+| `direction` | enum | `asc` or `desc`; sensible default depends on sort |
+| `page` | integer | Defaults to 1; maximum 100 |
+
+Response shape:
+
+```json
+{
+  "items": [
+    {
+      "id": 1942,
+      "slug": "hollow-knight",
+      "title": "Hollow Knight",
+      "releaseYear": 2017,
+      "cover": {
+        "url": "https://...",
+        "width": 264,
+        "height": 374
+      },
+      "platforms": [{ "id": "pc", "label": "PC" }],
+      "genres": [{ "id": "platform", "label": "Platform" }],
+      "rating": { "value": 89.2, "count": 1234, "source": "IGDB combined" },
+      "normalDurationSeconds": 97200,
+      "gameModes": [{ "id": "single-player", "label": "Single player" }]
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "pageSize": 24,
+    "totalItems": 240,
+    "totalPages": 10
+  },
+  "query": {
+    "sort": "popularity",
+    "direction": "desc"
+  },
+  "meta": {
+    "requestId": "...",
+    "servedFrom": "fresh-cache",
+    "dataMayBeStale": false,
+    "excludedUnknownDuration": false
+  }
+}
+```
+
+`totalItems` may be capped or approximate if the provider cannot supply an
+exact total efficiently. The implementation must document that condition and
+must keep next/previous navigation correct.
+
+### `GET /api/v1/games/autocomplete`
+
+Query:
+
+- `q`: required, 2–100 characters;
+- optional currently selected platform identifiers for more relevant labels;
+- response limit fixed at eight.
+
+This endpoint is independently rate-limited and cached. Failure does not block
+normal name-filter submission.
+
+### `GET /api/v1/games/{gameId}`
+
+Returns normalized detail data for one IGDB game ID. The slug is handled by the
+web route and does not form part of resource identity.
+
+Detail response fields:
+
+- ID, canonical slug, official and alternative names where available;
+- summary and its source language when known;
+- cover and screenshots;
+- platform-specific release dates;
+- genres and themes;
+- platforms;
+- game modes and structured multiplayer information;
+- user, external-critic, and combined ratings with counts where provided;
+- fast, normal, and completionist duration with submission count where
+  provided;
+- age ratings where available;
+- allow-listed external links;
+- freshness and attribution metadata.
+
+### `GET /api/v1/health`
+
+Returns process health without making a synchronous IGDB request. A separate
+readiness view may report cache and provider-circuit state without exposing
+credentials or internal network information.
+
+## 3. Search semantics
+
+The endpoint implements FR-005 through FR-018 from the
+[product requirements](product-requirements.md). In particular, popularity is a
+sort order rather than a match score, and the API must not silently relax a
+validated query.
+
+## 4. Validation
+
+- page: integer 1–100;
+- page size: fixed at 24;
+- rating: 0–100;
+- duration bounds: 1–1,000 hours and minimum not greater than maximum;
+- autocomplete bounds: 2–100 characters;
+- submitted name filter: trimmed, non-empty when present, and at most 100
+  characters;
+- release lower bound not greater than upper bound;
+- enumerations drawn from the filter-metadata endpoint;
+- duplicate repeated values normalized away;
+- unknown parameters rejected.
+
+## 5. Errors
+
+Every error uses this envelope:
+
+```json
+{
+  "error": {
+    "code": "UPSTREAM_UNAVAILABLE",
+    "message": "Game data is temporarily unavailable.",
+    "requestId": "01...",
+    "retryAfterSeconds": 30
+  }
+}
+```
+
+Initial stable codes:
+
+| HTTP | Code | Meaning |
+| ---: | --- | --- |
+| 400 | `INVALID_QUERY` | Query combination is invalid |
+| 404 | `GAME_NOT_FOUND` | Game ID is absent or excluded from MVP content types |
+| 422 | `VALIDATION_ERROR` | One or more parameter values are invalid |
+| 429 | `RATE_LIMITED` | Client must wait before another request |
+| 502 | `UPSTREAM_INVALID_RESPONSE` | Provider response could not be normalized safely |
+| 503 | `UPSTREAM_UNAVAILABLE` | Provider unavailable and no usable cache exists |
+| 504 | `UPSTREAM_TIMEOUT` | Provider exceeded the bounded deadline |
+
+Error messages are localized by the web application using the stable code. The
+API message is a safe English fallback and never includes provider payloads or
+stack traces.
+
+## 6. Rate limiting
+
+The initial public ceiling is 60 requests per minute per client IP, with lower
+route-specific budgets for uncached calls capable of consuming IGDB quota.
+Limits are configuration rather than hard-coded product behavior. HTTP 429
+responses include `Retry-After` and `retryAfterSeconds`.
+
+## 7. Versioning rules
+
+Additive nullable fields do not require a new base version. Removing or
+renaming fields, changing filter semantics, or changing null behavior requires
+a new API version or an explicitly managed migration.

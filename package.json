@@ -1,0 +1,9 @@
+{
+  "name": "whattoplaynext",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=22.0.0 <23",
+    "pnpm": ">=11.19.0 <12"
+  }
+}
