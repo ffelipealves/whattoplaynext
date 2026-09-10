@@ -42,6 +42,8 @@ public-beta blocker.
 
 ## Milestone 1 — Provider adapter and normalized API
 
+Status: divided into M1.1–M1.10; implementation not started.
+
 Deliverables:
 
 - Twitch token management;
@@ -60,6 +62,9 @@ Exit criteria:
 - missing values remain null and upstream failures are distinguishable from
   empty results;
 - strict AND/OR and platform-date semantics are covered by tests.
+
+The ordered vertical slices, module seams, test expectations, and scope
+guardrails are defined in [Milestone 1 plan](milestone-1-plan.md).
 
 ## Milestone 2 — Search experience
 

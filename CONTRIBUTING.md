@@ -1,8 +1,9 @@
 # Contributing
 
-What To Play Next is currently in its foundation phase. The repository will
-contain a Next.js web application, a FastAPI application, and a generated
-TypeScript client.
+What To Play Next has completed its technical foundation and is prepared to
+implement the provider and normalized API milestone. The repository contains a
+Next.js web application, a FastAPI application, and a generated TypeScript
+client.
 
 ## Prerequisites
 
@@ -190,15 +191,18 @@ A delivery increment is done when:
 
 ## Commit convention
 
-- Create one commit for each completed `M0.X` increment.
+- Create one commit for each completed roadmap increment, such as `M1.1`.
 - Use Conventional Commits in the form `type(scope): imperative summary`.
 - Prefer `feat`, `fix`, `docs`, `test`, `refactor`, `build`, `ci`, and `chore`.
 - Keep the subject concise, imperative, and free of a trailing period.
 - Write the commit body as bullet points describing the delivered outcomes.
-- Add `Milestone: M0.X` as the final trailer for milestone commits.
+- Add the matching increment, such as `Milestone: M1.1`, as the final trailer
+  for milestone commits.
 - Do not add AI, tool, or assistant co-authors to commits.
 - Run the relevant checks before committing.
-- Push directly to `main` during the initial foundation phase.
+- Continue pushing completed increments directly to `main` until the repository
+  explicitly adopts the pull-request workflow; never rewrite published `main`
+  history.
 
 ## Ground rules
 

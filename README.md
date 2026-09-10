@@ -21,6 +21,8 @@ approximate matching.
   diligence and Twitch/IGDB launch blockers.
 - [Milestone 0 review](docs/milestone-0-review.md) — foundation acceptance,
   clean-clone evidence, and explicit deferrals.
+- [Milestone 1 plan](docs/milestone-1-plan.md) — provider/API increments,
+  acceptance checks, and scope guardrails.
 - [MVP roadmap](docs/roadmap.md) — delivery sequence and milestone exit checks.
 
 ## Planned stack
