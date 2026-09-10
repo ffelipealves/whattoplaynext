@@ -78,16 +78,26 @@ pnpm format:check
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm coverage
 pnpm build
 pnpm contract:generate
 pnpm contract:check
+pnpm quality
 pnpm check
 ```
 
-`pnpm format` rewrites files. `pnpm check` does not rewrite source files and
-runs formatting verification, linting, static typing, tests, and production
+`pnpm format` rewrites files. `pnpm quality` is the canonical, non-mutating
+quality gate; `pnpm check` is its compatibility alias. The gate runs formatting
+verification, linting, static typing, coverage-enforced tests, and production
 builds for both applications and the contracts package. It also verifies that
 the committed OpenAPI schema and generated TypeScript types are current.
+
+Coverage starts with explicit per-package thresholds: the API requires 90%
+overall; the contracts client requires 90% for statements, lines, functions,
+and branches; web features require 90% for statements, lines, and functions and
+80% for branches. Generated contract types are excluded. Thresholds are a
+regression floor, not a target: raise them as meaningful behavior is added and
+never weaken them merely to make a change pass.
 
 ## API contract workflow
 
@@ -159,7 +169,7 @@ A delivery increment is done when:
 
 - its acceptance criteria are satisfied by an observable vertical slice;
 - relevant behavior is covered by automated tests through public seams;
-- `pnpm check` passes from the repository root;
+- `pnpm quality` (or its `pnpm check` alias) passes from the repository root;
 - generated artifacts are current and reproducible;
 - credentials and populated environment files are absent from the change;
 - affected behavioral, operational, or architectural documentation is current;

@@ -18,7 +18,8 @@
     "format:repo:check": "prettier --check . --ignore-unknown",
     "format:api": "poetry -C apps/api run ruff format .",
     "format:api:check": "poetry -C apps/api run ruff format --check .",
-    "lint": "pnpm lint:web && pnpm lint:api",
+    "lint": "pnpm lint:repo && pnpm lint:web && pnpm lint:api",
+    "lint:repo": "eslint eslint.config.mjs tools packages/contracts/src packages/contracts/vitest.config.mts",
     "lint:web": "pnpm --filter web lint",
     "lint:api": "poetry -C apps/api run ruff check .",
     "typecheck": "pnpm typecheck:contracts && pnpm typecheck:web && pnpm typecheck:api",
@@ -29,16 +30,26 @@
     "test:contracts": "pnpm --filter @whattoplaynext/contracts test",
     "test:web": "pnpm --filter web test",
     "test:api": "poetry -C apps/api run pytest",
+    "coverage": "pnpm coverage:contracts && pnpm coverage:web && pnpm coverage:api",
+    "coverage:contracts": "pnpm --filter @whattoplaynext/contracts test:coverage",
+    "coverage:web": "pnpm --filter web test:coverage",
+    "coverage:api": "poetry -C apps/api run pytest --cov=whattoplaynext_api --cov-report=term-missing --cov-report=xml:coverage.xml",
     "build": "pnpm build:contracts && pnpm build:web && pnpm build:api",
     "build:contracts": "pnpm --filter @whattoplaynext/contracts build",
     "build:web": "pnpm --filter web build",
     "build:api": "poetry -P apps/api build",
-    "check": "pnpm contract:check && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+    "quality": "pnpm contract:check && pnpm format:check && pnpm lint && pnpm typecheck && pnpm coverage && pnpm build",
+    "check": "pnpm quality"
   },
   "devDependencies": {
+    "@eslint/js": "9.39.5",
     "concurrently": "10.0.5",
+    "eslint": "9.39.5",
+    "eslint-config-prettier": "10.1.8",
+    "globals": "17.12.0",
     "openapi-typescript": "7.13.0",
-    "prettier": "3.9.6"
+    "prettier": "3.9.6",
+    "typescript-eslint": "8.70.0"
   },
   "packageManager": "pnpm@11.19.0",
   "engines": {

@@ -16,12 +16,14 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node ../../tools/contracts.mjs check-build",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "openapi-fetch": "0.17.0"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "5.0.0",
     "typescript": "5.9.3",
     "vitest": "5.0.0"
   }

@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { expect, test } from "vitest";
 
-import { getLandingContent } from "./content";
+import { getLandingContent, isSupportedLocale } from "./content";
 import { LandingPage } from "./landing-page";
 
 test("renders the English product promise and strict-match behavior", () => {
@@ -17,4 +17,6 @@ test("renders the English product promise and strict-match behavior", () => {
   expect(
     screen.getByRole("link", { name: "Português" }).getAttribute("href"),
   ).toBe("/pt-br");
+  expect(isSupportedLocale("pt-br")).toBe(true);
+  expect(isSupportedLocale("es")).toBe(false);
 });

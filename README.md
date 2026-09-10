@@ -50,5 +50,6 @@ pnpm infra:up
 pnpm dev
 ```
 
-Run the complete local quality gate with `pnpm check`. Individual web and API
-commands are documented in [CONTRIBUTING.md](CONTRIBUTING.md).
+Run the complete local quality gate with `pnpm quality` (`pnpm check` remains an
+alias). Individual web and API commands are documented in
+[CONTRIBUTING.md](CONTRIBUTING.md).

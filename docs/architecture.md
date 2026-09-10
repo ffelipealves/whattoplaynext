@@ -258,6 +258,13 @@ configuration changes do not require a failing test first, but still require
 the relevant automated or manual verification. Every bug fix starts with a
 regression test whenever the failure can be reproduced automatically.
 
+Coverage thresholds are enforced per executable package by the root quality
+gate. Generated contract types are excluded because measuring generated code
+would inflate the signal without protecting project behavior. Thresholds form
+a ratchet: they may increase as the system grows, and reductions require an
+explicit architectural reason rather than accommodation for an uncovered
+change.
+
 - pure unit tests for criteria normalization and strict filter semantics;
 - recorded or handcrafted IGDB fixtures for provider mapping;
 - no live IGDB dependency in the normal automated suite;
