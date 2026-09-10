@@ -1,6 +1,6 @@
 # Milestone 1 Plan
 
-Status: active execution baseline; M1.1 completed
+Status: active execution baseline; M1.2 completed
 
 Prepared: 2026-09-10
 
@@ -73,6 +73,8 @@ Acceptance:
 
 ### M1.2 — Twitch application-token module
 
+Status: completed on 2026-09-10.
+
 Deliver:
 
 - client-credentials token acquisition using backend-only settings;
@@ -86,6 +88,12 @@ Acceptance:
 - tests cover first acquisition, reuse, expiry, concurrent refresh, malformed
   response, timeout, and rejected credentials;
 - no token or client secret appears in logs or public errors.
+
+Outcome: the token manager now exposes one application-facing method, caches a
+validated grant until its safety margin, and single-flights refreshes within the
+process. Its HTTP boundary implements Twitch's form-encoded client-credentials
+exchange and emits only stable, secret-safe failure categories. Deterministic
+tests cover the lifecycle and external HTTP behavior without network access.
 
 ### M1.3 — IGDB transport and bounded retry
 

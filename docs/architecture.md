@@ -149,6 +149,14 @@ Responsibilities:
 - expose source and freshness metadata internally;
 - tolerate schema evolution without leaking it to the frontend.
 
+The M1.2 token implementation is process-local and deliberately narrow.
+`TwitchTokenManager.get_access_token()` hides credentials, expiry bookkeeping,
+and concurrency from its consumers. It refreshes 60 seconds before expiry and
+uses a double-checked asynchronous lock so concurrent callers share one token
+request. A separate HTTP boundary owns Twitch's wire format and reduces failures
+to authentication rejected, timeout, unavailable, or invalid response without
+including provider payloads. Redis token sharing is not part of this seam.
+
 ## 7. Caching
 
 Redis is a disposable optimization, not a source of truth.

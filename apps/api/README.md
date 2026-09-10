@@ -10,8 +10,10 @@ The API follows a selective hexagonal architecture:
 
 - `http` contains inbound FastAPI adapters;
 - `core` contains application composition and typed configuration;
-- future domain modules define their own interfaces at real seams;
-- IGDB, Redis, and test fakes will be adapters behind those interfaces;
+- domain modules define their own interfaces at real seams;
+- `adapters/igdb` contains the Twitch token lifecycle and will contain the IGDB
+  catalog transport;
+- IGDB, Redis, and test fakes are adapters behind those interfaces;
 - domain modules must not import FastAPI, HTTPX, Redis, or IGDB types.
 
 The health endpoint has no outbound dependency or variable implementation, so
@@ -46,6 +48,19 @@ Copy `.env.example` to `.env`. `WTPN_REDIS_URL` has a safe local default;
 IGDB access is implemented, but must always be provided together. The settings
 loader treats blank example credentials as absent and masks the secret in model
 representations.
+
+## Twitch application token
+
+`TwitchTokenManager.get_access_token()` is the application-facing seam for an
+app access token. It acquires tokens through the official client-credentials
+flow, reuses each token in memory until 60 seconds before expiry, and shares one
+refresh among concurrent callers in the same process. The HTTP boundary
+classifies rejected credentials, timeouts, provider unavailability, and invalid
+responses without retaining provider payloads in its exceptions.
+
+Automated tests use a controllable clock and in-memory HTTP transports. They do
+not require credentials or contact Twitch. Production wiring from `Settings`
+into the provider stack remains part of M1.10 composition.
 
 ## Checks
 
