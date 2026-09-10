@@ -34,7 +34,8 @@ The approved planning baseline is complete and implementation has started with
 Milestone 0. The Next.js and FastAPI foundations, consolidated monorepo tooling,
 typed local configuration, and Redis development service are available. The
 OpenAPI schema and typed TypeScript client are generated into
-`packages/contracts` from the FastAPI source of truth.
+`packages/contracts` from the FastAPI source of truth. GitHub Actions now runs
+the complete quality gate on pull requests and pushes to `main`.
 
 ## Development
 

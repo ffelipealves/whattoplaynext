@@ -99,6 +99,18 @@ and branches; web features require 90% for statements, lines, and functions and
 regression floor, not a target: raise them as meaningful behavior is added and
 never weaken them merely to make a change pass.
 
+## Continuous integration
+
+GitHub Actions runs `pnpm quality` for pull requests targeting `main`, pushes to
+`main`, and manual dispatches. The workflow installs the versions pinned by the
+repository, uses both lockfiles in frozen/reproducible mode, and grants its token
+read-only repository access. The quality suite does not require Twitch
+credentials, live IGDB access, or Redis.
+
+The required job is named `Quality gate`. Because the foundation phase still
+pushes milestone commits directly to `main`, branch protection is intentionally
+left as a repository-setting follow-up for the pull-request workflow.
+
 ## API contract workflow
 
 FastAPI is the source of truth for the executable contract. After changing a

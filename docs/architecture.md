@@ -235,12 +235,16 @@ There is no permanent staging environment in the MVP.
 
 ## 13. CI/CD
 
-GitHub Actions must run formatting/linting, static typing, unit tests,
-integration tests, contract-generation verification, production builds, and a
-small critical Playwright suite. Production deploys only from the main branch
-after required checks pass. Secrets are scoped separately by environment.
-The root `pnpm check` command is the local and CI entry point for the complete
-quality gate so the two environments do not encode different validation rules.
+GitHub Actions runs formatting/linting, static typing, unit and integration
+tests, coverage thresholds, contract-generation verification, and production
+builds through the root `pnpm quality` command. This is the same entry point
+used locally, so the two environments do not encode different validation
+rules. The workflow receives read-only repository access and does not require
+provider credentials or live infrastructure.
+
+A small critical Playwright suite will join this gate when those user journeys
+exist. Production deploys only from the main branch after required checks pass,
+and deployment secrets are scoped separately by environment.
 
 ## 14. Testing strategy
 

@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CI: "true"
+  NEXT_TELEMETRY_DISABLED: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  POETRY_NO_INTERACTION: "1"
+  POETRY_VIRTUALENVS_IN_PROJECT: "true"
+
+jobs:
+  quality:
+    name: Quality gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js and pnpm
+        uses: pnpm/setup@ce3b1e5f04cd26dbb4614172464b544b5633cc92 # v2.1.0
+        with:
+          cache: true
+          install: false
+          runtime: node@22.23.2
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: .python-version
+
+      - name: Install Poetry
+        run: python -m pip install poetry==2.4.3
+
+      - name: Install JavaScript dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Python dependencies
+        run: poetry -C apps/api install
+
+      - name: Run quality gate
+        run: pnpm quality
