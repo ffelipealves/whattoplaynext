@@ -19,6 +19,8 @@ approximate matching.
   alternatives.
 - [External prerequisites](docs/external-prerequisites.md) — name/domain
   diligence and Twitch/IGDB launch blockers.
+- [Milestone 0 review](docs/milestone-0-review.md) — foundation acceptance,
+  clean-clone evidence, and explicit deferrals.
 - [MVP roadmap](docs/roadmap.md) — delivery sequence and milestone exit checks.
 
 ## Planned stack
@@ -32,12 +34,11 @@ approximate matching.
 
 ## Project status
 
-The approved planning baseline is complete and implementation has started with
-Milestone 0. The Next.js and FastAPI foundations, consolidated monorepo tooling,
-typed local configuration, and Redis development service are available. The
-OpenAPI schema and typed TypeScript client are generated into
-`packages/contracts` from the FastAPI source of truth. GitHub Actions now runs
-the complete quality gate on pull requests and pushes to `main`.
+The Milestone 0 technical foundation is accepted. The Next.js and FastAPI
+applications, consolidated monorepo tooling, typed local configuration, Redis
+development service, generated API contract, coverage gates, and CI pipeline
+are available. Name/domain selection and the external Twitch/IGDB actions are
+tracked separately and do not block provider-independent Milestone 1 work.
 
 ## Local development
 

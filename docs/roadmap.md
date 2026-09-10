@@ -8,25 +8,37 @@ demonstrable vertical slice and its acceptance checks.
 
 ## Milestone 0 — External prerequisites and foundation
 
-Deliverables:
+Status: technical foundation accepted on 2026-09-10; external launch actions
+remain explicitly deferred.
 
-- check product name, domain, and obvious mark conflicts;
-- create Twitch application credentials for server-side IGDB access;
-- contact IGDB regarding intended public/commercial use and attribution;
-- initialize Git and the monorepo directories;
-- configure pnpm, Poetry, formatting, linting, typing, and CI;
-- record environment-variable names without committing values;
-- create local development commands and contributor instructions.
+Deliverable status:
+
+- [x] check product name, domain, and obvious mark conflicts;
+- [ ] create Twitch application credentials for server-side IGDB access
+      (deferred until the first live M1 smoke test);
+- [ ] contact IGDB regarding intended public/commercial use and attribution
+      (deferred, but required before public beta);
+- [x] initialize Git and the monorepo directories;
+- [x] configure pnpm, Poetry, formatting, linting, typing, and CI;
+- [x] record environment-variable names without committing values;
+- [x] create local development commands and contributor instructions.
 
 Exit criteria:
 
-- clean local setup from documented steps;
-- both applications build and test in CI;
-- secrets are absent from version control;
-- unresolved IGDB commercial permission is visible as a public-beta blocker.
+- [x] clean local setup from documented steps;
+- [x] both applications build and test in CI;
+- [x] secrets are absent from version control;
+- [x] unresolved IGDB commercial permission is visible as a public-beta
+      blocker.
 
 The current evidence, prepared actions, and unresolved owner/provider gates are
 tracked in [External prerequisites](external-prerequisites.md).
+
+The technical closeout and clean-clone evidence are recorded in
+[Milestone 0 review](milestone-0-review.md). Product name and domain selection
+are deferred until public-beta planning. Twitch credentials remain required for
+the first live IGDB smoke test, while written IGDB usage confirmation remains a
+public-beta blocker.
 
 ## Milestone 1 — Provider adapter and normalized API
 
