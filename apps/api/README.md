@@ -50,6 +50,6 @@ pnpm test:api
 pnpm build:api
 ```
 
-Run these commands from the repository root. `pnpm check` runs the complete
-web and API quality gate. No Twitch, IGDB, or Redis configuration is required
-for these checks.
+Run these commands from the repository root. `pnpm quality` runs the complete
+web, API, and contracts quality gate; `pnpm check` is an alias. No Twitch, IGDB,
+or Redis configuration is required for these checks.

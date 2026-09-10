@@ -33,7 +33,8 @@ pnpm run setup
 ```
 
 Poetry must be available on `PATH`. The setup command installs both the pnpm
-workspace and the API Poetry environment.
+workspace and the API Poetry environment. The complete fresh-clone walkthrough
+and Windows troubleshooting guide are in [README.md](README.md#local-development).
 
 ## Environment
 

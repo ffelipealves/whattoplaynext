@@ -27,5 +27,5 @@ pnpm test:web
 pnpm build:web
 ```
 
-Run these commands from the repository root. `pnpm check` runs the complete
-web and API quality gate.
+Run these commands from the repository root. `pnpm quality` runs the complete
+web, API, and contracts quality gate; `pnpm check` is an alias.
