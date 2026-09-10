@@ -1,7 +1,9 @@
 # Milestone 0 Review
 
-Status: technical foundation accepted  
-Reviewed: 2026-09-10  
+Status: technical foundation accepted
+
+Reviewed: 2026-09-10
+
 Baseline commit: `88c8c24`
 
 This review closes the repository-foundation portion of Milestone 0. It does
