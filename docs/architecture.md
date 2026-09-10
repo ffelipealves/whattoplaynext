@@ -1,7 +1,7 @@
 # Architecture
 
-Status: proposed MVP architecture
-Last updated: 2026-09-09
+Status: accepted MVP architecture baseline
+Last updated: 2026-09-10
 
 ## 1. Context
 
