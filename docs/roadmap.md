@@ -25,6 +25,9 @@ Exit criteria:
 - secrets are absent from version control;
 - unresolved IGDB commercial permission is visible as a public-beta blocker.
 
+The current evidence, prepared actions, and unresolved owner/provider gates are
+tracked in [External prerequisites](external-prerequisites.md).
+
 ## Milestone 1 — Provider adapter and normalized API
 
 Deliverables:

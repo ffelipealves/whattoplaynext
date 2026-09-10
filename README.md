@@ -17,6 +17,8 @@ approximate matching.
 - [API contract](docs/api-contract.md) — public HTTP interface and validation.
 - [Data sources](docs/data-sources.md) — provider evidence, constraints, and
   alternatives.
+- [External prerequisites](docs/external-prerequisites.md) — name/domain
+  diligence and Twitch/IGDB launch blockers.
 - [MVP roadmap](docs/roadmap.md) — delivery sequence and milestone exit checks.
 
 ## Planned stack

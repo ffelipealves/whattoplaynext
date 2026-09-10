@@ -1,7 +1,7 @@
 # Data Sources
 
 Status: researched recommendation
-Research date: 2026-09-09
+Research date: 2026-09-10
 
 Provider terms, limits, schemas, and pricing can change. Recheck every linked
 primary source before public launch.
@@ -38,8 +38,11 @@ Constraints:
 - themes and keywords are not a dependable normalized mood taxonomy;
 - external store identifiers do not establish current price, regional
   availability, or subscription entitlement;
-- commercial/monetized use requires following IGDB's current partnership and
-  attribution terms.
+- IGDB directs commercial projects to its partner program at
+  `partner@igdb.com` and expects visible user-facing attribution;
+- IGDB currently describes the API as free for commercial and non-commercial
+  projects and allows cached serving, but written project confirmation remains
+  a public-beta gate.
 
 ## 3. Capability assessment
 
@@ -102,3 +105,6 @@ The complete release gate is maintained in the
 source-specific evidence must include written IGDB usage confirmation, the
 implemented attribution, reviewed image/text terms, and a launch-date recheck
 of limits, schema changes, deprecations, and terms.
+
+The operational checklist and prepared partnership inquiry are maintained in
+[External prerequisites](external-prerequisites.md).
