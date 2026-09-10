@@ -32,6 +32,13 @@ pnpm dev:api
 
 The health endpoint is available at <http://localhost:8000/api/v1/health>.
 
+Every response includes `X-Request-ID`. A caller-supplied identifier is
+propagated when it contains 1–128 ASCII letters, digits, `.`, `_`, or `-` and
+starts with a letter or digit; otherwise the API generates a UUID. Error
+responses use the stable envelope documented in
+[API contract](../../docs/api-contract.md#5-errors), include the same identifier
+in `error.requestId`, and never expose framework or provider details.
+
 ## Environment
 
 Copy `.env.example` to `.env`. `WTPN_REDIS_URL` has a safe local default;

@@ -1,6 +1,6 @@
 # Milestone 1 Plan
 
-Status: proposed execution baseline
+Status: active execution baseline; M1.1 completed
 
 Prepared: 2026-09-10
 
@@ -54,6 +54,8 @@ Every increment follows these rules:
 ## 4. Delivery increments
 
 ### M1.1 — HTTP errors and request correlation
+
+Status: completed on 2026-09-10.
 
 Deliver:
 

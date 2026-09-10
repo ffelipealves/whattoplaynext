@@ -24,6 +24,32 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * ErrorCode
+         * @description Stable failure codes understood by public adapters.
+         * @enum {string}
+         */
+        ErrorCode: "GAME_NOT_FOUND" | "INTERNAL_ERROR" | "INVALID_QUERY" | "METHOD_NOT_ALLOWED" | "NOT_FOUND" | "RATE_LIMITED" | "UPSTREAM_INVALID_RESPONSE" | "UPSTREAM_TIMEOUT" | "UPSTREAM_UNAVAILABLE" | "VALIDATION_ERROR";
+        /**
+         * ErrorDetail
+         * @description Public details nested inside an error response.
+         */
+        ErrorDetail: {
+            code: components["schemas"]["ErrorCode"];
+            /** Message */
+            message: string;
+            /** Requestid */
+            requestId: string;
+            /** Retryafterseconds */
+            retryAfterSeconds?: number | null;
+        };
+        /**
+         * ErrorResponse
+         * @description Public envelope shared by every error response.
+         */
+        ErrorResponse: {
+            error: components["schemas"]["ErrorDetail"];
+        };
+        /**
          * HealthResponse
          * @description Stable public response for process-health checks.
          */
@@ -56,10 +82,34 @@ export interface operations {
             /** @description Successful Response */
             200: {
                 headers: {
+                    /** @description Identifier used to correlate this response. */
+                    "X-Request-ID"?: string;
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+            /** @description Method not allowed. */
+            405: {
+                headers: {
+                    /** @description Identifier used to correlate this response. */
+                    "X-Request-ID"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description An unexpected error occurred. */
+            500: {
+                headers: {
+                    /** @description Identifier used to correlate this response. */
+                    "X-Request-ID"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

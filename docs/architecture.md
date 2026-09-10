@@ -201,11 +201,12 @@ the sitemap. See NFR-029 through NFR-032 for expected behavior.
 
 ## 11. Observability
 
-Next.js forwards or creates a correlation ID and FastAPI propagates it through
-cache and provider operations. Structured telemetry records the route template,
-response class, duration, cache outcome, provider outcome, circuit state, and a
-non-sensitive error code. Dashboards and retention follow NFR-023 and NFR-025
-through NFR-027.
+Next.js forwards or creates a correlation ID. FastAPI accepts a bounded safe
+identifier or generates a UUID, returns it in `X-Request-ID`, and includes it in
+the stable error envelope. Future cache and provider operations propagate the
+same value. Structured telemetry records the route template, response class,
+duration, cache outcome, provider outcome, circuit state, and a non-sensitive
+error code. Dashboards and retention follow NFR-023 and NFR-025 through NFR-027.
 
 ## 12. Deployment
 

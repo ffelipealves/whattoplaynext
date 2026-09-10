@@ -20,6 +20,9 @@ changing the agreed behavior.
 - List query parameters may repeat, for example
   `platform=pc&platform=playstation-5`.
 - All responses can include `requestId` for support correlation.
+- Every HTTP response includes `X-Request-ID`. A caller value is propagated only
+  when it contains 1–128 ASCII letters, digits, `.`, `_`, or `-` and begins with
+  a letter or digit; otherwise the API generates a UUID.
 - Unknown parameters are rejected.
 
 ## 2. Endpoints
@@ -188,14 +191,21 @@ Every error uses this envelope:
 }
 ```
 
+`requestId` matches the response's `X-Request-ID` header. The optional
+`retryAfterSeconds` field is omitted when no retry time is known; when present,
+it also appears in the HTTP `Retry-After` header.
+
 Initial stable codes:
 
 | HTTP | Code                        | Meaning                                              |
 | ---: | --------------------------- | ---------------------------------------------------- |
 |  400 | `INVALID_QUERY`             | Query combination is invalid                         |
+|  404 | `NOT_FOUND`                 | Requested public route or resource does not exist    |
 |  404 | `GAME_NOT_FOUND`            | Game ID is absent or excluded from MVP content types |
+|  405 | `METHOD_NOT_ALLOWED`        | Resource does not support the requested HTTP method  |
 |  422 | `VALIDATION_ERROR`          | One or more parameter values are invalid             |
 |  429 | `RATE_LIMITED`              | Client must wait before another request              |
+|  500 | `INTERNAL_ERROR`            | Unexpected failure hidden behind a safe fallback     |
 |  502 | `UPSTREAM_INVALID_RESPONSE` | Provider response could not be normalized safely     |
 |  503 | `UPSTREAM_UNAVAILABLE`      | Provider unavailable and no usable cache exists      |
 |  504 | `UPSTREAM_TIMEOUT`          | Provider exceeded the bounded deadline               |

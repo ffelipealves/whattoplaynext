@@ -36,11 +36,11 @@ approximate matching.
 
 ## Project status
 
-The Milestone 0 technical foundation is accepted. The Next.js and FastAPI
-applications, consolidated monorepo tooling, typed local configuration, Redis
-development service, generated API contract, coverage gates, and CI pipeline
-are available. Name/domain selection and the external Twitch/IGDB actions are
-tracked separately and do not block provider-independent Milestone 1 work.
+The Milestone 0 technical foundation is accepted and Milestone 1 implementation
+is active. The API now provides request correlation and a stable, typed error
+envelope; the next increment adds Twitch application-token management.
+Name/domain selection and the external Twitch/IGDB actions remain tracked
+separately and do not block provider-independent development.
 
 ## Local development
 
