@@ -81,6 +81,14 @@ FastAPI OpenAPI is the source of truth. CI regenerates or verifies the typed
 TypeScript client in `packages/contracts`. Python and TypeScript models must not
 be maintained as independent handwritten copies.
 
+The contract module commits a deterministic OpenAPI snapshot and generates
+TypeScript paths with `openapi-typescript`. Its small handwritten interface
+creates an `openapi-fetch` client parameterized by those paths. Consumers learn
+one factory and the OpenAPI operations; generator and transport details remain
+inside the module. Every FastAPI route declares a stable `operationId`, and the
+root contract check detects schema or generated-type drift without starting an
+HTTP server.
+
 ## 5. Domain boundary
 
 ### 5.1 Internal API architecture

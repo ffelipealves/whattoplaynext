@@ -28,3 +28,4 @@ def test_health_is_exposed_in_the_openapi_contract() -> None:
     schema = application.openapi()
 
     assert "/api/v1/health" in schema["paths"]
+    assert schema["paths"]["/api/v1/health"]["get"]["operationId"] == "getHealth"

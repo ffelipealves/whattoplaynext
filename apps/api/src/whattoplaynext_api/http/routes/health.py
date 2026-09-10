@@ -17,6 +17,7 @@ router = APIRouter(tags=["system"])
 
 @router.get(
     "/health",
+    operation_id="getHealth",
     response_model=HealthResponse,
     summary="Check process health",
 )

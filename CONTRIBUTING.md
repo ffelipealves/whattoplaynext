@@ -79,12 +79,30 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
+pnpm contract:generate
+pnpm contract:check
 pnpm check
 ```
 
 `pnpm format` rewrites files. `pnpm check` does not rewrite source files and
 runs formatting verification, linting, static typing, tests, and production
-builds for both applications.
+builds for both applications and the contracts package. It also verifies that
+the committed OpenAPI schema and generated TypeScript types are current.
+
+## API contract workflow
+
+FastAPI is the source of truth for the executable contract. After changing a
+public route, request, response, or validation model, run:
+
+```bash
+pnpm contract:generate
+pnpm contract:check
+```
+
+Commit `packages/contracts/openapi.json` and
+`packages/contracts/src/schema.ts` with the API change. Do not edit generated
+artifacts manually. Stable `operationId` values are part of the public
+interface and must be chosen explicitly for each endpoint.
 
 ## Web application
 

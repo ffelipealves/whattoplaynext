@@ -1,11 +1,13 @@
 # Initial API Contract
 
-Status: design baseline, not generated code
+Status: approved semantic baseline with generated executable schema
 Base path: `/api/v1`
 
-FastAPI OpenAPI will become the executable source of truth. This document fixes
-public semantics before implementation; exact schema component names may be
-refined without changing the agreed behavior.
+FastAPI OpenAPI is the executable source of truth. The committed schema is
+generated at `packages/contracts/openapi.json`, with TypeScript types and client
+support in the same package. This document fixes public semantics before each
+endpoint is implemented; exact schema component names may be refined without
+changing the agreed behavior.
 
 ## 1. Conventions
 

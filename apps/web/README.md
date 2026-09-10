@@ -15,6 +15,8 @@ the Portuguese foundation is available at <http://localhost:3000/pt-br>.
 
 Copy `.env.example` to `.env.local` when overriding local configuration. Every
 `NEXT_PUBLIC_` value is visible to browsers and must not contain a credential.
+`NEXT_PUBLIC_API_BASE_URL` is the API origin; generated endpoint paths already
+contain the `/api/v1` prefix.
 
 ## Checks
 

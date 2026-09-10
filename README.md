@@ -33,7 +33,8 @@ approximate matching.
 The approved planning baseline is complete and implementation has started with
 Milestone 0. The Next.js and FastAPI foundations, consolidated monorepo tooling,
 typed local configuration, and Redis development service are available. The
-generated-contract directory is reserved for a later increment.
+OpenAPI schema and typed TypeScript client are generated into
+`packages/contracts` from the FastAPI source of truth.
 
 ## Development
 

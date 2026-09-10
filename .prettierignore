@@ -6,4 +6,6 @@
 **/.venv/
 **/next-env.d.ts
 apps/api/poetry.lock
+packages/contracts/openapi.json
+packages/contracts/src/schema.ts
 pnpm-lock.yaml
