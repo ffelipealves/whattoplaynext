@@ -1,6 +1,7 @@
 """Catalog-seam tests for IGDB filter metadata normalization."""
 
 import json
+from datetime import date
 from pathlib import Path
 from typing import cast
 
@@ -13,7 +14,14 @@ from whattoplaynext_api.adapters.igdb.transport import (
     IgdbTransport,
     IgdbTransportError,
 )
-from whattoplaynext_api.catalog.models import BrowseCriteria
+from whattoplaynext_api.catalog.models import (
+    BrowseCriteria,
+    GameModeId,
+    GenreId,
+    PlatformId,
+    SortDirection,
+    SortOption,
+)
 from whattoplaynext_api.core.errors import ApplicationError, ErrorCode
 
 FIXTURE_DIRECTORY = Path(__file__).parents[2] / "fixtures" / "igdb"
@@ -92,6 +100,44 @@ class BrowseFixtureTransport:
     async def count(self, endpoint: str, query: str) -> int:
         self.count_requests.append((endpoint, query))
         return 49
+
+
+class SearchFixtureTransport:
+    def __init__(self) -> None:
+        self.requests: list[tuple[str, str]] = []
+        self.count_requests: list[tuple[str, str]] = []
+
+    async def query(
+        self,
+        endpoint: str,
+        query: str,
+    ) -> list[dict[str, object]]:
+        self.requests.append((endpoint, query))
+        return load_records("games_complete.json")
+
+    async def count(self, endpoint: str, query: str) -> int:
+        self.count_requests.append((endpoint, query))
+        return 49
+
+
+class QueuedFixtureTransport:
+    def __init__(self, responses: list[list[dict[str, object]]], total: int) -> None:
+        self.responses = responses
+        self.total = total
+        self.requests: list[tuple[str, str]] = []
+        self.count_requests: list[tuple[str, str]] = []
+
+    async def query(
+        self,
+        endpoint: str,
+        query: str,
+    ) -> list[dict[str, object]]:
+        self.requests.append((endpoint, query))
+        return self.responses.pop(0)
+
+    async def count(self, endpoint: str, query: str) -> int:
+        self.count_requests.append((endpoint, query))
+        return self.total
 
 
 class FakeTokenProvider:
@@ -394,3 +440,164 @@ async def test_translates_the_second_page_to_a_24_item_provider_offset() -> None
             "sort value desc; limit 24; offset 24;"
         ),
     )
+
+
+@pytest.mark.anyio
+async def test_translates_strict_and_or_criteria_to_the_games_endpoint() -> None:
+    transport = SearchFixtureTransport()
+    catalog = IgdbCatalog(transport)
+
+    result = await catalog.browse_games(
+        BrowseCriteria(
+            name="Hollow Knight",
+            platform_ids=(PlatformId.PC, PlatformId.PLAYSTATION_5),
+            genre_ids=(GenreId.PLATFORM, GenreId.ADVENTURE),
+            release_from=date(2017, 1, 1),
+            release_to=date(2018, 12, 31),
+            minimum_rating=80,
+            game_mode_ids=(GameModeId.SINGLE_PLAYER,),
+            sort=SortOption.RATING,
+            direction=SortDirection.DESCENDING,
+            page=2,
+        )
+    )
+
+    assert result.pagination.model_dump() == {
+        "page": 2,
+        "page_size": 24,
+        "total_items": 49,
+        "total_pages": 3,
+    }
+    assert result.query.model_dump(mode="json") == {
+        "sort": "rating",
+        "direction": "desc",
+    }
+    assert transport.count_requests[0][0] == "games"
+    count_query = transport.count_requests[0][1]
+    expected_filters = {
+        'name ~ *"Hollow Knight"*',
+        "platforms = (6,167)",
+        "genres = (8,31)",
+        "first_release_date >= 1483228800",
+        "first_release_date <= 1546300799",
+        "total_rating >= 80.0",
+        "game_modes = (1)",
+    }
+    assert count_query.startswith("where ")
+    assert set(count_query.removeprefix("where ").removesuffix(";").split(" & ")) == (
+        expected_filters
+    )
+    assert transport.requests[0][0] == "games"
+    result_query = transport.requests[0][1]
+    assert all(filter_clause in result_query for filter_clause in expected_filters)
+    assert "sort total_rating desc;" in result_query
+    assert "limit 24; offset 24;" in result_query
+
+
+@pytest.mark.anyio
+async def test_keeps_strict_filters_when_sorting_by_popularity() -> None:
+    games = load_records("games_complete.json")
+    second_game = {
+        **games[0],
+        "id": 3000,
+        "slug": "more-popular-game",
+        "name": "More Popular Game",
+    }
+    transport = QueuedFixtureTransport(
+        responses=[
+            [{"id": 1942}, {"id": 3000}],
+            [
+                {"game_id": 1942, "value": 0.5},
+                {"game_id": 3000, "value": 0.9},
+            ],
+            [games[0], second_game],
+        ],
+        total=2,
+    )
+    catalog = IgdbCatalog(transport)
+
+    result = await catalog.browse_games(
+        BrowseCriteria(
+            genre_ids=(GenreId.ADVENTURE,),
+            sort=SortOption.POPULARITY,
+            direction=SortDirection.DESCENDING,
+        )
+    )
+
+    assert [game.id for game in result.items] == [3000, 1942]
+    assert result.pagination.total_items == 2
+    assert transport.count_requests[0][0] == "games"
+    assert "genres = (31)" in transport.count_requests[0][1]
+    assert [endpoint for endpoint, _query in transport.requests] == [
+        "games",
+        "popularity_primitives",
+        "games",
+    ]
+    matching_games_query = transport.requests[0][1]
+    assert "fields id" in matching_games_query
+    assert "genres = (31)" in matching_games_query
+    assert "sort id asc" in matching_games_query
+    assert "limit 500" in matching_games_query
+    assert "offset 0" in matching_games_query
+    popularity_query = transport.requests[1][1]
+    assert "fields game_id,value" in popularity_query
+    assert "popularity_type = 1" in popularity_query
+    assert "game_id = (1942,3000)" in popularity_query
+    assert "limit 500" in popularity_query
+    assert "where id = (3000,1942)" in transport.requests[2][1]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("sort", "direction", "provider_sort"),
+    [
+        (SortOption.RATING, SortDirection.ASCENDING, "total_rating asc"),
+        (
+            SortOption.RELEASE_DATE,
+            SortDirection.DESCENDING,
+            "first_release_date desc",
+        ),
+        (SortOption.TITLE, SortDirection.ASCENDING, "name asc"),
+    ],
+)
+async def test_translates_supported_sort_fields_without_changing_direction(
+    sort: SortOption,
+    direction: SortDirection,
+    provider_sort: str,
+) -> None:
+    transport = SearchFixtureTransport()
+    catalog = IgdbCatalog(transport)
+
+    await catalog.browse_games(BrowseCriteria(sort=sort, direction=direction))
+
+    assert f"sort {provider_sort};" in transport.requests[0][1]
+
+
+@pytest.mark.anyio
+async def test_escapes_name_text_inside_the_apicalypse_string_literal() -> None:
+    transport = SearchFixtureTransport()
+    catalog = IgdbCatalog(transport)
+
+    await catalog.browse_games(
+        BrowseCriteria(
+            name='He said "hi";\nfields *',
+            sort=SortOption.TITLE,
+        )
+    )
+
+    count_query = transport.count_requests[0][1]
+    assert count_query == 'where name ~ *"He said \\"hi\\";\\nfields *"*;'
+    assert "\n" not in count_query
+
+
+@pytest.mark.anyio
+async def test_defers_duration_sorting_without_calling_the_provider() -> None:
+    transport = SearchFixtureTransport()
+    catalog = IgdbCatalog(transport)
+
+    with pytest.raises(ApplicationError) as error:
+        await catalog.browse_games(BrowseCriteria(sort=SortOption.DURATION))
+
+    assert error.value.code is ErrorCode.INVALID_QUERY
+    assert transport.count_requests == []
+    assert transport.requests == []

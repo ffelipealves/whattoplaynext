@@ -1,7 +1,8 @@
 """IGDB implementation of the provider-neutral catalog interface."""
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time
+from json import dumps
 from math import ceil
 from typing import Protocol
 
@@ -22,6 +23,7 @@ from whattoplaynext_api.catalog.models import (
     GameSummary,
     Pagination,
     ResponseMeta,
+    SortDirection,
     SortOption,
 )
 from whattoplaynext_api.core.errors import ApplicationError, ErrorCode
@@ -140,31 +142,48 @@ class IgdbCatalog:
         )
 
     async def browse_games(self, criteria: BrowseCriteria) -> GamePage:
-        """Return one page ordered by the IGDB Visits popularity primitive."""
-        popularity_filter = "where popularity_type = 1;"
+        """Return one strictly filtered and ordered page of games."""
+        if criteria.sort is SortOption.DURATION:
+            raise ApplicationError(ErrorCode.INVALID_QUERY)
         offset = (criteria.page - 1) * criteria.page_size
         try:
-            total_items = await self._transport.count(
-                "popularity_primitives",
-                popularity_filter,
-            )
-            popularity_records = await self._transport.query(
-                "popularity_primitives",
-                (
-                    "fields game_id,value; where popularity_type = 1; "
-                    f"sort value desc; limit {criteria.page_size}; offset {offset};"
-                ),
-            )
-            game_ids = _popularity_game_ids(popularity_records)
-            game_records = (
-                await self._transport.query(
-                    "games",
-                    _games_query(game_ids, criteria.page_size),
+            if criteria.sort is SortOption.POPULARITY:
+                if _has_game_filters(criteria):
+                    total_items, game_ids = await self._filtered_popularity_ids(
+                        criteria
+                    )
+                else:
+                    popularity_filter = "where popularity_type = 1;"
+                    total_items = await self._transport.count(
+                        "popularity_primitives",
+                        popularity_filter,
+                    )
+                    popularity_records = await self._transport.query(
+                        "popularity_primitives",
+                        (
+                            "fields game_id,value; where popularity_type = 1; "
+                            f"sort value {criteria.direction.value}; "
+                            f"limit {criteria.page_size}; offset {offset};"
+                        ),
+                    )
+                    game_ids = _popularity_game_ids(popularity_records)
+                game_records = (
+                    await self._transport.query(
+                        "games",
+                        _games_query(game_ids, criteria.page_size),
+                    )
+                    if game_ids
+                    else []
                 )
-                if game_ids
-                else []
-            )
-            items = _normalize_games(game_records, game_ids)
+                items = _normalize_games(game_records, game_ids)
+            else:
+                where_query = _where_query(criteria)
+                total_items = await self._transport.count("games", where_query)
+                game_records = await self._transport.query(
+                    "games",
+                    _search_query(criteria, where_query, offset),
+                )
+                items = [_normalize_game(record) for record in game_records]
         except IgdbTransportError as error:
             raise _application_error(error) from error
         except OSError, OverflowError, TypeError, ValueError:
@@ -178,9 +197,57 @@ class IgdbCatalog:
                 total_items=total_items,
                 total_pages=ceil(total_items / criteria.page_size),
             ),
-            query=BrowseQuery(),
+            query=BrowseQuery(
+                sort=criteria.sort,
+                direction=criteria.direction,
+            ),
             meta=ResponseMeta(),
         )
+
+    async def _filtered_popularity_ids(
+        self,
+        criteria: BrowseCriteria,
+    ) -> tuple[int, list[int]]:
+        where_query = _where_query(criteria)
+        total_items = await self._transport.count("games", where_query)
+        matching_ids: list[int] = []
+        for batch_offset in range(0, total_items, 500):
+            records = await self._transport.query(
+                "games",
+                (
+                    f"fields id; {where_query} sort id asc; "
+                    f"limit 500; offset {batch_offset};"
+                ),
+            )
+            matching_ids.extend(_record_ids(records))
+
+        popularity: dict[int, float] = {}
+        for game_id_batch in _chunks(matching_ids, 500):
+            ids = ",".join(str(game_id) for game_id in game_id_batch)
+            records = await self._transport.query(
+                "popularity_primitives",
+                (
+                    "fields game_id,value; where popularity_type = 1 & "
+                    f"game_id = ({ids}); limit 500;"
+                ),
+            )
+            popularity.update(_popularity_values(records))
+
+        reverse_value = criteria.direction is SortDirection.DESCENDING
+        ordered_ids = sorted(
+            matching_ids,
+            key=lambda game_id: (
+                game_id not in popularity,
+                (
+                    -popularity.get(game_id, 0)
+                    if reverse_value
+                    else popularity.get(game_id, 0)
+                ),
+                game_id,
+            ),
+        )
+        offset = (criteria.page - 1) * criteria.page_size
+        return total_items, ordered_ids[offset : offset + criteria.page_size]
 
 
 def _options_query(options: tuple[AllowedOption, ...]) -> str:
@@ -215,12 +282,117 @@ def _popularity_game_ids(records: list[dict[str, object]]) -> list[int]:
     return game_ids
 
 
+def _popularity_values(records: list[dict[str, object]]) -> dict[int, float]:
+    values: dict[int, float] = {}
+    for record in records:
+        game_id = record.get("game_id")
+        value = record.get("value")
+        if (
+            not isinstance(game_id, int)
+            or isinstance(game_id, bool)
+            or not isinstance(value, int | float)
+            or isinstance(value, bool)
+        ):
+            raise ValueError("invalid popularity record")
+        values[game_id] = float(value)
+    return values
+
+
+def _record_ids(records: list[dict[str, object]]) -> list[int]:
+    return [_required_int(record, "id") for record in records]
+
+
+def _chunks(values: list[int], size: int) -> list[list[int]]:
+    return [values[index : index + size] for index in range(0, len(values), size)]
+
+
 def _games_query(game_ids: list[int], page_size: int) -> str:
     ids = ",".join(str(game_id) for game_id in game_ids)
     return (
         "fields id,slug,name,first_release_date,cover.image_id,platforms.id,"
         "genres.id,total_rating,total_rating_count,game_modes.id; "
         f"where id = ({ids}); limit {page_size};"
+    )
+
+
+def _has_game_filters(criteria: BrowseCriteria) -> bool:
+    return any(
+        (
+            criteria.name is not None,
+            criteria.platform_ids,
+            criteria.genre_ids,
+            criteria.release_from is not None,
+            criteria.release_to is not None,
+            criteria.minimum_rating is not None,
+            criteria.game_mode_ids,
+        )
+    )
+
+
+def _where_query(criteria: BrowseCriteria) -> str:
+    clauses: list[str] = []
+    if criteria.name is not None:
+        clauses.append(f"name ~ *{dumps(criteria.name, ensure_ascii=False)}*")
+    _append_option_clause(clauses, "platforms", criteria.platform_ids, PLATFORMS)
+    _append_option_clause(clauses, "genres", criteria.genre_ids, GENRES)
+    if criteria.release_from is not None:
+        clauses.append(
+            "first_release_date >= "
+            f"{int(datetime.combine(criteria.release_from, time.min, UTC).timestamp())}"
+        )
+    if criteria.release_to is not None:
+        clauses.append(
+            "first_release_date <= "
+            f"{int(datetime.combine(criteria.release_to, time.max, UTC).timestamp())}"
+        )
+    if criteria.minimum_rating is not None:
+        clauses.append(f"total_rating >= {criteria.minimum_rating}")
+    _append_option_clause(
+        clauses,
+        "game_modes",
+        criteria.game_mode_ids,
+        GAME_MODES,
+    )
+    return f"where {' & '.join(clauses)};" if clauses else ""
+
+
+def _append_option_clause(
+    clauses: list[str],
+    field: str,
+    values: tuple[object, ...],
+    allowed: tuple[AllowedOption, ...],
+) -> None:
+    if not values:
+        return
+    provider_ids_by_public_id = {
+        option.public_id: option.provider_id for option in allowed
+    }
+    provider_ids = ",".join(
+        str(provider_ids_by_public_id[str(value)]) for value in values
+    )
+    clauses.append(f"{field} = ({provider_ids})")
+
+
+def _search_query(
+    criteria: BrowseCriteria,
+    where_query: str,
+    offset: int,
+) -> str:
+    sort_fields = {
+        SortOption.RATING: "total_rating",
+        SortOption.RELEASE_DATE: "first_release_date",
+        SortOption.TITLE: "name",
+    }
+    try:
+        sort_field = sort_fields[criteria.sort]
+    except KeyError:
+        raise ApplicationError(ErrorCode.INVALID_QUERY) from None
+    where = f" {where_query}" if where_query else ""
+    return (
+        "fields id,slug,name,first_release_date,cover.image_id,platforms.id,"
+        "genres.id,total_rating,total_rating_count,game_modes.id;"
+        f"{where} sort {sort_field} {criteria.direction.value}; "
+        f"limit {criteria.page_size}; offset {offset};"
     )
 
 

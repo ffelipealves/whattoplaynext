@@ -60,11 +60,11 @@ not derive their identity from mutable provider labels.
 
 ### `GET /api/v1/games`
 
-M1.5 implements unfiltered browsing with only the optional `page` parameter.
-The remaining parameters in the table are reserved for M1.6 and are not yet
-part of the executable OpenAPI contract.
+M1.6 implements strict search for name, platform, genre, release bounds,
+minimum rating, game mode, sort, direction, and page. Duration parameters and
+duration sorting remain reserved for M1.7.
 
-Planned query parameters:
+Query parameters:
 
 | Parameter              | Type            | Meaning                                           |
 | ---------------------- | --------------- | ------------------------------------------------- |
@@ -75,9 +75,9 @@ Planned query parameters:
 | `releaseTo`            | date            | Inclusive upper release bound                     |
 | `minimumRating`        | number          | Combined IGDB rating from 0 to 100                |
 | `gameMode`             | repeated string | OR within mode category                           |
-| `durationKind`         | enum            | `fast`, `normal`, or `completionist`              |
-| `minimumDurationHours` | number          | Inclusive lower duration bound                    |
-| `maximumDurationHours` | number          | Inclusive upper duration bound                    |
+| `durationKind`         | enum            | Reserved for M1.7                                 |
+| `minimumDurationHours` | number          | Reserved for M1.7                                 |
+| `maximumDurationHours` | number          | Reserved for M1.7                                 |
 | `sort`                 | enum            | Defaults to `popularity`                          |
 | `direction`            | enum            | `asc` or `desc`; sensible default depends on sort |
 | `page`                 | integer         | Defaults to 1; maximum 100                        |
@@ -123,10 +123,19 @@ Response shape:
 }
 ```
 
-For M1.5, `totalItems` is the exact count of the IGDB Visits popularity
-primitives used for ordering. The adapter orders the primitive `value`
-descending, pages those records in groups of 24, then fetches and restores the
-corresponding game summaries in that order. `normalDurationSeconds` remains
+Values repeated within platform, genre, or game mode are deduplicated and use
+OR semantics. Active categories are combined with AND semantics and are never
+silently relaxed. Name matching uses the provider's case-insensitive partial
+comparison. Rating uses `total_rating`; release bounds are inclusive and use
+`first_release_date` until M1.7 adds platform-specific release selection.
+
+Popularity without filters uses the IGDB Visits primitive directly. With
+filters, the adapter obtains the exact matching game IDs, batches their Visits
+values, orders them stably, and then selects the requested 24-item page. Rating,
+release-date, and title sorts use their explicit IGDB game fields. Duration sort
+requests fail HTTP validation without catalog access until M1.7.
+
+`totalItems` is exact for the active criteria. `normalDurationSeconds` remains
 `null` until M1.7 adds duration enrichment.
 
 An empty provider page is a successful response with an empty `items` list.

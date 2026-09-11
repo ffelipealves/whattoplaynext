@@ -28,7 +28,7 @@ export interface paths {
         };
         /**
          * Browse games
-         * @description Return one unfiltered page ordered by current popularity.
+         * @description Return one strict, normalized page of catalog results.
          */
         get: operations["browseGames"];
         put?: never;
@@ -68,18 +68,8 @@ export interface components {
          * @description Normalized public criteria echoed with browse results.
          */
         BrowseQuery: {
-            /**
-             * Direction
-             * @default desc
-             * @constant
-             */
-            direction: "desc";
-            /**
-             * Sort
-             * @default popularity
-             * @constant
-             */
-            sort: "popularity";
+            direction: components["schemas"]["SortDirection"];
+            sort: components["schemas"]["SortOption"];
         };
         /**
          * CatalogOption
@@ -171,6 +161,12 @@ export interface components {
             width: number;
         };
         /**
+         * GameModeId
+         * @description Stable public game-mode identifiers accepted by search.
+         * @enum {string}
+         */
+        GameModeId: "single-player" | "multiplayer" | "co-operative" | "split-screen" | "massively-multiplayer-online" | "battle-royale";
+        /**
          * GamePage
          * @description One normalized page of game summaries.
          */
@@ -218,6 +214,12 @@ export interface components {
             title: string;
         };
         /**
+         * GenreId
+         * @description Stable public genre identifiers accepted by search.
+         * @enum {string}
+         */
+        GenreId: "point-and-click" | "fighting" | "shooter" | "music" | "platform" | "puzzle" | "racing" | "real-time-strategy-rts" | "role-playing-rpg" | "simulator" | "sport" | "strategy" | "turn-based-strategy-tbs" | "tactical" | "hack-and-slash-beat-em-up" | "quiz-trivia" | "pinball" | "adventure" | "indie" | "arcade" | "visual-novel" | "card-board-game" | "moba";
+        /**
          * HealthResponse
          * @description Stable public response for process-health checks.
          */
@@ -248,6 +250,12 @@ export interface components {
             totalPages: number;
         };
         /**
+         * PlatformId
+         * @description Stable public platform identifiers accepted by search.
+         * @enum {string}
+         */
+        PlatformId: "pc" | "playstation-4" | "playstation-5" | "xbox-one" | "xbox-series-x-s" | "nintendo-switch";
+        /**
          * ResponseMeta
          * @description Freshness and processing metadata for one catalog response.
          */
@@ -273,6 +281,12 @@ export interface components {
          * @enum {string}
          */
         ServedFrom: "provider";
+        /**
+         * SortDirection
+         * @description Provider-neutral ordering direction.
+         * @enum {string}
+         */
+        SortDirection: "asc" | "desc";
         /**
          * SortOption
          * @description Supported catalog sort fields.
@@ -379,7 +393,16 @@ export interface operations {
     browseGames: {
         parameters: {
             query?: {
+                direction?: components["schemas"]["SortDirection"] | null;
+                gameMode?: components["schemas"]["GameModeId"][];
+                genre?: components["schemas"]["GenreId"][];
+                minimumRating?: number | null;
+                name?: string | null;
                 page?: number;
+                platform?: components["schemas"]["PlatformId"][];
+                releaseFrom?: string | null;
+                releaseTo?: string | null;
+                sort?: "popularity" | "rating" | "release-date" | "title";
             };
             header?: never;
             path?: never;

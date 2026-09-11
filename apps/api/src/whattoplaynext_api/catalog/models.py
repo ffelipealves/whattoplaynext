@@ -1,9 +1,10 @@
 """Provider-neutral catalog models owned by the application."""
 
+from datetime import date
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class CatalogOption(BaseModel):
@@ -68,6 +69,56 @@ class SortDirection(StrEnum):
     DESCENDING = "desc"
 
 
+class PlatformId(StrEnum):
+    """Stable public platform identifiers accepted by search."""
+
+    PC = "pc"
+    PLAYSTATION_4 = "playstation-4"
+    PLAYSTATION_5 = "playstation-5"
+    XBOX_ONE = "xbox-one"
+    XBOX_SERIES_X_S = "xbox-series-x-s"
+    NINTENDO_SWITCH = "nintendo-switch"
+
+
+class GenreId(StrEnum):
+    """Stable public genre identifiers accepted by search."""
+
+    POINT_AND_CLICK = "point-and-click"
+    FIGHTING = "fighting"
+    SHOOTER = "shooter"
+    MUSIC = "music"
+    PLATFORM = "platform"
+    PUZZLE = "puzzle"
+    RACING = "racing"
+    REAL_TIME_STRATEGY = "real-time-strategy-rts"
+    ROLE_PLAYING = "role-playing-rpg"
+    SIMULATOR = "simulator"
+    SPORT = "sport"
+    STRATEGY = "strategy"
+    TURN_BASED_STRATEGY = "turn-based-strategy-tbs"
+    TACTICAL = "tactical"
+    HACK_AND_SLASH = "hack-and-slash-beat-em-up"
+    QUIZ_TRIVIA = "quiz-trivia"
+    PINBALL = "pinball"
+    ADVENTURE = "adventure"
+    INDIE = "indie"
+    ARCADE = "arcade"
+    VISUAL_NOVEL = "visual-novel"
+    CARD_BOARD_GAME = "card-board-game"
+    MOBA = "moba"
+
+
+class GameModeId(StrEnum):
+    """Stable public game-mode identifiers accepted by search."""
+
+    SINGLE_PLAYER = "single-player"
+    MULTIPLAYER = "multiplayer"
+    CO_OPERATIVE = "co-operative"
+    SPLIT_SCREEN = "split-screen"
+    MASSIVELY_MULTIPLAYER_ONLINE = "massively-multiplayer-online"
+    BATTLE_ROYALE = "battle-royale"
+
+
 class ServedFrom(StrEnum):
     """Origin of the data returned to the caller."""
 
@@ -75,12 +126,47 @@ class ServedFrom(StrEnum):
 
 
 class BrowseCriteria(BaseModel):
-    """Criteria currently supported by the unfiltered browse slice."""
+    """Validated provider-neutral criteria for strict catalog search."""
 
+    name: str | None = Field(default=None, max_length=100)
+    platform_ids: tuple[PlatformId, ...] = ()
+    genre_ids: tuple[GenreId, ...] = ()
+    release_from: date | None = None
+    release_to: date | None = None
+    minimum_rating: float | None = Field(default=None, ge=0, le=100)
+    game_mode_ids: tuple[GameModeId, ...] = ()
     page: int = Field(default=1, ge=1, le=100)
     page_size: Literal[24] = 24
-    sort: Literal[SortOption.POPULARITY] = SortOption.POPULARITY
-    direction: Literal[SortDirection.DESCENDING] = SortDirection.DESCENDING
+    sort: SortOption = SortOption.POPULARITY
+    direction: SortDirection = SortDirection.DESCENDING
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def normalize_name(cls, value: object) -> object:
+        """Trim a submitted name and reject an empty criterion."""
+        if isinstance(value, str):
+            normalized = value.strip()
+            if not normalized:
+                raise ValueError("name must not be empty")
+            return normalized
+        return value
+
+    @field_validator("platform_ids", "genre_ids", "game_mode_ids")
+    @classmethod
+    def remove_duplicate_values(cls, value: tuple[object, ...]) -> tuple[object, ...]:
+        """Preserve caller order while removing repeated category values."""
+        return tuple(dict.fromkeys(value))
+
+    @model_validator(mode="after")
+    def validate_release_range(self) -> BrowseCriteria:
+        """Require chronological release bounds."""
+        if (
+            self.release_from is not None
+            and self.release_to is not None
+            and self.release_from > self.release_to
+        ):
+            raise ValueError("releaseFrom must not be after releaseTo")
+        return self
 
 
 class GameCover(BaseModel):
@@ -128,8 +214,8 @@ class Pagination(BaseModel):
 class BrowseQuery(BaseModel):
     """Normalized public criteria echoed with browse results."""
 
-    sort: Literal["popularity"] = "popularity"
-    direction: Literal["desc"] = "desc"
+    sort: SortOption
+    direction: SortDirection
 
 
 class ResponseMeta(BaseModel):

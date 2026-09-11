@@ -98,18 +98,30 @@ unavailable when this endpoint is called without an injected catalog.
 
 ## Game browsing
 
-`GET /api/v1/games` exposes the M1.5 unfiltered browse slice. It accepts only an
-optional `page` from 1 through 100, uses a fixed page size of 24, and returns
-provider-neutral summaries ordered by the current IGDB Visits popularity
-primitive. The adapter pages and counts popularity primitives, fetches a
-minimal explicit game projection for those IDs, and restores popularity order.
+`GET /api/v1/games` exposes strict provider-neutral search. It accepts name,
+repeated platform/genre/game-mode identifiers, release bounds, minimum combined
+rating, sort, direction, and page. Inputs are normalized before reaching the
+catalog: names are trimmed, repeated values are deduplicated, public IDs are
+allow-listed, ranges are checked, unknown parameters are rejected, and the page
+size remains fixed at 24. Values within one category use OR; categories use
+AND.
+
+Rating, release-date, and title sorts translate directly to explicit IGDB game
+fields. Popularity without filters keeps the efficient M1.5 IGDB Visits path.
+For filtered popularity, the adapter obtains the exact matching game IDs in
+500-item batches, fetches their Visits values, applies a stable order, and then
+selects the requested page. This preserves every validated filter instead of
+substituting another popularity measure.
 
 Missing cover, release year, combined rating, duration, platform, genre, or
 mode data is represented as `null` or an empty list. Duration remains `null`
 until M1.7 enrichment. Successful empty pages remain distinct from classified
 provider failures. Current response metadata is `servedFrom="provider"`,
-`dataMayBeStale=false`, and `excludedUnknownDuration=false`. Production wiring
-remains deferred to M1.10, so the default catalog still reports unavailable.
+`dataMayBeStale=false`, and `excludedUnknownDuration=false`. M1.6 release bounds
+use `first_release_date`; platform-specific release selection and duration
+filtering/sorting remain M1.7 work. A duration sort therefore fails HTTP
+validation without contacting the catalog. Production wiring remains
+deferred to M1.10, so the default catalog still reports unavailable.
 
 ## Checks
 

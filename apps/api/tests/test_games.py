@@ -1,5 +1,7 @@
 """Public HTTP behavior for unfiltered game browsing."""
 
+from datetime import date
+
 import pytest
 from httpx2 import ASGITransport, AsyncClient
 
@@ -9,10 +11,13 @@ from whattoplaynext_api.catalog.models import (
     CatalogOption,
     FilterMetadata,
     GameCover,
+    GameModeId,
     GamePage,
     GameRating,
     GameSummary,
+    GenreId,
     Pagination,
+    PlatformId,
     ResponseMeta,
     SortDirection,
     SortOption,
@@ -67,7 +72,10 @@ class FakeCatalog:
                 total_items=49,
                 total_pages=3,
             ),
-            query=BrowseQuery(),
+            query=BrowseQuery(
+                sort=criteria.sort,
+                direction=criteria.direction,
+            ),
             meta=ResponseMeta(request_id=None),
         )
 
@@ -178,17 +186,158 @@ async def test_rejects_pages_outside_the_public_bounds(page: int) -> None:
 
 
 @pytest.mark.anyio
-async def test_rejects_filter_parameters_reserved_for_milestone_1_6() -> None:
+@pytest.mark.parametrize(
+    "unknown_parameter",
+    [
+        "mood=cozy",
+        "release_from=2020-01-01",
+        "release_to=2020-12-31",
+        "minimum_rating=50",
+        "game_mode=single-player",
+    ],
+)
+async def test_rejects_unknown_search_parameters(unknown_parameter: str) -> None:
     catalog = FakeCatalog()
     application = create_app(Settings(environment="test"), catalog=catalog)
     transport = ASGITransport(app=application)
 
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
-        response = await client.get("/api/v1/games?name=halo")
+        response = await client.get(f"/api/v1/games?{unknown_parameter}")
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "VALIDATION_ERROR"
     assert catalog.criteria is None
+
+
+@pytest.mark.anyio
+async def test_normalizes_strict_search_criteria() -> None:
+    catalog = FakeCatalog()
+    application = create_app(Settings(environment="test"), catalog=catalog)
+    transport = ASGITransport(app=application)
+
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.get(
+            "/api/v1/games",
+            params=[
+                ("name", "  Hollow Knight  "),
+                ("platform", "pc"),
+                ("platform", "playstation-5"),
+                ("platform", "pc"),
+                ("genre", "platform"),
+                ("genre", "adventure"),
+                ("gameMode", "single-player"),
+                ("gameMode", "single-player"),
+                ("releaseFrom", "2017-01-01"),
+                ("releaseTo", "2018-12-31"),
+                ("minimumRating", "80"),
+                ("sort", "title"),
+                ("page", "2"),
+            ],
+        )
+
+    assert response.status_code == 200
+    assert catalog.criteria == BrowseCriteria(
+        name="Hollow Knight",
+        platform_ids=(PlatformId.PC, PlatformId.PLAYSTATION_5),
+        genre_ids=(GenreId.PLATFORM, GenreId.ADVENTURE),
+        game_mode_ids=(GameModeId.SINGLE_PLAYER,),
+        release_from=date(2017, 1, 1),
+        release_to=date(2018, 12, 31),
+        minimum_rating=80,
+        sort=SortOption.TITLE,
+        direction=SortDirection.ASCENDING,
+        page=2,
+    )
+    assert response.json()["query"] == {"sort": "title", "direction": "asc"}
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "query",
+    [
+        "name=%20%20%20",
+        f"name={'x' * 101}",
+        "platform=unknown-console",
+        "genre=unknown-genre",
+        "gameMode=unknown-mode",
+        "releaseFrom=not-a-date",
+        "releaseFrom=2020-01-02&releaseTo=2020-01-01",
+        "minimumRating=-0.1",
+        "minimumRating=100.1",
+        "sort=unknown-sort",
+        "direction=sideways",
+        "durationKind=normal",
+    ],
+)
+async def test_rejects_invalid_or_not_yet_supported_criteria(query: str) -> None:
+    catalog = FakeCatalog()
+    application = create_app(Settings(environment="test"), catalog=catalog)
+    transport = ASGITransport(app=application)
+
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.get(f"/api/v1/games?{query}")
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert catalog.criteria is None
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("sort", "expected_direction"),
+    [
+        ("popularity", SortDirection.DESCENDING),
+        ("rating", SortDirection.DESCENDING),
+        ("release-date", SortDirection.DESCENDING),
+        ("title", SortDirection.ASCENDING),
+    ],
+)
+async def test_uses_a_sensible_default_direction_for_each_sort(
+    sort: str,
+    expected_direction: SortDirection,
+) -> None:
+    catalog = FakeCatalog()
+    application = create_app(Settings(environment="test"), catalog=catalog)
+    transport = ASGITransport(app=application)
+
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.get(
+            "/api/v1/games",
+            params={"sort": sort, "page": 100},
+        )
+
+    assert response.status_code == 200
+    assert catalog.criteria is not None
+    assert catalog.criteria.direction is expected_direction
+    assert catalog.criteria.page == 100
+
+
+@pytest.mark.anyio
+async def test_rejects_duration_sort_until_milestone_1_7() -> None:
+    catalog = FakeCatalog()
+    application = create_app(Settings(environment="test"), catalog=catalog)
+    transport = ASGITransport(app=application)
+
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.get("/api/v1/games?sort=duration")
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert catalog.criteria is None
+
+
+@pytest.mark.anyio
+async def test_preserves_an_explicit_sort_direction() -> None:
+    catalog = FakeCatalog()
+    application = create_app(Settings(environment="test"), catalog=catalog)
+    transport = ASGITransport(app=application)
+
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.get("/api/v1/games?sort=rating&direction=asc")
+
+    assert response.status_code == 200
+    assert catalog.criteria is not None
+    assert catalog.criteria.direction is SortDirection.ASCENDING
 
 
 @pytest.mark.anyio

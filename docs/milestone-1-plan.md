@@ -1,6 +1,6 @@
 # Milestone 1 Plan
 
-Status: active execution baseline; M1.5 completed and M1.6 ready
+Status: active execution baseline; M1.6 completed and M1.7 ready
 
 Prepared: 2026-09-10
 
@@ -184,6 +184,8 @@ TypeScript client include the browse operation.
 
 ### M1.6 — Strict search criteria and IGDB query translation
 
+Status: completed on 2026-09-11.
+
 Deliver:
 
 - validation and normalization for name, platform, genre, dates, rating, game
@@ -199,6 +201,17 @@ Acceptance:
 - adapter tests prove AND/OR translation without asserting irrelevant query
   formatting;
 - the adapter never silently relaxes a valid query.
+
+Outcome: `GET /api/v1/games` now validates and normalizes name, repeated
+platform/genre/mode values, first-release bounds, minimum combined rating,
+sort, direction, and pages 1–100. Public IDs are allow-listed, duplicates are
+removed in caller order, unknown parameters and invalid ranges receive the
+stable validation envelope, and sensible direction defaults depend on sort.
+The IGDB adapter escapes name input, translates OR within categories and AND
+across categories, preserves exact filters for popularity through batched IGDB
+Visits resolution, and maps rating, release-date, and title sorts directly.
+Duration and platform-specific release semantics remain explicitly deferred to
+M1.7. OpenAPI and the TypeScript client expose the M1.6 criteria.
 
 ### M1.7 — Release and duration semantics
 
@@ -287,14 +300,15 @@ Client Secret in the ignored local API environment file. The IGDB commercial
 inquiry and final product-domain decision remain public-beta gates rather than
 M1 implementation blockers.
 
-## 7. M1.6 next-session handoff
+## 7. M1.7 next-session handoff
 
-Start from the completed M1.5 commit with a clean tree. Extend the existing
-`BrowseCriteria`, `Catalog.browse_games()`, HTTP route, and IGDB adapter rather
-than adding parallel search interfaces. M1.6 owns validation and normalization
-for name, repeated platform/genre/mode values, release dates, rating, sort,
-direction, and page; strict AND across categories and OR within a category; and
-provider query translation. Keep duration joins and platform-specific release
-semantics in M1.7. Continue TDD through the `Catalog` and HTTP seams with fakes
-and sanitized fixtures, regenerate the contract, run `pnpm quality`, and avoid
-live provider access.
+Start from the completed M1.6 commit with a clean tree. Extend the existing
+`BrowseCriteria`, `Catalog.browse_games()`, HTTP route, and IGDB adapter with
+duration kind/bounds, platform-specific release-date evaluation, duration
+enrichment, and duration sorting. Preserve strict AND/OR behavior, provider
+ordering, page totals, and games whose unrelated optional fields are missing.
+Unknown rating or duration values are excluded only when the corresponding
+filter is active, and duration filtering must set `excludedUnknownDuration`.
+Continue TDD through the `Catalog` and HTTP seams using fakes and sanitized
+fixtures, regenerate the contract, run `pnpm quality`, and avoid live provider
+access.

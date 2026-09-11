@@ -186,6 +186,17 @@ remains array-only. Optional provider data becomes `null` or an empty list;
 duration enrichment remains deferred to M1.7. Current metadata reports direct,
 non-stale provider data and no duration-based exclusion.
 
+M1.6 expands those criteria with allow-listed public platform, genre, and mode
+identifiers plus normalized name, release, rating, sort, direction, and page
+values. The HTTP adapter rejects unknown fields and invalid ranges before the
+provider seam. The IGDB adapter builds escaped APICalypse clauses with OR
+inside repeated categories and AND across categories. Rating, release-date, and
+title ordering stay on `games`. Filtered popularity first obtains every exact
+matching game ID in provider-sized batches, resolves the corresponding IGDB
+Visits values, applies an ID tie-breaker, and only then selects the requested
+page; this avoids silently replacing popularity or dropping filters. M1.7 still
+owns platform-specific release selection and all duration joins and sorting.
+
 ## 7. Caching
 
 Redis is a disposable optimization, not a source of truth.

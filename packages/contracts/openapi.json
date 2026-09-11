@@ -5,18 +5,16 @@
         "description": "Normalized public criteria echoed with browse results.",
         "properties": {
           "direction": {
-            "const": "desc",
-            "default": "desc",
-            "title": "Direction",
-            "type": "string"
+            "$ref": "#/components/schemas/SortDirection"
           },
           "sort": {
-            "const": "popularity",
-            "default": "popularity",
-            "title": "Sort",
-            "type": "string"
+            "$ref": "#/components/schemas/SortOption"
           }
         },
+        "required": [
+          "sort",
+          "direction"
+        ],
         "title": "BrowseQuery",
         "type": "object"
       },
@@ -231,6 +229,19 @@
         "title": "GameCover",
         "type": "object"
       },
+      "GameModeId": {
+        "description": "Stable public game-mode identifiers accepted by search.",
+        "enum": [
+          "single-player",
+          "multiplayer",
+          "co-operative",
+          "split-screen",
+          "massively-multiplayer-online",
+          "battle-royale"
+        ],
+        "title": "GameModeId",
+        "type": "string"
+      },
       "GamePage": {
         "description": "One normalized page of game summaries.",
         "properties": {
@@ -382,6 +393,36 @@
         "title": "GameSummary",
         "type": "object"
       },
+      "GenreId": {
+        "description": "Stable public genre identifiers accepted by search.",
+        "enum": [
+          "point-and-click",
+          "fighting",
+          "shooter",
+          "music",
+          "platform",
+          "puzzle",
+          "racing",
+          "real-time-strategy-rts",
+          "role-playing-rpg",
+          "simulator",
+          "sport",
+          "strategy",
+          "turn-based-strategy-tbs",
+          "tactical",
+          "hack-and-slash-beat-em-up",
+          "quiz-trivia",
+          "pinball",
+          "adventure",
+          "indie",
+          "arcade",
+          "visual-novel",
+          "card-board-game",
+          "moba"
+        ],
+        "title": "GenreId",
+        "type": "string"
+      },
       "HealthResponse": {
         "description": "Stable public response for process-health checks.",
         "properties": {
@@ -428,6 +469,19 @@
         "title": "Pagination",
         "type": "object"
       },
+      "PlatformId": {
+        "description": "Stable public platform identifiers accepted by search.",
+        "enum": [
+          "pc",
+          "playstation-4",
+          "playstation-5",
+          "xbox-one",
+          "xbox-series-x-s",
+          "nintendo-switch"
+        ],
+        "title": "PlatformId",
+        "type": "string"
+      },
       "ResponseMeta": {
         "description": "Freshness and processing metadata for one catalog response.",
         "properties": {
@@ -466,6 +520,15 @@
           "provider"
         ],
         "title": "ServedFrom",
+        "type": "string"
+      },
+      "SortDirection": {
+        "description": "Provider-neutral ordering direction.",
+        "enum": [
+          "asc",
+          "desc"
+        ],
+        "title": "SortDirection",
         "type": "string"
       },
       "SortOption": {
@@ -629,9 +692,146 @@
     },
     "/api/v1/games": {
       "get": {
-        "description": "Return one unfiltered page ordered by current popularity.",
+        "description": "Return one strict, normalized page of catalog results.",
         "operationId": "browseGames",
         "parameters": [
+          {
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Name"
+            }
+          },
+          {
+            "in": "query",
+            "name": "platform",
+            "required": false,
+            "schema": {
+              "items": {
+                "$ref": "#/components/schemas/PlatformId"
+              },
+              "title": "Platform",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "genre",
+            "required": false,
+            "schema": {
+              "items": {
+                "$ref": "#/components/schemas/GenreId"
+              },
+              "title": "Genre",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "releaseFrom",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Releasefrom"
+            }
+          },
+          {
+            "in": "query",
+            "name": "releaseTo",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Releaseto"
+            }
+          },
+          {
+            "in": "query",
+            "name": "minimumRating",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Minimumrating"
+            }
+          },
+          {
+            "in": "query",
+            "name": "gameMode",
+            "required": false,
+            "schema": {
+              "items": {
+                "$ref": "#/components/schemas/GameModeId"
+              },
+              "title": "Gamemode",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "popularity",
+              "enum": [
+                "popularity",
+                "rating",
+                "release-date",
+                "title"
+              ],
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "direction",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SortDirection"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Direction"
+            }
+          },
           {
             "in": "query",
             "name": "page",

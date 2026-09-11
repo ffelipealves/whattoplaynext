@@ -42,7 +42,7 @@ public-beta blocker.
 
 ## Milestone 1 — Provider adapter and normalized API
 
-Status: active; M1.5 completed and M1.6 is next.
+Status: active; M1.6 completed and M1.7 is next.
 
 Deliverables:
 
