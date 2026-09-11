@@ -1,6 +1,6 @@
 # Milestone 1 Plan
 
-Status: active execution baseline; M1.4 completed and M1.5 ready
+Status: active execution baseline; M1.5 completed and M1.6 ready
 
 Prepared: 2026-09-10
 
@@ -157,6 +157,8 @@ provider data; classified upstream errors remain distinct from empty success.
 
 ### M1.5 — Browse-games vertical slice
 
+Status: completed on 2026-09-11.
+
 Deliver:
 
 - normalized game-summary, image, rating, pagination, and response-meta models;
@@ -170,6 +172,15 @@ Acceptance:
 - missing cover, rating, duration, release, genre, platform, or mode values
   remain `null` or empty according to the contract;
 - empty catalog results are successful and distinct from upstream failures.
+
+Outcome: the provider-neutral catalog now exposes 24-item unfiltered pages
+through `GET /api/v1/games`, with page 1 and popularity descending as defaults.
+The IGDB adapter uses the current IGDB Visits popularity primitive, obtains an
+exact total from its count endpoint, fetches a minimal game projection, and
+restores popularity order. Complete and sparse sanitized fixtures cover
+nullable and list-valued optional data; empty pages remain successful while all
+existing provider failure classifications propagate. OpenAPI and the generated
+TypeScript client include the browse operation.
 
 ### M1.6 — Strict search criteria and IGDB query translation
 
@@ -276,58 +287,14 @@ Client Secret in the ignored local API environment file. The IGDB commercial
 inquiry and final product-domain decision remain public-beta gates rather than
 M1 implementation blockers.
 
-## 7. M1.5 next-session handoff
+## 7. M1.6 next-session handoff
 
-The implementation baseline is the completed M1.4 commit `3f30359`. The
-working tree must be clean before starting. The relevant existing seams are:
-
-- `Catalog.get_filter_metadata()` in `catalog/ports.py`, which M1.5 extends with
-  one browse capability rather than replacing;
-- `IgdbCatalog` in `adapters/igdb/catalog.py`, which owns provider queries and
-  mapping;
-- `IgdbTransport.query()` in `adapters/igdb/transport.py`, which owns
-  authentication, timeout, retry, and array-response validation;
-- the FastAPI composition root's injectable `Catalog`, already used by route
-  tests without patching internals;
-- FastAPI OpenAPI and the generated contract package as the public source of
-  truth.
-
-Keep M1.5 deliberately narrower than full search:
-
-- add provider-neutral browse criteria with only the defaults needed now:
-  popularity descending, page 1, and a fixed 24-item page size;
-- expose `GET /api/v1/games` for unfiltered browsing and accept `page` only if
-  pagination requires it; M1.6 owns all filter parsing and strict combinations;
-- define normalized game-summary, cover, rating, pagination, query, and response
-  metadata models matching `docs/api-contract.md`;
-- map optional provider fields to `null` or empty lists instead of inventing
-  values; duration enrichment and platform-specific release semantics remain
-  M1.7 work;
-- use `servedFrom: "provider"`, `dataMayBeStale: false`, and
-  `excludedUnknownDuration: false` until caching and duration filtering exist;
-- determine total-count behavior from current official IGDB documentation. If
-  the count endpoint returns an object, add a narrow validated transport method
-  rather than weakening the existing array-response guarantee;
-- verify the current official IGDB popularity field before fixing the
-  APICalypse sort expression;
-- keep provider IDs, field names, image construction, and query strings inside
-  the IGDB adapter.
-
-Suggested pragmatic-TDD order:
-
-1. Through the public HTTP seam, return one normalized page from a deterministic
-   fake catalog and fix the response/OpenAPI shape.
-2. Through `IgdbCatalog`, map a complete sanitized game fixture using a minimal
-   explicit projection.
-3. Add a sparse fixture and prove every optional field remains nullable or
-   empty according to the contract.
-4. Prove a valid provider empty list is a successful empty page, while
-   classified provider failures preserve their public error code.
-5. Cover page defaults, the fixed size of 24, popularity-descending ordering,
-   and count/pagination boundaries without introducing M1.6 filters.
-6. Regenerate OpenAPI and TypeScript artifacts, update affected documentation,
-   and run `pnpm quality` without credentials or network access.
-
-Complete M1.5 in one Conventional Commit with bullet-point outcomes and the
-`Milestone: M1.5` trailer, then push directly to `origin/main` without rewriting
-published history.
+Start from the completed M1.5 commit with a clean tree. Extend the existing
+`BrowseCriteria`, `Catalog.browse_games()`, HTTP route, and IGDB adapter rather
+than adding parallel search interfaces. M1.6 owns validation and normalization
+for name, repeated platform/genre/mode values, release dates, rating, sort,
+direction, and page; strict AND across categories and OR within a category; and
+provider query translation. Keep duration joins and platform-specific release
+semantics in M1.7. Continue TDD through the `Catalog` and HTTP seams with fakes
+and sanitized fixtures, regenerate the contract, run `pnpm quality`, and avoid
+live provider access.

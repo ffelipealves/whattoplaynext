@@ -78,6 +78,10 @@ optional bounded retry delay.
 Tests replace both HTTP and time-related effects, so they remain deterministic
 and never contact IGDB.
 
+The transport also exposes a narrow `count()` operation for IGDB's object-shaped
+`/{endpoint}/count` response. It preserves the same authentication, retry, and
+error-classification behavior without weakening `query()`'s array guarantee.
+
 ## Filter metadata
 
 `GET /api/v1/filters` is the first complete catalog slice. Its route depends on
@@ -91,6 +95,21 @@ bounds. Provider failures are translated to the stable HTTP error envelope and
 cannot become an empty successful response. Until M1.10 composes live provider
 credentials, the default application starts safely and reports the catalog as
 unavailable when this endpoint is called without an injected catalog.
+
+## Game browsing
+
+`GET /api/v1/games` exposes the M1.5 unfiltered browse slice. It accepts only an
+optional `page` from 1 through 100, uses a fixed page size of 24, and returns
+provider-neutral summaries ordered by the current IGDB Visits popularity
+primitive. The adapter pages and counts popularity primitives, fetches a
+minimal explicit game projection for those IDs, and restores popularity order.
+
+Missing cover, release year, combined rating, duration, platform, genre, or
+mode data is represented as `null` or an empty list. Duration remains `null`
+until M1.7 enrichment. Successful empty pages remain distinct from classified
+provider failures. Current response metadata is `servedFrom="provider"`,
+`dataMayBeStale=false`, and `excludedUnknownDuration=false`. Production wiring
+remains deferred to M1.10, so the default catalog still reports unavailable.
 
 ## Checks
 

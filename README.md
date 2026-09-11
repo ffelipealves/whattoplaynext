@@ -42,8 +42,10 @@ envelope, plus safe Twitch application-token acquisition, reuse, and refresh.
 The authenticated IGDB transport now enforces bounded timeouts, a single
 transient retry, jitter, limited `Retry-After` handling, and safe provider error
 classification. `GET /api/v1/filters` now exposes provider-neutral platform,
-genre, game-mode, duration, sort, and validation metadata. The next increment
-adds unfiltered game browsing.
+genre, game-mode, duration, sort, and validation metadata. `GET /api/v1/games`
+now returns paginated, provider-neutral summaries ordered by current IGDB
+popularity, with nullable optional data and exact totals. The next increment
+adds strict search criteria and filter translation.
 Name/domain selection and the external Twitch/IGDB actions remain tracked
 separately and do not block provider-independent development.
 

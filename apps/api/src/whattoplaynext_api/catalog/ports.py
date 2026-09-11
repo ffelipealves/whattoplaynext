@@ -2,7 +2,7 @@
 
 from typing import Protocol
 
-from whattoplaynext_api.catalog.models import FilterMetadata
+from whattoplaynext_api.catalog.models import BrowseCriteria, FilterMetadata, GamePage
 
 
 class Catalog(Protocol):
@@ -10,4 +10,8 @@ class Catalog(Protocol):
 
     async def get_filter_metadata(self) -> FilterMetadata:
         """Return normalized filter options and public bounds."""
+        ...
+
+    async def browse_games(self, criteria: BrowseCriteria) -> GamePage:
+        """Return one normalized, popularity-ordered page of games."""
         ...

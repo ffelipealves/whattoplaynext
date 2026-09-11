@@ -76,6 +76,25 @@ class IgdbTransport:
 
     async def query(self, endpoint: str, query: str) -> list[dict[str, object]]:
         """Execute an APICalypse query against one IGDB endpoint."""
+        payload = await self._request(endpoint, query)
+        if not isinstance(payload, list) or any(
+            not isinstance(record, dict) for record in payload
+        ):
+            raise IgdbTransportError(IgdbErrorReason.INVALID_RESPONSE)
+        return cast(list[dict[str, object]], payload)
+
+    async def count(self, endpoint: str, query: str) -> int:
+        """Execute an IGDB count query and validate its object response."""
+        payload = await self._request(f"{endpoint}/count", query)
+        if not isinstance(payload, dict):
+            raise IgdbTransportError(IgdbErrorReason.INVALID_RESPONSE)
+        count = payload.get("count")
+        if not isinstance(count, int) or isinstance(count, bool) or count < 0:
+            raise IgdbTransportError(IgdbErrorReason.INVALID_RESPONSE)
+        return count
+
+    async def _request(self, endpoint: str, query: str) -> object:
+        """Execute one authenticated request with bounded retries."""
         access_token = await self._token_provider.get_access_token()
         started_at = self._clock()
         last_reason: IgdbErrorReason | None = None
@@ -122,14 +141,10 @@ class IgdbTransport:
                 if 400 <= response.status_code < 500:
                     raise IgdbTransportError(IgdbErrorReason.INVALID_REQUEST)
                 try:
-                    payload = response.json()
+                    payload: object = response.json()
                 except ValueError:
                     raise IgdbTransportError(IgdbErrorReason.INVALID_RESPONSE) from None
-                if not isinstance(payload, list) or any(
-                    not isinstance(record, dict) for record in payload
-                ):
-                    raise IgdbTransportError(IgdbErrorReason.INVALID_RESPONSE)
-                return cast(list[dict[str, object]], payload)
+                return payload
             except httpx.TimeoutException:
                 retry_delay = self._jitter(self._retry_delay_seconds)
                 if attempt == 1 or not self._has_retry_budget(

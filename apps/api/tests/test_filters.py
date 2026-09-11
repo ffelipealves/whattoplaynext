@@ -9,10 +9,12 @@ from whattoplaynext_api.adapters.igdb.transport import (
     IgdbTransportError,
 )
 from whattoplaynext_api.catalog.models import (
+    BrowseCriteria,
     CatalogOption,
     DurationKind,
     FilterLimits,
     FilterMetadata,
+    GamePage,
     SortOption,
 )
 from whattoplaynext_api.core.settings import Settings
@@ -42,6 +44,9 @@ class FakeCatalog:
             ),
         )
 
+    async def browse_games(self, criteria: BrowseCriteria) -> GamePage:
+        raise AssertionError("not used by filter route tests")
+
 
 class FailingTransport:
     async def query(
@@ -50,6 +55,9 @@ class FailingTransport:
         query: str,
     ) -> list[dict[str, object]]:
         raise IgdbTransportError(IgdbErrorReason.UNAVAILABLE)
+
+    async def count(self, endpoint: str, query: str) -> int:
+        raise AssertionError("not used by filter route tests")
 
 
 @pytest.mark.anyio

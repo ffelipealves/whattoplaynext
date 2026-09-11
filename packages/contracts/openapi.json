@@ -1,6 +1,25 @@
 {
   "components": {
     "schemas": {
+      "BrowseQuery": {
+        "description": "Normalized public criteria echoed with browse results.",
+        "properties": {
+          "direction": {
+            "const": "desc",
+            "default": "desc",
+            "title": "Direction",
+            "type": "string"
+          },
+          "sort": {
+            "const": "popularity",
+            "default": "popularity",
+            "title": "Sort",
+            "type": "string"
+          }
+        },
+        "title": "BrowseQuery",
+        "type": "object"
+      },
       "CatalogOption": {
         "description": "Stable identifier and English source label for one filter option.",
         "properties": {
@@ -186,6 +205,183 @@
         "title": "FilterMetadata",
         "type": "object"
       },
+      "GameCover": {
+        "description": "Normalized game cover image.",
+        "properties": {
+          "height": {
+            "exclusiveMinimum": 0.0,
+            "title": "Height",
+            "type": "integer"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "width": {
+            "exclusiveMinimum": 0.0,
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "url",
+          "width",
+          "height"
+        ],
+        "title": "GameCover",
+        "type": "object"
+      },
+      "GamePage": {
+        "description": "One normalized page of game summaries.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GameSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          },
+          "query": {
+            "$ref": "#/components/schemas/BrowseQuery"
+          }
+        },
+        "required": [
+          "items",
+          "pagination",
+          "query",
+          "meta"
+        ],
+        "title": "GamePage",
+        "type": "object"
+      },
+      "GameRating": {
+        "description": "Normalized rating and the number of contributing scores.",
+        "properties": {
+          "count": {
+            "minimum": 0.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "value": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "value",
+          "count",
+          "source"
+        ],
+        "title": "GameRating",
+        "type": "object"
+      },
+      "GameSummary": {
+        "description": "Provider-neutral game data required by browse results.",
+        "properties": {
+          "cover": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GameCover"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "gameModes": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogOption"
+            },
+            "title": "Gamemodes",
+            "type": "array"
+          },
+          "genres": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogOption"
+            },
+            "title": "Genres",
+            "type": "array"
+          },
+          "id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Id",
+            "type": "integer"
+          },
+          "normalDurationSeconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normaldurationseconds"
+          },
+          "platforms": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogOption"
+            },
+            "title": "Platforms",
+            "type": "array"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GameRating"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "releaseYear": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Releaseyear"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "title",
+          "releaseYear",
+          "cover",
+          "platforms",
+          "genres",
+          "rating",
+          "normalDurationSeconds",
+          "gameModes"
+        ],
+        "title": "GameSummary",
+        "type": "object"
+      },
       "HealthResponse": {
         "description": "Stable public response for process-health checks.",
         "properties": {
@@ -198,6 +394,79 @@
         },
         "title": "HealthResponse",
         "type": "object"
+      },
+      "Pagination": {
+        "description": "Page location and total result information.",
+        "properties": {
+          "page": {
+            "minimum": 1.0,
+            "title": "Page",
+            "type": "integer"
+          },
+          "pageSize": {
+            "const": 24,
+            "default": 24,
+            "title": "Pagesize",
+            "type": "integer"
+          },
+          "totalItems": {
+            "minimum": 0.0,
+            "title": "Totalitems",
+            "type": "integer"
+          },
+          "totalPages": {
+            "minimum": 0.0,
+            "title": "Totalpages",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "page",
+          "totalItems",
+          "totalPages"
+        ],
+        "title": "Pagination",
+        "type": "object"
+      },
+      "ResponseMeta": {
+        "description": "Freshness and processing metadata for one catalog response.",
+        "properties": {
+          "dataMayBeStale": {
+            "default": false,
+            "title": "Datamaybestale",
+            "type": "boolean"
+          },
+          "excludedUnknownDuration": {
+            "default": false,
+            "title": "Excludedunknownduration",
+            "type": "boolean"
+          },
+          "requestId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requestid"
+          },
+          "servedFrom": {
+            "$ref": "#/components/schemas/ServedFrom",
+            "default": "provider"
+          }
+        },
+        "title": "ResponseMeta",
+        "type": "object"
+      },
+      "ServedFrom": {
+        "description": "Origin of the data returned to the caller.",
+        "enum": [
+          "provider"
+        ],
+        "title": "ServedFrom",
+        "type": "string"
       },
       "SortOption": {
         "description": "Supported catalog sort fields.",
@@ -353,6 +622,176 @@
           }
         },
         "summary": "Get catalog filter metadata",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/games": {
+      "get": {
+        "description": "Return one unfiltered page ordered by current popularity.",
+        "operationId": "browseGames",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GamePage"
+                }
+              }
+            },
+            "description": "Successful Response",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Method not allowed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "One or more parameter values are invalid.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too many requests.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "An unexpected error occurred.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Game data provider returned an invalid response.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Game data is temporarily unavailable.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Game data provider timed out.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Browse games",
         "tags": [
           "catalog"
         ]

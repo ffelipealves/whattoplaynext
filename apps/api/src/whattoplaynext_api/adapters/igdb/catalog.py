@@ -1,6 +1,8 @@
 """IGDB implementation of the provider-neutral catalog interface."""
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from math import ceil
 from typing import Protocol
 
 from whattoplaynext_api.adapters.igdb.transport import (
@@ -8,10 +10,18 @@ from whattoplaynext_api.adapters.igdb.transport import (
     IgdbTransportError,
 )
 from whattoplaynext_api.catalog.models import (
+    BrowseCriteria,
+    BrowseQuery,
     CatalogOption,
     DurationKind,
     FilterLimits,
     FilterMetadata,
+    GameCover,
+    GamePage,
+    GameRating,
+    GameSummary,
+    Pagination,
+    ResponseMeta,
     SortOption,
 )
 from whattoplaynext_api.core.errors import ApplicationError, ErrorCode
@@ -26,6 +36,10 @@ class IgdbQueryTransport(Protocol):
         query: str,
     ) -> list[dict[str, object]]:
         """Return validated IGDB records for one endpoint."""
+        ...
+
+    async def count(self, endpoint: str, query: str) -> int:
+        """Return a validated count for one IGDB endpoint."""
         ...
 
 
@@ -125,6 +139,49 @@ class IgdbCatalog:
             ),
         )
 
+    async def browse_games(self, criteria: BrowseCriteria) -> GamePage:
+        """Return one page ordered by the IGDB Visits popularity primitive."""
+        popularity_filter = "where popularity_type = 1;"
+        offset = (criteria.page - 1) * criteria.page_size
+        try:
+            total_items = await self._transport.count(
+                "popularity_primitives",
+                popularity_filter,
+            )
+            popularity_records = await self._transport.query(
+                "popularity_primitives",
+                (
+                    "fields game_id,value; where popularity_type = 1; "
+                    f"sort value desc; limit {criteria.page_size}; offset {offset};"
+                ),
+            )
+            game_ids = _popularity_game_ids(popularity_records)
+            game_records = (
+                await self._transport.query(
+                    "games",
+                    _games_query(game_ids, criteria.page_size),
+                )
+                if game_ids
+                else []
+            )
+            items = _normalize_games(game_records, game_ids)
+        except IgdbTransportError as error:
+            raise _application_error(error) from error
+        except OSError, OverflowError, TypeError, ValueError:
+            raise ApplicationError(ErrorCode.UPSTREAM_INVALID_RESPONSE) from None
+
+        return GamePage(
+            items=items,
+            pagination=Pagination(
+                page=criteria.page,
+                page_size=criteria.page_size,
+                total_items=total_items,
+                total_pages=ceil(total_items / criteria.page_size),
+            ),
+            query=BrowseQuery(),
+            meta=ResponseMeta(),
+        )
+
 
 def _options_query(options: tuple[AllowedOption, ...]) -> str:
     provider_ids = ",".join(str(option.provider_id) for option in options)
@@ -146,6 +203,114 @@ def _normalize_options(
         for option in allowed
         if option.provider_id in available_ids
     ]
+
+
+def _popularity_game_ids(records: list[dict[str, object]]) -> list[int]:
+    game_ids: list[int] = []
+    for record in records:
+        game_id = record.get("game_id")
+        if not isinstance(game_id, int) or isinstance(game_id, bool):
+            raise ValueError("invalid popularity record")
+        game_ids.append(game_id)
+    return game_ids
+
+
+def _games_query(game_ids: list[int], page_size: int) -> str:
+    ids = ",".join(str(game_id) for game_id in game_ids)
+    return (
+        "fields id,slug,name,first_release_date,cover.image_id,platforms.id,"
+        "genres.id,total_rating,total_rating_count,game_modes.id; "
+        f"where id = ({ids}); limit {page_size};"
+    )
+
+
+def _normalize_games(
+    records: list[dict[str, object]],
+    ordered_ids: list[int],
+) -> list[GameSummary]:
+    games = {_required_int(record, "id"): _normalize_game(record) for record in records}
+    return [games[game_id] for game_id in ordered_ids if game_id in games]
+
+
+def _normalize_game(record: dict[str, object]) -> GameSummary:
+    release_date = record.get("first_release_date")
+    release_year = (
+        datetime.fromtimestamp(release_date, tz=UTC).year
+        if isinstance(release_date, int) and not isinstance(release_date, bool)
+        else None
+    )
+    return GameSummary(
+        id=_required_int(record, "id"),
+        slug=_required_string(record, "slug"),
+        title=_required_string(record, "name"),
+        release_year=release_year,
+        cover=_normalize_cover(record.get("cover")),
+        platforms=_normalize_record_options(record.get("platforms"), PLATFORMS),
+        genres=_normalize_record_options(record.get("genres"), GENRES),
+        rating=_normalize_rating(record),
+        normal_duration_seconds=None,
+        game_modes=_normalize_record_options(record.get("game_modes"), GAME_MODES),
+    )
+
+
+def _required_int(record: dict[str, object], field: str) -> int:
+    value = record.get(field)
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise ValueError(f"invalid required field: {field}")
+    return value
+
+
+def _required_string(record: dict[str, object], field: str) -> str:
+    value = record.get(field)
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"invalid required field: {field}")
+    return value
+
+
+def _normalize_cover(value: object) -> GameCover | None:
+    if not isinstance(value, dict):
+        return None
+    image_id = value.get("image_id")
+    if not isinstance(image_id, str) or not image_id:
+        return None
+    return GameCover(
+        url=(f"https://images.igdb.com/igdb/image/upload/t_cover_big/{image_id}.jpg"),
+        width=264,
+        height=374,
+    )
+
+
+def _normalize_record_options(
+    value: object,
+    allowed: tuple[AllowedOption, ...],
+) -> list[CatalogOption]:
+    if not isinstance(value, list):
+        return []
+    available_ids = {
+        provider_id
+        for record in value
+        if isinstance(record, dict)
+        and isinstance((provider_id := record.get("id")), int)
+        and not isinstance(provider_id, bool)
+    }
+    return [
+        CatalogOption(id=option.public_id, label=option.label)
+        for option in allowed
+        if option.provider_id in available_ids
+    ]
+
+
+def _normalize_rating(record: dict[str, object]) -> GameRating | None:
+    value = record.get("total_rating")
+    count = record.get("total_rating_count")
+    if (
+        not isinstance(value, int | float)
+        or isinstance(value, bool)
+        or not isinstance(count, int)
+        or isinstance(count, bool)
+    ):
+        return None
+    return GameRating(value=float(value), count=count, source="IGDB combined")
 
 
 def _application_error(error: IgdbTransportError) -> ApplicationError:

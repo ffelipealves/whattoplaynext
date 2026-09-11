@@ -1,7 +1,7 @@
 # Architecture
 
 Status: accepted MVP architecture baseline
-Last updated: 2026-09-10
+Last updated: 2026-09-11
 
 ## 1. Context
 
@@ -174,6 +174,17 @@ emits stable public IDs and English labels regardless of upstream renames.
 Unknown or identifier-less records are excluded in allow-list order. Transport
 failures are translated to application errors before reaching the HTTP adapter,
 so an upstream failure cannot masquerade as empty metadata.
+
+M1.5 extends `Catalog` with provider-neutral browse criteria and a normalized
+game-page result. Because the current IGDB `Game` schema no longer exposes the
+legacy popularity field, the adapter uses the documented IGDB Visits
+popularity primitive: it counts and pages `popularity_primitives` ordered by
+`value` descending, fetches a minimal explicit projection from `games`, and
+restores primitive order. The transport has a separate validated `count()`
+operation for IGDB's object response while its general `query()` contract
+remains array-only. Optional provider data becomes `null` or an empty list;
+duration enrichment remains deferred to M1.7. Current metadata reports direct,
+non-stale provider data and no duration-based exclusion.
 
 ## 7. Caching
 

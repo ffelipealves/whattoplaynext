@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1942,
+    "slug": "the-witcher-3-wild-hunt",
+    "name": "The Witcher 3: Wild Hunt",
+    "first_release_date": 1431993600,
+    "cover": {
+      "id": 12345,
+      "image_id": "co1wyy"
+    },
+    "platforms": [{ "id": 6 }, { "id": 48 }, { "id": 999999 }],
+    "genres": [{ "id": 12 }, { "id": 31 }],
+    "total_rating": 92.25,
+    "total_rating_count": 2745,
+    "game_modes": [{ "id": 1 }, { "id": 2 }]
+  }
+]

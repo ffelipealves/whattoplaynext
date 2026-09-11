@@ -60,7 +60,11 @@ not derive their identity from mutable provider labels.
 
 ### `GET /api/v1/games`
 
-Supported query parameters:
+M1.5 implements unfiltered browsing with only the optional `page` parameter.
+The remaining parameters in the table are reserved for M1.6 and are not yet
+part of the executable OpenAPI contract.
+
+Planned query parameters:
 
 | Parameter              | Type            | Meaning                                           |
 | ---------------------- | --------------- | ------------------------------------------------- |
@@ -96,7 +100,7 @@ Response shape:
       "platforms": [{ "id": "pc", "label": "PC" }],
       "genres": [{ "id": "platform", "label": "Platform" }],
       "rating": { "value": 89.2, "count": 1234, "source": "IGDB combined" },
-      "normalDurationSeconds": 97200,
+      "normalDurationSeconds": null,
       "gameModes": [{ "id": "single-player", "label": "Single player" }]
     }
   ],
@@ -112,16 +116,24 @@ Response shape:
   },
   "meta": {
     "requestId": "...",
-    "servedFrom": "fresh-cache",
+    "servedFrom": "provider",
     "dataMayBeStale": false,
     "excludedUnknownDuration": false
   }
 }
 ```
 
-`totalItems` may be capped or approximate if the provider cannot supply an
-exact total efficiently. The implementation must document that condition and
-must keep next/previous navigation correct.
+For M1.5, `totalItems` is the exact count of the IGDB Visits popularity
+primitives used for ordering. The adapter orders the primitive `value`
+descending, pages those records in groups of 24, then fetches and restores the
+corresponding game summaries in that order. `normalDurationSeconds` remains
+`null` until M1.7 adds duration enrichment.
+
+An empty provider page is a successful response with an empty `items` list.
+Provider failures retain their classified error responses. Until caching and
+duration filtering are implemented, metadata is always
+`servedFrom="provider"`, `dataMayBeStale=false`, and
+`excludedUnknownDuration=false`.
 
 ### `GET /api/v1/games/autocomplete`
 
