@@ -1,0 +1,6 @@
+[
+  { "id": 31, "name": "Adventure" },
+  { "id": 12, "name": "RPG renamed upstream" },
+  { "id": 999999, "name": "Unsupported genre" },
+  { "name": "Missing provider identifier" }
+]

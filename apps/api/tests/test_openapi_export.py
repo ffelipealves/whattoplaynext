@@ -17,3 +17,25 @@ def test_openapi_export_ignores_local_process_configuration(
     assert schema["info"]["title"] == "What To Play Next API"
     assert "/api/v1/health" in schema["paths"]
     assert "/internal/health" not in schema["paths"]
+
+
+def test_filter_metadata_contract_requires_its_complete_public_shape() -> None:
+    schema = build_openapi_schema()
+    components = schema["components"]["schemas"]
+
+    assert set(components["FilterMetadata"]["required"]) == {
+        "platforms",
+        "genres",
+        "gameModes",
+        "durationKinds",
+        "sortOptions",
+        "limits",
+    }
+    assert set(components["FilterLimits"]["required"]) == {
+        "pageSize",
+        "maximumPage",
+        "minimumAutocompleteLength",
+        "maximumNameLength",
+        "minimumDurationHours",
+        "maximumDurationHours",
+    }

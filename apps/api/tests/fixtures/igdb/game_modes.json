@@ -1,0 +1,6 @@
+[
+  { "id": 1, "name": "Solo renamed upstream" },
+  { "id": 2, "name": "Multiplayer" },
+  { "id": 999999, "name": "Unsupported mode" },
+  { "name": "Missing provider identifier" }
+]

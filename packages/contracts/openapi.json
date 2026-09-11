@@ -1,6 +1,35 @@
 {
   "components": {
     "schemas": {
+      "CatalogOption": {
+        "description": "Stable identifier and English source label for one filter option.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ],
+        "title": "CatalogOption",
+        "type": "object"
+      },
+      "DurationKind": {
+        "description": "Supported campaign-duration measures.",
+        "enum": [
+          "fast",
+          "normal",
+          "completionist"
+        ],
+        "title": "DurationKind",
+        "type": "string"
+      },
       "ErrorCode": {
         "description": "Stable failure codes understood by public adapters.",
         "enum": [
@@ -65,6 +94,98 @@
         "title": "ErrorResponse",
         "type": "object"
       },
+      "FilterLimits": {
+        "description": "Public bounds shared by filter controls and query validation.",
+        "properties": {
+          "maximumDurationHours": {
+            "title": "Maximumdurationhours",
+            "type": "integer"
+          },
+          "maximumNameLength": {
+            "title": "Maximumnamelength",
+            "type": "integer"
+          },
+          "maximumPage": {
+            "title": "Maximumpage",
+            "type": "integer"
+          },
+          "minimumAutocompleteLength": {
+            "title": "Minimumautocompletelength",
+            "type": "integer"
+          },
+          "minimumDurationHours": {
+            "title": "Minimumdurationhours",
+            "type": "integer"
+          },
+          "pageSize": {
+            "title": "Pagesize",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pageSize",
+          "maximumPage",
+          "minimumAutocompleteLength",
+          "maximumNameLength",
+          "minimumDurationHours",
+          "maximumDurationHours"
+        ],
+        "title": "FilterLimits",
+        "type": "object"
+      },
+      "FilterMetadata": {
+        "description": "All allow-listed values needed to construct the search form.",
+        "properties": {
+          "durationKinds": {
+            "items": {
+              "$ref": "#/components/schemas/DurationKind"
+            },
+            "title": "Durationkinds",
+            "type": "array"
+          },
+          "gameModes": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogOption"
+            },
+            "title": "Gamemodes",
+            "type": "array"
+          },
+          "genres": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogOption"
+            },
+            "title": "Genres",
+            "type": "array"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/FilterLimits"
+          },
+          "platforms": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogOption"
+            },
+            "title": "Platforms",
+            "type": "array"
+          },
+          "sortOptions": {
+            "items": {
+              "$ref": "#/components/schemas/SortOption"
+            },
+            "title": "Sortoptions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "platforms",
+          "genres",
+          "gameModes",
+          "durationKinds",
+          "sortOptions",
+          "limits"
+        ],
+        "title": "FilterMetadata",
+        "type": "object"
+      },
       "HealthResponse": {
         "description": "Stable public response for process-health checks.",
         "properties": {
@@ -77,6 +198,18 @@
         },
         "title": "HealthResponse",
         "type": "object"
+      },
+      "SortOption": {
+        "description": "Supported catalog sort fields.",
+        "enum": [
+          "popularity",
+          "rating",
+          "release-date",
+          "duration",
+          "title"
+        ],
+        "title": "SortOption",
+        "type": "string"
       }
     }
   },
@@ -87,6 +220,144 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/filters": {
+      "get": {
+        "description": "Return stable filter options from the configured catalog.",
+        "operationId": "getFilters",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FilterMetadata"
+                }
+              }
+            },
+            "description": "Successful Response",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Method not allowed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too many requests.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "An unexpected error occurred.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Game data provider returned an invalid response.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Game data is temporarily unavailable.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Game data provider timed out.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get catalog filter metadata",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
     "/api/v1/health": {
       "get": {
         "description": "Report liveness without synchronously calling IGDB or Redis.",

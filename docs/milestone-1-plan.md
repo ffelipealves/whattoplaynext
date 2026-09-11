@@ -1,6 +1,6 @@
 # Milestone 1 Plan
 
-Status: active execution baseline; M1.3 completed
+Status: active execution baseline; M1.4 completed
 
 Prepared: 2026-09-10
 
@@ -123,6 +123,8 @@ use in-memory HTTP and time controls.
 
 ### M1.4 — Filter-metadata vertical slice
 
+Status: completed on 2026-09-11.
+
 Deliver:
 
 - normalized identifier/label and filter-metadata models;
@@ -144,6 +146,14 @@ Acceptance:
 - sanitized fixtures cover known, unknown, renamed, and missing fields;
 - mapping tests exercise the catalog interface rather than mapper internals;
 - an upstream failure cannot become an empty successful filter list.
+
+Outcome: the provider-neutral catalog interface now exposes normalized filter
+metadata through `GET /api/v1/filters`. The IGDB adapter requests only IDs and
+names, maps curated provider IDs to stable application-owned platform, genre,
+and game-mode identities, ignores unsupported records, and keeps deterministic
+ordering. Static durations, sorts, and validation bounds are required in the
+OpenAPI shape. Sanitized fixtures cover known, renamed, unknown, and missing
+provider data; classified upstream errors remain distinct from empty success.
 
 ### M1.5 — Browse-games vertical slice
 

@@ -3,12 +3,18 @@
 from fastapi import FastAPI
 
 from whattoplaynext_api import __version__
+from whattoplaynext_api.catalog.ports import Catalog
+from whattoplaynext_api.catalog.unavailable import UnavailableCatalog
 from whattoplaynext_api.core.settings import Settings, get_settings
 from whattoplaynext_api.http.errors import install_http_boundary
 from whattoplaynext_api.http.router import api_router
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    *,
+    catalog: Catalog | None = None,
+) -> FastAPI:
     """Build the HTTP adapter with explicit, testable configuration."""
     resolved_settings = settings or get_settings()
     application = FastAPI(
@@ -18,6 +24,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         version=__version__,
     )
     install_http_boundary(application)
+    application.state.catalog = catalog or UnavailableCatalog()
     application.include_router(api_router, prefix=resolved_settings.api_prefix)
     return application
 

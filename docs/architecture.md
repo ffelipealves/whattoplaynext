@@ -166,6 +166,15 @@ capped at two seconds. Authentication and other permanent `4xx` failures are
 never retried. Successful responses must be arrays of records, preventing an
 invalid provider payload from becoming an empty catalog result.
 
+M1.4 introduces the application-owned `Catalog` interface at the variable
+provider seam. Its filter-metadata capability returns only normalized models;
+FastAPI and IGDB types remain outside that interface. The IGDB implementation
+queries only `id` and `name`, resolves numeric IDs through curated tables, and
+emits stable public IDs and English labels regardless of upstream renames.
+Unknown or identifier-less records are excluded in allow-list order. Transport
+failures are translated to application errors before reaching the HTTP adapter,
+so an upstream failure cannot masquerade as empty metadata.
+
 ## 7. Caching
 
 Redis is a disposable optimization, not a source of truth.

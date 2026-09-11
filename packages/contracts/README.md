@@ -24,6 +24,7 @@ import { createApiClient } from "@whattoplaynext/contracts";
 
 const api = createApiClient("http://localhost:8000");
 const { data, error } = await api.GET("/api/v1/health");
+const filters = await api.GET("/api/v1/filters");
 ```
 
 Endpoint paths include the `/api/v1` prefix, so the client base URL is the API

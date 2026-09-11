@@ -78,6 +78,20 @@ optional bounded retry delay.
 Tests replace both HTTP and time-related effects, so they remain deterministic
 and never contact IGDB.
 
+## Filter metadata
+
+`GET /api/v1/filters` is the first complete catalog slice. Its route depends on
+the small `Catalog.get_filter_metadata()` interface, so HTTP tests inject a
+deterministic fake while the IGDB adapter is exercised through sanitized
+fixtures. Provider numeric IDs and names are translated into application-owned
+IDs and labels; unknown records are excluded in a stable order.
+
+The endpoint always includes all duration kinds, sort options, and public query
+bounds. Provider failures are translated to the stable HTTP error envelope and
+cannot become an empty successful response. Until M1.10 composes live provider
+credentials, the default application starts safely and reports the catalog as
+unavailable when this endpoint is called without an injected catalog.
+
 ## Checks
 
 ```bash

@@ -52,6 +52,12 @@ Example shape:
 }
 ```
 
+The initial platform identifiers are `pc`, `playstation-4`, `playstation-5`,
+`xbox-one`, `xbox-series-x-s`, and `nintendo-switch`. They are stable public
+identifiers; the IGDB numeric IDs used to resolve them remain inside the
+provider adapter. Genre and game-mode identifiers follow the same rule and do
+not derive their identity from mutable provider labels.
+
 ### `GET /api/v1/games`
 
 Supported query parameters:

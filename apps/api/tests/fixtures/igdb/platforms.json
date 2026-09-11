@@ -1,0 +1,10 @@
+[
+  { "id": 6, "name": "PC (Microsoft Windows)" },
+  { "id": 48, "name": "PlayStation Four (provider rename)" },
+  { "id": 167, "name": "PlayStation 5" },
+  { "id": 49, "name": "Xbox One" },
+  { "id": 169, "name": "Xbox Series X|S" },
+  { "id": 130, "name": "Nintendo Switch" },
+  { "id": 999999, "name": "Unsupported platform" },
+  { "name": "Missing provider identifier" }
+]
