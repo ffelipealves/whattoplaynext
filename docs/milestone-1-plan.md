@@ -1,6 +1,6 @@
 # Milestone 1 Plan
 
-Status: active execution baseline; M1.2 completed
+Status: active execution baseline; M1.3 completed
 
 Prepared: 2026-09-10
 
@@ -97,6 +97,8 @@ tests cover the lifecycle and external HTTP behavior without network access.
 
 ### M1.3 — IGDB transport and bounded retry
 
+Status: completed on 2026-09-11.
+
 Deliver:
 
 - authenticated server-side requests to the IGDB endpoint;
@@ -110,6 +112,14 @@ Acceptance:
 - deterministic tests cover success, timeout, rate limit, transient 5xx,
   permanent 4xx, retry exhaustion, and malformed payloads;
 - retries cannot exceed the configured attempt and deadline limits.
+
+Outcome: the authenticated HTTP transport now sends explicit APICalypse
+projections with the required IGDB headers and validates successful response
+shapes. Per-attempt timeouts and an operation deadline bound all work. Timeout,
+network, rate-limit, and server failures receive at most one retry with injected
+jitter or a capped numeric `Retry-After`; permanent client failures are not
+retried. Provider payloads remain outside classified exceptions, and all tests
+use in-memory HTTP and time controls.
 
 ### M1.4 — Filter-metadata vertical slice
 

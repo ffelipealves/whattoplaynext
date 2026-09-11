@@ -39,7 +39,9 @@ approximate matching.
 The Milestone 0 technical foundation is accepted and Milestone 1 implementation
 is active. The API now provides request correlation and a stable, typed error
 envelope, plus safe Twitch application-token acquisition, reuse, and refresh.
-The next increment adds the authenticated IGDB transport and bounded retry.
+The authenticated IGDB transport now enforces bounded timeouts, a single
+transient retry, jitter, limited `Retry-After` handling, and safe provider error
+classification. The next increment delivers filter metadata end to end.
 Name/domain selection and the external Twitch/IGDB actions remain tracked
 separately and do not block provider-independent development.
 

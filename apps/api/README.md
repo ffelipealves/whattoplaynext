@@ -11,8 +11,8 @@ The API follows a selective hexagonal architecture:
 - `http` contains inbound FastAPI adapters;
 - `core` contains application composition and typed configuration;
 - domain modules define their own interfaces at real seams;
-- `adapters/igdb` contains the Twitch token lifecycle and will contain the IGDB
-  catalog transport;
+- `adapters/igdb` contains the Twitch token lifecycle and authenticated IGDB
+  transport;
 - IGDB, Redis, and test fakes are adapters behind those interfaces;
 - domain modules must not import FastAPI, HTTPX, Redis, or IGDB types.
 
@@ -61,6 +61,22 @@ responses without retaining provider payloads in its exceptions.
 Automated tests use a controllable clock and in-memory HTTP transports. They do
 not require credentials or contact Twitch. Production wiring from `Settings`
 into the provider stack remains part of M1.10 composition.
+
+## IGDB transport
+
+`IgdbTransport.query()` is the provider-facing seam for APICalypse requests. It
+sends POST requests only from the backend with `Client-ID`, `Authorization`, and
+an explicit field projection in the request body. Each attempt has a bounded
+timeout and the complete operation has a separate deadline.
+
+Timeouts, connection failures, `429`, and `5xx` responses receive at most one
+retry. Transient waits use jitter; numeric `Retry-After` values are capped at
+two seconds. Permanent `4xx` responses are not retried. Successful payloads must
+be JSON arrays of records, while errors expose only stable categories and an
+optional bounded retry delay.
+
+Tests replace both HTTP and time-related effects, so they remain deterministic
+and never contact IGDB.
 
 ## Checks
 

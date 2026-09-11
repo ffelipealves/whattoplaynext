@@ -157,6 +157,15 @@ request. A separate HTTP boundary owns Twitch's wire format and reduces failures
 to authentication rejected, timeout, unavailable, or invalid response without
 including provider payloads. Redis token sharing is not part of this seam.
 
+The M1.3 IGDB transport accepts an endpoint and an explicit APICalypse query,
+obtains authentication through the token seam, and owns all provider HTTP
+details. Each request has a five-second default timeout inside a ten-second
+operation deadline. A timeout, connection failure, `429`, or `5xx` response may
+be retried once; jitter applies to local backoff and numeric `Retry-After` is
+capped at two seconds. Authentication and other permanent `4xx` failures are
+never retried. Successful responses must be arrays of records, preventing an
+invalid provider payload from becoming an empty catalog result.
+
 ## 7. Caching
 
 Redis is a disposable optimization, not a source of truth.
