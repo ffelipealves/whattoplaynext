@@ -11,6 +11,9 @@ from whattoplaynext_api.adapters.igdb.transport import (
     IgdbTransportError,
 )
 from whattoplaynext_api.catalog.models import (
+    AutocompleteCriteria,
+    AutocompleteResult,
+    AutocompleteSuggestion,
     BrowseCriteria,
     BrowseQuery,
     CatalogOption,
@@ -101,6 +104,8 @@ DURATION_PROVIDER_FIELDS = {
     DurationKind.NORMAL: "normally",
     DurationKind.COMPLETIONIST: "completely",
 }
+
+AUTOCOMPLETE_SUGGESTION_LIMIT = 8
 
 
 class IgdbCatalog:
@@ -212,6 +217,23 @@ class IgdbCatalog:
             ),
             meta=ResponseMeta(excluded_unknown_duration=_has_duration_filter(criteria)),
         )
+
+    async def autocomplete(self, criteria: AutocompleteCriteria) -> AutocompleteResult:
+        """Return at most eight relevance-ordered title suggestions."""
+        try:
+            records = await self._transport.query(
+                "games",
+                _autocomplete_query(criteria),
+            )
+        except IgdbTransportError as error:
+            raise _application_error(error) from error
+        except OSError, OverflowError, TypeError, ValueError:
+            raise ApplicationError(ErrorCode.UPSTREAM_INVALID_RESPONSE) from None
+        items = [
+            _normalize_suggestion(record)
+            for record in records[:AUTOCOMPLETE_SUGGESTION_LIMIT]
+        ]
+        return AutocompleteResult(items=items, meta=ResponseMeta())
 
     async def _locally_evaluated_page(
         self,
@@ -570,6 +592,18 @@ def _search_query(
     )
 
 
+def _autocomplete_query(criteria: AutocompleteCriteria) -> str:
+    clauses: list[str] = []
+    _append_option_clause(clauses, "platforms", criteria.platform_ids, PLATFORMS)
+    where = f" where {' & '.join(clauses)};" if clauses else ""
+    escaped_query = dumps(criteria.query, ensure_ascii=False)
+    return (
+        f"search {escaped_query}; "
+        "fields id,slug,name,first_release_date,cover.image_id;"
+        f"{where} limit {AUTOCOMPLETE_SUGGESTION_LIMIT};"
+    )
+
+
 def _normalize_games(
     records: list[dict[str, object]],
     ordered_ids: list[int],
@@ -724,24 +758,37 @@ def _local_sort_value(
     return _required_string(record, "name")
 
 
-def _normalize_game(record: dict[str, object]) -> GameSummary:
+def _release_year(record: dict[str, object]) -> int | None:
     release_date = record.get("first_release_date")
-    release_year = (
+    return (
         datetime.fromtimestamp(release_date, tz=UTC).year
         if isinstance(release_date, int) and not isinstance(release_date, bool)
         else None
     )
+
+
+def _normalize_game(record: dict[str, object]) -> GameSummary:
     return GameSummary(
         id=_required_int(record, "id"),
         slug=_required_string(record, "slug"),
         title=_required_string(record, "name"),
-        release_year=release_year,
+        release_year=_release_year(record),
         cover=_normalize_cover(record.get("cover")),
         platforms=_normalize_record_options(record.get("platforms"), PLATFORMS),
         genres=_normalize_record_options(record.get("genres"), GENRES),
         rating=_normalize_rating(record),
         normal_duration_seconds=None,
         game_modes=_normalize_record_options(record.get("game_modes"), GAME_MODES),
+    )
+
+
+def _normalize_suggestion(record: dict[str, object]) -> AutocompleteSuggestion:
+    return AutocompleteSuggestion(
+        id=_required_int(record, "id"),
+        slug=_required_string(record, "slug"),
+        title=_required_string(record, "name"),
+        release_year=_release_year(record),
+        cover=_normalize_cover(record.get("cover")),
     )
 
 

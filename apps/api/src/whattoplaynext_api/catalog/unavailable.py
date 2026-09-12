@@ -1,6 +1,12 @@
 """Safe catalog used until production provider composition is configured."""
 
-from whattoplaynext_api.catalog.models import BrowseCriteria, FilterMetadata, GamePage
+from whattoplaynext_api.catalog.models import (
+    AutocompleteCriteria,
+    AutocompleteResult,
+    BrowseCriteria,
+    FilterMetadata,
+    GamePage,
+)
 from whattoplaynext_api.core.errors import ApplicationError, ErrorCode
 
 
@@ -12,5 +18,9 @@ class UnavailableCatalog:
         raise ApplicationError(ErrorCode.UPSTREAM_UNAVAILABLE)
 
     async def browse_games(self, criteria: BrowseCriteria) -> GamePage:
+        """Report that no production provider has been composed."""
+        raise ApplicationError(ErrorCode.UPSTREAM_UNAVAILABLE)
+
+    async def autocomplete(self, criteria: AutocompleteCriteria) -> AutocompleteResult:
         """Report that no production provider has been composed."""
         raise ApplicationError(ErrorCode.UPSTREAM_UNAVAILABLE)

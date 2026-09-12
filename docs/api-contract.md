@@ -154,11 +154,43 @@ Provider failures retain their classified error responses. Metadata remains
 
 ### `GET /api/v1/games/autocomplete`
 
-Query:
+Query parameters:
 
-- `q`: required, 2–100 characters;
-- optional currently selected platform identifiers for more relevant labels;
-- response limit fixed at eight.
+| Parameter  | Type            | Meaning                                       |
+| ---------- | --------------- | --------------------------------------------- |
+| `q`        | string          | Required, trimmed, 2–100 characters           |
+| `platform` | repeated string | Optional context; narrows results with AND/OR |
+
+Response shape:
+
+```json
+{
+  "items": [
+    {
+      "id": 1942,
+      "slug": "the-witcher-3-wild-hunt",
+      "title": "The Witcher 3: Wild Hunt",
+      "releaseYear": 2015,
+      "cover": {
+        "url": "https://...",
+        "width": 264,
+        "height": 374
+      }
+    }
+  ],
+  "meta": {
+    "requestId": "...",
+    "servedFrom": "provider",
+    "dataMayBeStale": false,
+    "excludedUnknownDuration": false
+  }
+}
+```
+
+Results use the provider's relevance ordering rather than a sort field. When
+platform identifiers are given, values within the category use OR and narrow
+the candidate set with AND against the query text. The response never exceeds
+eight items, and missing release year or cover values remain `null`.
 
 This endpoint is independently rate-limited and cached. Failure does not block
 normal name-filter submission.

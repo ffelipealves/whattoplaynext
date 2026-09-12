@@ -15,6 +15,7 @@ from whattoplaynext_api.adapters.igdb.transport import (
     IgdbTransportError,
 )
 from whattoplaynext_api.catalog.models import (
+    AutocompleteCriteria,
     BrowseCriteria,
     DurationKind,
     GameModeId,
@@ -174,6 +175,25 @@ class M17FixtureTransport:
         return 5
 
 
+class AutocompleteFixtureTransport:
+    def __init__(self, records: list[dict[str, object]] | None = None) -> None:
+        self.requests: list[tuple[str, str]] = []
+        self.records = (
+            records if records is not None else load_records("games_complete.json")
+        )
+
+    async def query(
+        self,
+        endpoint: str,
+        query: str,
+    ) -> list[dict[str, object]]:
+        self.requests.append((endpoint, query))
+        return self.records
+
+    async def count(self, endpoint: str, query: str) -> int:
+        raise AssertionError("not used by autocomplete")
+
+
 class FakeTokenProvider:
     async def get_access_token(self) -> str:
         return "sanitized-test-token"
@@ -260,6 +280,14 @@ async def test_translates_provider_failures_for_public_adapters(
 
     assert browse_error.value.code is expected_code
     assert browse_error.value.retry_after_seconds == (
+        2 if reason is IgdbErrorReason.RATE_LIMITED else None
+    )
+
+    with pytest.raises(ApplicationError) as autocomplete_error:
+        await catalog.autocomplete(AutocompleteCriteria(query="witcher"))
+
+    assert autocomplete_error.value.code is expected_code
+    assert autocomplete_error.value.retry_after_seconds == (
         2 if reason is IgdbErrorReason.RATE_LIMITED else None
     )
 
@@ -724,3 +752,110 @@ async def test_uses_first_release_date_bounds_when_no_platform_is_selected() -> 
     count_query = transport.count_requests[0][1]
     assert "first_release_date >= 1483228800" in count_query
     assert "first_release_date <= 1546300799" in count_query
+
+
+@pytest.mark.anyio
+async def test_autocompletes_with_a_normalized_relevance_ordered_projection() -> None:
+    transport = AutocompleteFixtureTransport()
+    catalog = IgdbCatalog(transport)
+
+    result = await catalog.autocomplete(AutocompleteCriteria(query="witcher"))
+
+    assert result.model_dump(mode="json", by_alias=True) == {
+        "items": [
+            {
+                "id": 1942,
+                "slug": "the-witcher-3-wild-hunt",
+                "title": "The Witcher 3: Wild Hunt",
+                "releaseYear": 2015,
+                "cover": {
+                    "url": (
+                        "https://images.igdb.com/igdb/image/upload/"
+                        "t_cover_big/co1wyy.jpg"
+                    ),
+                    "width": 264,
+                    "height": 374,
+                },
+            }
+        ],
+        "meta": {
+            "requestId": None,
+            "servedFrom": "provider",
+            "dataMayBeStale": False,
+            "excludedUnknownDuration": False,
+        },
+    }
+    assert transport.requests == [
+        (
+            "games",
+            (
+                'search "witcher"; fields id,slug,name,first_release_date,'
+                "cover.image_id; limit 8;"
+            ),
+        )
+    ]
+
+
+@pytest.mark.anyio
+async def test_keeps_missing_optional_autocomplete_fields_nullable() -> None:
+    catalog = IgdbCatalog(
+        AutocompleteFixtureTransport(load_records("games_sparse.json"))
+    )
+
+    result = await catalog.autocomplete(AutocompleteCriteria(query="minimal"))
+
+    assert result.items[0].model_dump(mode="json", by_alias=True) == {
+        "id": 1942,
+        "slug": "minimal-game",
+        "title": "Minimal Game",
+        "releaseYear": None,
+        "cover": None,
+    }
+
+
+@pytest.mark.anyio
+async def test_narrows_autocomplete_results_by_platform_context() -> None:
+    transport = AutocompleteFixtureTransport()
+    catalog = IgdbCatalog(transport)
+
+    await catalog.autocomplete(
+        AutocompleteCriteria(
+            query="witcher",
+            platform_ids=(PlatformId.PC, PlatformId.PLAYSTATION_5),
+        )
+    )
+
+    assert transport.requests == [
+        (
+            "games",
+            (
+                'search "witcher"; fields id,slug,name,first_release_date,'
+                "cover.image_id; where platforms = (6,167); limit 8;"
+            ),
+        )
+    ]
+
+
+@pytest.mark.anyio
+async def test_returns_at_most_eight_autocomplete_suggestions() -> None:
+    records = [
+        {"id": game_id, "slug": f"game-{game_id}", "name": f"Game {game_id}"}
+        for game_id in range(1, 11)
+    ]
+    catalog = IgdbCatalog(AutocompleteFixtureTransport(records))
+
+    result = await catalog.autocomplete(AutocompleteCriteria(query="game"))
+
+    assert [item.id for item in result.items] == list(range(1, 9))
+
+
+@pytest.mark.anyio
+async def test_escapes_autocomplete_text_inside_the_apicalypse_string_literal() -> None:
+    transport = AutocompleteFixtureTransport([])
+    catalog = IgdbCatalog(transport)
+
+    await catalog.autocomplete(AutocompleteCriteria(query='He said "hi";\nfields *'))
+
+    query = transport.requests[0][1]
+    assert query.startswith('search "He said \\"hi\\";\\nfields *"; ')
+    assert "\n" not in query

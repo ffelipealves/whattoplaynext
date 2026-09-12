@@ -127,6 +127,22 @@ last and are excluded only by active duration bounds, which sets
 classified provider failures. Production wiring remains deferred to M1.10, so
 the default catalog still reports unavailable.
 
+## Title autocomplete
+
+`GET /api/v1/games/autocomplete` accepts a required `q`, trimmed and validated
+to 2–100 characters, and optional repeated platform context using the same
+allow-listed identifiers as browsing. Unknown parameters are rejected and a
+missing or out-of-range `q` fails HTTP validation before reaching the catalog.
+
+The IGDB adapter issues a `search` query so suggestions follow the provider's
+relevance ranking rather than a sort field; platform context narrows the same
+query with the existing AND/OR translation. Each suggestion normalizes only
+id, slug, title, release year, and cover, and the response never exceeds eight
+items regardless of how many the provider returns. Missing release year or
+cover values remain `null`. Classified upstream failures remain distinct from
+a successful, non-empty response, and this endpoint never affects the
+behavior of `GET /api/v1/games`.
+
 ## Checks
 
 ```bash

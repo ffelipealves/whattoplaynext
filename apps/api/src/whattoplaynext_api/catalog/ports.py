@@ -2,7 +2,13 @@
 
 from typing import Protocol
 
-from whattoplaynext_api.catalog.models import BrowseCriteria, FilterMetadata, GamePage
+from whattoplaynext_api.catalog.models import (
+    AutocompleteCriteria,
+    AutocompleteResult,
+    BrowseCriteria,
+    FilterMetadata,
+    GamePage,
+)
 
 
 class Catalog(Protocol):
@@ -14,4 +20,8 @@ class Catalog(Protocol):
 
     async def browse_games(self, criteria: BrowseCriteria) -> GamePage:
         """Return one normalized, popularity-ordered page of games."""
+        ...
+
+    async def autocomplete(self, criteria: AutocompleteCriteria) -> AutocompleteResult:
+        """Return at most eight normalized title suggestions."""
         ...

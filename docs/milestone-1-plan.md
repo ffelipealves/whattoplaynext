@@ -1,6 +1,6 @@
 # Milestone 1 Plan
 
-Status: active execution baseline; M1.7 completed and M1.8 ready
+Status: active execution baseline; M1.8 completed and M1.9 ready
 
 Prepared: 2026-09-10
 
@@ -246,6 +246,8 @@ complete M1.7 query surface.
 
 ### M1.8 — Autocomplete vertical slice
 
+Status: completed on 2026-09-12.
+
 Deliver:
 
 - `GET /api/v1/games/autocomplete` through the catalog interface;
@@ -260,6 +262,17 @@ Acceptance:
 - results never exceed eight and missing year or cover remains nullable;
 - autocomplete failure remains distinguishable and does not change normal
   search behavior.
+
+Outcome: `GET /api/v1/games/autocomplete` now extends the catalog interface
+with a provider-neutral autocomplete capability. The HTTP boundary trims and
+validates `q` to 2–100 characters, accepts repeated platform context, and
+rejects unknown parameters with the standard validation envelope. The IGDB
+adapter issues a relevance-ranked `search` query, narrows it with the same
+AND/OR platform translation used by browse, and caps normalized title/year/
+cover suggestions at eight regardless of the provider's response size.
+Suggestions omit rating, genre, platform, and duration data by design, and
+classified upstream failures remain distinct from empty results. OpenAPI and
+the TypeScript client expose the new operation.
 
 ### M1.9 — Game-detail vertical slice
 
@@ -313,13 +326,17 @@ Client Secret in the ignored local API environment file. The IGDB commercial
 inquiry and final product-domain decision remain public-beta gates rather than
 M1 implementation blockers.
 
-## 7. M1.8 next-session handoff
+## 7. M1.9 next-session handoff
 
-Start from the completed M1.7 commit with a clean tree. Extend `Catalog` with a
-provider-neutral autocomplete capability and expose it through
-`GET /api/v1/games/autocomplete`. Validate a trimmed `q` from 2–100 characters,
-accept optional repeated platform context, and return at most eight normalized
-title/year/cover suggestions. Keep autocomplete failures distinct and do not
-change normal search behavior. Continue TDD through the `Catalog` and HTTP seams
-with fakes and sanitized fixtures, regenerate the contract, run `pnpm quality`,
-and avoid live provider access.
+Start from the completed M1.8 commit with a clean tree. Extend `Catalog` with a
+provider-neutral game-detail capability and expose it through
+`GET /api/v1/games/{gameId}`. Normalize names, summary and its source language,
+cover and screenshots, platform-specific release dates, genres, themes,
+platforms, game modes, structured multiplayer information, user/critic/combined
+ratings with counts, fast/normal/completionist durations with submission
+counts, age ratings, and allow-listed external links. Provider text must not be
+automatically translated. An absent eligible game must return `GAME_NOT_FOUND`
+while upstream failures keep their own error codes; the numeric IGDB ID remains
+resource identity and the slug stays a web-route concern. Continue TDD through
+the `Catalog` and HTTP seams with fakes and sanitized complete/sparse fixtures,
+regenerate the contract, run `pnpm quality`, and avoid live provider access.

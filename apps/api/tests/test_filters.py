@@ -9,6 +9,8 @@ from whattoplaynext_api.adapters.igdb.transport import (
     IgdbTransportError,
 )
 from whattoplaynext_api.catalog.models import (
+    AutocompleteCriteria,
+    AutocompleteResult,
     BrowseCriteria,
     CatalogOption,
     DurationKind,
@@ -45,6 +47,9 @@ class FakeCatalog:
         )
 
     async def browse_games(self, criteria: BrowseCriteria) -> GamePage:
+        raise AssertionError("not used by filter route tests")
+
+    async def autocomplete(self, criteria: AutocompleteCriteria) -> AutocompleteResult:
         raise AssertionError("not used by filter route tests")
 
 

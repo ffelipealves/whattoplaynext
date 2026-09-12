@@ -6,6 +6,8 @@ import pytest
 from httpx2 import ASGITransport, AsyncClient
 
 from whattoplaynext_api.catalog.models import (
+    AutocompleteCriteria,
+    AutocompleteResult,
     BrowseCriteria,
     BrowseQuery,
     CatalogOption,
@@ -83,12 +85,18 @@ class FakeCatalog:
     async def get_filter_metadata(self) -> FilterMetadata:
         raise AssertionError("not used by game route tests")
 
+    async def autocomplete(self, criteria: AutocompleteCriteria) -> AutocompleteResult:
+        raise AssertionError("not used by game route tests")
+
 
 class FailingCatalog:
     async def browse_games(self, criteria: BrowseCriteria) -> GamePage:
         raise ApplicationError(ErrorCode.UPSTREAM_UNAVAILABLE)
 
     async def get_filter_metadata(self) -> FilterMetadata:
+        raise AssertionError("not used by game route tests")
+
+    async def autocomplete(self, criteria: AutocompleteCriteria) -> AutocompleteResult:
         raise AssertionError("not used by game route tests")
 
 

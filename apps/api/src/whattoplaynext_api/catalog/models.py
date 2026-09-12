@@ -254,3 +254,41 @@ class GamePage(BaseModel):
     pagination: Pagination
     query: BrowseQuery
     meta: ResponseMeta
+
+
+class AutocompleteCriteria(BaseModel):
+    """Validated provider-neutral autocomplete query."""
+
+    query: str = Field(min_length=2, max_length=100)
+    platform_ids: tuple[PlatformId, ...] = ()
+
+    @field_validator("query", mode="before")
+    @classmethod
+    def normalize_query(cls, value: object) -> object:
+        """Trim a submitted query before applying its public length bounds."""
+        if isinstance(value, str):
+            return value.strip()
+        return value
+
+    @field_validator("platform_ids")
+    @classmethod
+    def remove_duplicate_values(cls, value: tuple[object, ...]) -> tuple[object, ...]:
+        """Preserve caller order while removing repeated platform context."""
+        return tuple(dict.fromkeys(value))
+
+
+class AutocompleteSuggestion(BaseModel):
+    """One normalized title suggestion."""
+
+    id: int = Field(gt=0)
+    slug: str
+    title: str
+    release_year: int | None = Field(serialization_alias="releaseYear")
+    cover: GameCover | None
+
+
+class AutocompleteResult(BaseModel):
+    """At most eight normalized autocomplete suggestions."""
+
+    items: list[AutocompleteSuggestion]
+    meta: ResponseMeta

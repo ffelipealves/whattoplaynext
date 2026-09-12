@@ -47,8 +47,10 @@ now validates and combines name, platform, genre, release-date, rating, and
 game-mode criteria with strict AND/OR semantics, bounded pagination, and
 provider-neutral sorting. Release bounds now use dates for the selected
 platforms, and IGDB time-to-beat data supports inclusive duration filters,
-duration sorting, and normal-duration card enrichment. The next increment adds
-game-title autocomplete.
+duration sorting, and normal-duration card enrichment.
+`GET /api/v1/games/autocomplete` now returns at most eight relevance-ordered
+title/year/cover suggestions, optionally narrowed by platform context. The
+next increment adds the game-detail endpoint.
 Name/domain selection and the external Twitch/IGDB actions remain tracked
 separately and do not block provider-independent development.
 

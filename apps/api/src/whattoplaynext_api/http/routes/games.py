@@ -15,6 +15,8 @@ from pydantic import (
 )
 
 from whattoplaynext_api.catalog.models import (
+    AutocompleteCriteria,
+    AutocompleteResult,
     BrowseCriteria,
     DurationKind,
     GameModeId,
@@ -112,6 +114,21 @@ class BrowseParameters(BaseModel):
         return self
 
 
+class AutocompleteParameters(BaseModel):
+    """Strict HTTP query parameters for title autocomplete."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field(alias="q", min_length=2, max_length=100)
+    platform: list[PlatformId] = Field(default_factory=list)
+
+    @field_validator("query", mode="before")
+    @classmethod
+    def normalize_query(cls, value: object) -> object:
+        """Trim a submitted query before applying its public length bounds."""
+        return AutocompleteCriteria.normalize_query(value)
+
+
 def _default_direction(sort: SortOption) -> SortDirection:
     return (
         SortDirection.ASCENDING
@@ -168,6 +185,46 @@ async def browse_games(
         page=parameters.page,
     )
     result = await catalog.browse_games(criteria)
+    return result.model_copy(
+        update={
+            "meta": result.meta.model_copy(
+                update={"request_id": request.state.request_id}
+            )
+        }
+    )
+
+
+@router.get(
+    "/games/autocomplete",
+    operation_id="autocompleteGames",
+    responses={
+        200: {"headers": {REQUEST_ID_HEADER: REQUEST_ID_RESPONSE_HEADER}},
+        **documented_error_responses(
+            ErrorCode.UPSTREAM_INVALID_RESPONSE,
+            ErrorCode.UPSTREAM_TIMEOUT,
+            ErrorCode.UPSTREAM_UNAVAILABLE,
+            ErrorCode.RATE_LIMITED,
+            ErrorCode.VALIDATION_ERROR,
+            ErrorCode.METHOD_NOT_ALLOWED,
+            ErrorCode.INTERNAL_ERROR,
+        ),
+    },
+    response_model=AutocompleteResult,
+    summary="Autocomplete game titles",
+)
+async def autocomplete_games(
+    request: Request,
+    catalog: Annotated[Catalog, Depends(get_catalog)],
+    parameters: Annotated[AutocompleteParameters, Query()],
+) -> AutocompleteResult:
+    """Return at most eight normalized title suggestions."""
+    # Keep this route ahead of any future /games/{gameId} route so the
+    # literal "autocomplete" segment is never captured as a path parameter.
+    criteria = AutocompleteCriteria(
+        query=parameters.query,
+        platform_ids=tuple(parameters.platform),
+    )
+    result = await catalog.autocomplete(criteria)
     return result.model_copy(
         update={
             "meta": result.meta.model_copy(
