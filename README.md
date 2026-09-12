@@ -23,6 +23,8 @@ approximate matching.
   clean-clone evidence, and explicit deferrals.
 - [Milestone 1 plan](docs/milestone-1-plan.md) — provider/API increments,
   acceptance checks, and scope guardrails.
+- [Milestone 1 review](docs/milestone-1-review.md) — provider/API closeout,
+  quality evidence, and the deferred live-verification action.
 - [MVP roadmap](docs/roadmap.md) — delivery sequence and milestone exit checks.
 
 ## Planned stack
@@ -36,28 +38,18 @@ approximate matching.
 
 ## Project status
 
-The Milestone 0 technical foundation is accepted and Milestone 1 implementation
-is active. The API now provides request correlation and a stable, typed error
-envelope, plus safe Twitch application-token acquisition, reuse, and refresh.
-The authenticated IGDB transport now enforces bounded timeouts, a single
-transient retry, jitter, limited `Retry-After` handling, and safe provider error
-classification. `GET /api/v1/filters` now exposes provider-neutral platform,
-genre, game-mode, duration, sort, and validation metadata. `GET /api/v1/games`
-now validates and combines name, platform, genre, release-date, rating, and
-game-mode criteria with strict AND/OR semantics, bounded pagination, and
-provider-neutral sorting. Release bounds now use dates for the selected
-platforms, and IGDB time-to-beat data supports inclusive duration filters,
-duration sorting, and normal-duration card enrichment.
-`GET /api/v1/games/autocomplete` now returns at most eight relevance-ordered
-title/year/cover suggestions, optionally narrowed by platform context.
-`GET /api/v1/games/{gameId}` now returns complete normalized detail — names,
-summary, images, platform releases, genres, themes, platforms, modes,
-multiplayer support, ratings, durations, age ratings, and external links — for
-released base games and their remakes and remasters, with `GAME_NOT_FOUND` for
-anything absent or out of MVP scope. The next increment composes the
-production provider and adds the live smoke test.
-Name/domain selection and the external Twitch/IGDB actions remain tracked
-separately and do not block provider-independent development.
+The Milestone 0 technical foundation and Milestone 1 provider adapter and
+normalized API are both accepted. `GET /api/v1/filters`, `GET /api/v1/games`,
+`GET /api/v1/games/autocomplete`, and `GET /api/v1/games/{gameId}` are
+implemented behind a provider-neutral catalog interface, backed by a
+production Twitch/IGDB adapter that the application composes automatically
+when local credentials are configured and otherwise reports itself
+unavailable. See the [Milestone 1 review](docs/milestone-1-review.md) for the
+complete increment history and quality evidence.
+Name/domain selection, the IGDB commercial partnership, and the first live
+smoke-test run against real IGDB data remain owner-gated actions tracked
+separately in [External prerequisites](docs/external-prerequisites.md); they
+do not block Milestone 2 frontend work.
 
 ## Local development
 
@@ -189,6 +181,22 @@ pnpm contract:check
 Commit both `packages/contracts/openapi.json` and
 `packages/contracts/src/schema.ts`. Do not edit either generated artifact by
 hand.
+
+### Live IGDB smoke test
+
+`pnpm quality` never contacts Twitch or IGDB. To confirm the production
+adapter against real data, create a Twitch application, set
+`WTPN_TWITCH_CLIENT_ID` and `WTPN_TWITCH_CLIENT_SECRET` in `apps/api/.env`,
+then run:
+
+```bash
+pnpm smoke:api
+```
+
+This queries live filter, browse, autocomplete, and detail data through the
+same `Catalog` interface used by the HTTP routes and prints only counts and
+titles — never credentials or raw provider payloads. It requires network
+access, so it is excluded from `pnpm quality` and CI.
 
 ### Windows troubleshooting
 

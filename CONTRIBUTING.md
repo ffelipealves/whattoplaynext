@@ -93,6 +93,11 @@ verification, linting, static typing, coverage-enforced tests, and production
 builds for both applications and the contracts package. It also verifies that
 the committed OpenAPI schema and generated TypeScript types are current.
 
+`pnpm smoke:api` is a separate, opt-in manual command that exercises live
+filter, browse, autocomplete, and detail data through real Twitch/IGDB
+credentials configured in `apps/api/.env`. It requires network access, prints
+no credentials, and is intentionally excluded from `pnpm quality` and CI.
+
 Coverage starts with explicit per-package thresholds: the API requires 90%
 overall; the contracts client requires 90% for statements, lines, functions,
 and branches; web features require 90% for statements, lines, and functions and

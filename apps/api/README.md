@@ -59,8 +59,9 @@ classifies rejected credentials, timeouts, provider unavailability, and invalid
 responses without retaining provider payloads in its exceptions.
 
 Automated tests use a controllable clock and in-memory HTTP transports. They do
-not require credentials or contact Twitch. Production wiring from `Settings`
-into the provider stack remains part of M1.10 composition.
+not require credentials or contact Twitch. `main.build_catalog()` wires
+`Settings` into this manager for production; see
+[Production composition](#production-composition).
 
 ## IGDB transport
 
@@ -92,9 +93,9 @@ IDs and labels; unknown records are excluded in a stable order.
 
 The endpoint always includes all duration kinds, sort options, and public query
 bounds. Provider failures are translated to the stable HTTP error envelope and
-cannot become an empty successful response. Until M1.10 composes live provider
-credentials, the default application starts safely and reports the catalog as
-unavailable when this endpoint is called without an injected catalog.
+cannot become an empty successful response. Without configured Twitch
+credentials, the application starts safely and reports the catalog as
+unavailable; see [Production composition](#production-composition).
 
 ## Game browsing
 
@@ -124,8 +125,7 @@ platform filter, `first_release_date` is used. Duration and platform-release
 evaluation happen before paging so totals remain exact. Unknown durations sort
 last and are excluded only by active duration bounds, which sets
 `excludedUnknownDuration=true`. Successful empty pages remain distinct from
-classified provider failures. Production wiring remains deferred to M1.10, so
-the default catalog still reports unavailable.
+classified provider failures.
 
 ## Title autocomplete
 
@@ -167,13 +167,38 @@ their separately cataloged remakes and remasters resolve. An absent game ID
 and an excluded content type (DLC, expansion, bundle, mod, and similar)
 both return `GAME_NOT_FOUND`, so a request cannot distinguish "does not
 exist" from "exists but excluded." Classified upstream failures keep their
-own distinct codes. Production wiring remains deferred to M1.10, so the
-default catalog still reports unavailable.
+own distinct codes.
 
 The IGDB category codes behind `WEBSITE_LABELS` and the nested
 `age_ratings` field expansion are best-effort from documentation rather than
-verified live responses; M1.10's live smoke test is expected to confirm or
-correct them.
+verified live responses; running the live smoke test below against real
+IGDB data is expected to confirm or correct them.
+
+## Production composition
+
+`main.build_catalog()` is the single seam that decides whether the
+application talks to real IGDB. When `WTPN_TWITCH_CLIENT_ID` and
+`WTPN_TWITCH_CLIENT_SECRET` are both configured, it composes one shared
+`httpx.AsyncClient`, the Twitch token manager, the IGDB transport, and
+`IgdbCatalog`, and closes that client when the application shuts down. When
+either credential is absent, `create_app()` falls back to the same
+`UnavailableCatalog` used throughout local development and automated tests —
+there is no hardcoded default catalog, only this explicit decision made once
+at startup from typed settings.
+
+Run the opt-in manual smoke test to confirm the production adapter against
+real data:
+
+```bash
+pnpm smoke:api
+```
+
+It requires local Twitch credentials in `.env` and network access, calls
+`get_filter_metadata`, `browse_games`, `autocomplete`, and `get_game_detail`
+through the exact same `Catalog` interface the HTTP routes use, and prints
+only counts and titles — never credentials or raw provider payloads. It is
+intentionally excluded from `pnpm quality` and CI, which must stay
+deterministic and credential-free.
 
 ## Checks
 

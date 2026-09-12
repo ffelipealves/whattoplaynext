@@ -39,7 +39,8 @@
     "build:web": "pnpm --filter web build",
     "build:api": "poetry -P apps/api build",
     "quality": "pnpm contract:check && pnpm format:check && pnpm lint && pnpm typecheck && pnpm coverage && pnpm build",
-    "check": "pnpm quality"
+    "check": "pnpm quality",
+    "smoke:api": "poetry -C apps/api run python scripts/smoke_igdb.py"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",

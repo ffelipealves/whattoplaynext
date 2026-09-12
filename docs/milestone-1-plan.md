@@ -1,6 +1,8 @@
 # Milestone 1 Plan
 
-Status: active execution baseline; M1.9 completed and M1.10 ready
+Status: all ten increments delivered; engineering closeout accepted in
+[Milestone 1 review](milestone-1-review.md), with the live IGDB smoke test
+pending owner-provided Twitch credentials
 
 Prepared: 2026-09-10
 
@@ -320,6 +322,9 @@ fixtures by design). Confirm both during the M1.10 live smoke test and adjust
 
 ### M1.10 — Composition, live smoke test, and closeout
 
+Status: engineering completed on 2026-09-12; live smoke-test verification
+pending owner-provided Twitch credentials.
+
 Deliver:
 
 - production composition of token, transport, and catalog adapters;
@@ -335,6 +340,24 @@ Acceptance:
   through all four catalog capabilities;
 - the TypeScript client exposes every M1 operation;
 - all Milestone 1 exit criteria in the roadmap have recorded evidence.
+
+Outcome: `main.build_catalog()` is now the single composition seam deciding
+whether the application talks to real IGDB. When both `WTPN_TWITCH_CLIENT_ID`
+and `WTPN_TWITCH_CLIENT_SECRET` are configured it composes one shared
+`httpx.AsyncClient`, `TwitchTokenManager`, `IgdbTransport`, and `IgdbCatalog`,
+closing that client on application shutdown; when either is absent,
+`create_app()` falls back to `UnavailableCatalog`, exactly as before this
+increment. `pnpm smoke:api` runs `apps/api/scripts/smoke_igdb.py`, an opt-in
+command excluded from `pnpm quality` and CI that exercises all four `Catalog`
+capabilities against live data and prints only counts and titles. It has been
+verified to fail safely and informatively without configured credentials;
+observing real IGDB data requires the owner to first create a Twitch
+application, which remains an explicit, tracked action in
+[External prerequisites](external-prerequisites.md) rather than an
+engineering task. Three of the four Milestone 1 exit criteria have full
+automated evidence; the fourth (the live smoke test observing real data) is
+implemented and ready but not yet executed. Full evidence is recorded in
+[Milestone 1 review](milestone-1-review.md).
 
 ## 5. Scope guardrails
 
@@ -352,18 +375,21 @@ Client Secret in the ignored local API environment file. The IGDB commercial
 inquiry and final product-domain decision remain public-beta gates rather than
 M1 implementation blockers.
 
-## 7. M1.10 next-session handoff
+## 7. Milestone 1 closeout and Milestone 2 handoff
 
-Start from the completed M1.9 commit with a clean tree. Compose the production
-Twitch token manager, IGDB transport, and `IgdbCatalog` behind `create_app` so
-the application only reports itself unavailable when local credentials are
-genuinely absent, never as a hardcoded default. Add one opt-in manual smoke
-command, excluded from `pnpm quality` and CI, that reads local Twitch
-credentials and exercises real filter, browse, autocomplete, and detail calls
-without printing secrets. Use its live results to confirm or correct the
-best-effort IGDB assumptions flagged in the M1.9 outcome above — the
-`WEBSITE_LABELS` category codes and the `age_ratings` field expansion in
-`adapters/igdb/catalog.py` — plus any other schema mismatch the smoke test
-surfaces. Run a final `pnpm contract:check` for client drift and record
-Milestone 1 evidence against every exit criterion in `docs/roadmap.md`. Keep
-`pnpm quality` green without network access or credentials throughout.
+All ten increments are delivered; [Milestone 1 review](milestone-1-review.md)
+records the full increment history, capability inventory, and per-criterion
+acceptance evidence. Two items remain explicit owner or follow-up actions
+rather than open Milestone 1 engineering work:
+
+- running `pnpm smoke:api` with a real Twitch application's credentials to
+  observe live IGDB data and confirm or correct the best-effort
+  `WEBSITE_LABELS` and `age_ratings` assumptions documented in the M1.9 and
+  M1.10 outcomes above;
+- adding the same base-game content-type eligibility that M1.9 enforces for
+  `GET /api/v1/games/{gameId}` to the `GET /api/v1/games` browse path, which
+  does not yet exclude DLC, expansions, or mods.
+
+Milestone 2 (search experience) can start from the generated TypeScript
+client and the documented [API contract](api-contract.md) without waiting on
+either item.

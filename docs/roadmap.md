@@ -42,7 +42,9 @@ public-beta blocker.
 
 ## Milestone 1 — Provider adapter and normalized API
 
-Status: active; M1.9 completed and M1.10 is next.
+Status: engineering complete (all ten increments delivered); the live IGDB
+smoke test is implemented but not yet run, pending an owner-created Twitch
+application.
 
 Deliverables:
 
@@ -57,14 +59,18 @@ Deliverables:
 
 Exit criteria:
 
-- automated tests never require the live IGDB service;
-- a manual smoke test can query real data using local credentials;
-- missing values remain null and upstream failures are distinguishable from
-  empty results;
-- strict AND/OR and platform-date semantics are covered by tests.
+- [x] automated tests never require the live IGDB service;
+- [ ] a manual smoke test can query real data using local credentials —
+      `pnpm smoke:api` is implemented and fails safely without credentials;
+      observing real data awaits an owner-created Twitch application (see
+      [External prerequisites](external-prerequisites.md));
+- [x] missing values remain null and upstream failures are distinguishable
+      from empty results;
+- [x] strict AND/OR and platform-date semantics are covered by tests.
 
 The ordered vertical slices, module seams, test expectations, and scope
-guardrails are defined in [Milestone 1 plan](milestone-1-plan.md).
+guardrails are defined in [Milestone 1 plan](milestone-1-plan.md). Full
+closeout evidence is recorded in [Milestone 1 review](milestone-1-review.md).
 
 ## Milestone 2 — Search experience
 
