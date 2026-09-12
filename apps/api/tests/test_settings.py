@@ -49,9 +49,11 @@ def test_settings_reads_infrastructure_and_provider_environment(
 )
 def test_settings_requires_twitch_credentials_as_a_pair(
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
     variable_name: str,
     variable_value: str,
 ) -> None:
+    monkeypatch.chdir(tmp_path)
     monkeypatch.setenv(variable_name, variable_value)
 
     with pytest.raises(ValidationError, match="configured together"):

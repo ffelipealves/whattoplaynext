@@ -116,9 +116,10 @@ DURATION_PROVIDER_FIELDS = {
 AUTOCOMPLETE_SUGGESTION_LIMIT = 8
 
 # Released base games plus their separately cataloged remakes and remasters;
-# DLC, expansions, bundles, mods, and other non-base entries are excluded
-# from MVP content per docs/product-requirements.md#3.2.
-ELIGIBLE_GAME_CATEGORIES = frozenset({0, 8, 9})
+# DLC, expansions, bundles, mods, and other non-base `game_type` values are
+# excluded from MVP content per docs/product-requirements.md#3.2. Verified
+# against live IGDB data (the `game_types` endpoint) on 2026-09-12.
+ELIGIBLE_GAME_TYPES = frozenset({0, 8, 9})
 
 WEBSITE_LABELS = {
     1: "Official Website",
@@ -263,7 +264,7 @@ class IgdbCatalog:
         """Return complete normalized detail for one eligible game."""
         try:
             records = await self._transport.query("games", _detail_query(game_id))
-            if not records or not _is_eligible_category(records[0]):
+            if not records or not _is_eligible_game_type(records[0]):
                 raise ApplicationError(ErrorCode.GAME_NOT_FOUND)
             duration_records = await self._transport.query(
                 "game_time_to_beats",
@@ -919,7 +920,7 @@ def _normalize_rating(record: dict[str, object]) -> GameRating | None:
 
 def _detail_query(game_id: int) -> str:
     return (
-        "fields id,slug,name,alternative_names.name,summary,category,"
+        "fields id,slug,name,alternative_names.name,summary,game_type,"
         "cover.image_id,screenshots.image_id,"
         "release_dates.platform,release_dates.date,"
         "genres.id,themes.id,themes.name,platforms.id,game_modes.id,"
@@ -929,7 +930,7 @@ def _detail_query(game_id: int) -> str:
         "rating,rating_count,aggregated_rating,aggregated_rating_count,"
         "total_rating,total_rating_count,"
         "age_ratings.organization.name,age_ratings.rating_category.rating,"
-        "websites.category,websites.url; "
+        "websites.type,websites.url; "
         f"where id = {game_id};"
     )
 
@@ -940,12 +941,12 @@ def _detail_duration_query(game_id: int) -> str:
     )
 
 
-def _is_eligible_category(record: dict[str, object]) -> bool:
-    category = record.get("category")
+def _is_eligible_game_type(record: dict[str, object]) -> bool:
+    game_type = record.get("game_type")
     return (
-        isinstance(category, int)
-        and not isinstance(category, bool)
-        and category in ELIGIBLE_GAME_CATEGORIES
+        isinstance(game_type, int)
+        and not isinstance(game_type, bool)
+        and game_type in ELIGIBLE_GAME_TYPES
     )
 
 
@@ -1155,11 +1156,11 @@ def _normalize_external_links(value: object) -> list[ExternalLink]:
     for item in value:
         if not isinstance(item, dict):
             continue
-        category = item.get("category")
+        website_type = item.get("type")
         url = item.get("url")
         label = (
-            WEBSITE_LABELS.get(category)
-            if isinstance(category, int) and not isinstance(category, bool)
+            WEBSITE_LABELS.get(website_type)
+            if isinstance(website_type, int) and not isinstance(website_type, bool)
             else None
         )
         if label is not None and isinstance(url, str) and url:

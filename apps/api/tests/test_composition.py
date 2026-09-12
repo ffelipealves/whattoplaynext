@@ -11,7 +11,13 @@ from whattoplaynext_api.main import build_catalog, create_app
 
 
 def test_reports_unavailable_without_configured_credentials() -> None:
-    catalog, client = build_catalog(Settings(environment="test"))
+    catalog, client = build_catalog(
+        Settings(
+            environment="test",
+            twitch_client_id=None,
+            twitch_client_secret=None,
+        )
+    )
 
     assert isinstance(catalog, UnavailableCatalog)
     assert client is None
@@ -37,7 +43,13 @@ async def test_composes_the_production_catalog_with_configured_credentials() -> 
 
 @pytest.mark.anyio
 async def test_reports_the_catalog_unavailable_over_http_without_credentials() -> None:
-    application = create_app(Settings(environment="test"))
+    application = create_app(
+        Settings(
+            environment="test",
+            twitch_client_id=None,
+            twitch_client_secret=None,
+        )
+    )
     transport = ASGITransport(app=application)
 
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:

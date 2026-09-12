@@ -169,10 +169,12 @@ both return `GAME_NOT_FOUND`, so a request cannot distinguish "does not
 exist" from "exists but excluded." Classified upstream failures keep their
 own distinct codes.
 
-The IGDB category codes behind `WEBSITE_LABELS` and the nested
-`age_ratings` field expansion are best-effort from documentation rather than
-verified live responses; running the live smoke test below against real
-IGDB data is expected to confirm or correct them.
+Eligibility reads IGDB's `game_type` field (not the similarly-named but
+non-existent `category`) — a live smoke-test run caught this exact mismatch;
+see [Milestone 1 review](../../docs/milestone-1-review.md#live-smoke-test-findings)
+for what it found and fixed. The `age_ratings.organization.name` /
+`age_ratings.rating_category.rating` shape and the `WEBSITE_LABELS` codes
+(read from `websites.type`) are confirmed correct against live data.
 
 ## Production composition
 

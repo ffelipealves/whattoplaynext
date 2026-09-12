@@ -1,8 +1,7 @@
 # Milestone 1 Plan
 
-Status: all ten increments delivered; engineering closeout accepted in
-[Milestone 1 review](milestone-1-review.md), with the live IGDB smoke test
-pending owner-provided Twitch credentials
+Status: all ten increments delivered and closed out, including a successful
+live IGDB smoke-test run; see [Milestone 1 review](milestone-1-review.md)
 
 Prepared: 2026-09-10
 
@@ -313,17 +312,16 @@ cover full and nullable/empty detail; classified upstream failures remain
 distinct from not-found. OpenAPI and the TypeScript client expose the
 complete M1.9 operation.
 
-The exact numeric IGDB category codes for external-link types and the
-`age_ratings` field shape used here are best-effort from documentation and
-training knowledge, not verified against live data (M1.1–M1.9 use only
-fixtures by design). Confirm both during the M1.10 live smoke test and adjust
-`WEBSITE_LABELS` or the age-rating field expansion in
-`adapters/igdb/catalog.py` if real responses disagree.
+The exact numeric IGDB category codes for external-link types, the
+`age_ratings` field shape, and the eligibility field used here were
+best-effort from documentation and training knowledge, not verified against
+live data (M1.1–M1.9 use only fixtures by design). The M1.10 live smoke test
+found and corrected two of the three: see its outcome below.
 
 ### M1.10 — Composition, live smoke test, and closeout
 
-Status: engineering completed on 2026-09-12; live smoke-test verification
-pending owner-provided Twitch credentials.
+Status: completed on 2026-09-12, including a successful live run against real
+IGDB data.
 
 Deliver:
 
@@ -349,14 +347,23 @@ closing that client on application shutdown; when either is absent,
 `create_app()` falls back to `UnavailableCatalog`, exactly as before this
 increment. `pnpm smoke:api` runs `apps/api/scripts/smoke_igdb.py`, an opt-in
 command excluded from `pnpm quality` and CI that exercises all four `Catalog`
-capabilities against live data and prints only counts and titles. It has been
-verified to fail safely and informatively without configured credentials;
-observing real IGDB data requires the owner to first create a Twitch
-application, which remains an explicit, tracked action in
-[External prerequisites](external-prerequisites.md) rather than an
-engineering task. Three of the four Milestone 1 exit criteria have full
-automated evidence; the fourth (the live smoke test observing real data) is
-implemented and ready but not yet executed. Full evidence is recorded in
+capabilities against live data and prints only counts and titles.
+
+The owner registered a Twitch application and configured local credentials,
+and `pnpm smoke:api` observed real data through all four catalog capabilities
+on its first live run. That run also caught two real defects that fixtures
+alone could not: IGDB's actual field is `game_type`, not `category` (the
+enum values 0/8/9 were already correct; only the field name was wrong), and
+`websites.category` is likewise `websites.type` against a `website_types`
+reference endpoint. Both are fixed in `adapters/igdb/catalog.py` and in the
+`game_detail_*` fixtures. The `age_ratings.organization.name` /
+`age_ratings.rating_category.rating` shape was confirmed correct as written.
+The live run also exposed a latent test-isolation gap: three tests
+constructed `Settings()` without controlling Twitch credentials, silently
+relying on `apps/api/.env` never existing; now that it does, those tests are
+fixed to isolate explicitly (`test_settings.py`, `test_composition.py`)
+rather than depend on the developer machine's ambient file state. All four
+Milestone 1 exit criteria now have full evidence, recorded in
 [Milestone 1 review](milestone-1-review.md).
 
 ## 5. Scope guardrails
@@ -377,19 +384,17 @@ M1 implementation blockers.
 
 ## 7. Milestone 1 closeout and Milestone 2 handoff
 
-All ten increments are delivered; [Milestone 1 review](milestone-1-review.md)
-records the full increment history, capability inventory, and per-criterion
-acceptance evidence. Two items remain explicit owner or follow-up actions
-rather than open Milestone 1 engineering work:
+All ten increments are delivered and live-verified;
+[Milestone 1 review](milestone-1-review.md) records the full increment
+history, capability inventory, and per-criterion acceptance evidence
+(including the live smoke-test run and the two field-name defects it caught
+and fixed). One item remains a follow-up rather than open Milestone 1
+engineering work:
 
-- running `pnpm smoke:api` with a real Twitch application's credentials to
-  observe live IGDB data and confirm or correct the best-effort
-  `WEBSITE_LABELS` and `age_ratings` assumptions documented in the M1.9 and
-  M1.10 outcomes above;
 - adding the same base-game content-type eligibility that M1.9 enforces for
   `GET /api/v1/games/{gameId}` to the `GET /api/v1/games` browse path, which
   does not yet exclude DLC, expansions, or mods.
 
 Milestone 2 (search experience) can start from the generated TypeScript
 client and the documented [API contract](api-contract.md) without waiting on
-either item.
+that item.

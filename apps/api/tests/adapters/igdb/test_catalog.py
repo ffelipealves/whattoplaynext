@@ -1057,12 +1057,12 @@ async def test_rejects_an_absent_game_id_as_not_found() -> None:
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("category", [1, 2, 3, 5, 6, 7, 10, 11, 12, 13, 14])
-async def test_rejects_an_ineligible_game_category_as_not_found(
-    category: int,
+@pytest.mark.parametrize("game_type", [1, 2, 3, 5, 6, 7, 10, 11, 12, 13, 14])
+async def test_rejects_an_ineligible_game_type_as_not_found(
+    game_type: int,
 ) -> None:
     transport = DetailFixtureTransport()
-    transport.responses["games"][0]["category"] = category
+    transport.responses["games"][0]["game_type"] = game_type
     catalog = IgdbCatalog(transport)
 
     with pytest.raises(ApplicationError) as error:
@@ -1073,12 +1073,12 @@ async def test_rejects_an_ineligible_game_category_as_not_found(
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("category", [0, 8, 9])
-async def test_accepts_base_game_remake_and_remaster_categories(
-    category: int,
+@pytest.mark.parametrize("game_type", [0, 8, 9])
+async def test_accepts_base_game_remake_and_remaster_game_types(
+    game_type: int,
 ) -> None:
     transport = DetailFixtureTransport()
-    transport.responses["games"][0]["category"] = category
+    transport.responses["games"][0]["game_type"] = game_type
     catalog = IgdbCatalog(transport)
 
     result = await catalog.get_game_detail(1942)

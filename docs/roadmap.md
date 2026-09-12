@@ -14,8 +14,7 @@ remain explicitly deferred.
 Deliverable status:
 
 - [x] check product name, domain, and obvious mark conflicts;
-- [ ] create Twitch application credentials for server-side IGDB access
-      (deferred until the first live M1 smoke test);
+- [x] create Twitch application credentials for server-side IGDB access;
 - [ ] contact IGDB regarding intended public/commercial use and attribution
       (deferred, but required before public beta);
 - [x] initialize Git and the monorepo directories;
@@ -36,15 +35,14 @@ tracked in [External prerequisites](external-prerequisites.md).
 
 The technical closeout and clean-clone evidence are recorded in
 [Milestone 0 review](milestone-0-review.md). Product name and domain selection
-are deferred until public-beta planning. Twitch credentials remain required for
-the first live IGDB smoke test, while written IGDB usage confirmation remains a
+are deferred until public-beta planning. Twitch credentials were created ahead
+of the M1.10 live smoke test; written IGDB usage confirmation remains a
 public-beta blocker.
 
 ## Milestone 1 — Provider adapter and normalized API
 
-Status: engineering complete (all ten increments delivered); the live IGDB
-smoke test is implemented but not yet run, pending an owner-created Twitch
-application.
+Status: complete, including a successful live smoke-test run against real
+IGDB data. See [Milestone 1 review](milestone-1-review.md).
 
 Deliverables:
 
@@ -60,10 +58,10 @@ Deliverables:
 Exit criteria:
 
 - [x] automated tests never require the live IGDB service;
-- [ ] a manual smoke test can query real data using local credentials —
-      `pnpm smoke:api` is implemented and fails safely without credentials;
-      observing real data awaits an owner-created Twitch application (see
-      [External prerequisites](external-prerequisites.md));
+- [x] a manual smoke test can query real data using local credentials —
+      `pnpm smoke:api` observed all four catalog capabilities against real
+      IGDB data and caught two field-name defects that fixtures alone could
+      not (see [Milestone 1 review](milestone-1-review.md));
 - [x] missing values remain null and upstream failures are distinguishable
       from empty results;
 - [x] strict AND/OR and platform-date semantics are covered by tests.

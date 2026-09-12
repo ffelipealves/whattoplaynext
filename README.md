@@ -44,12 +44,14 @@ normalized API are both accepted. `GET /api/v1/filters`, `GET /api/v1/games`,
 implemented behind a provider-neutral catalog interface, backed by a
 production Twitch/IGDB adapter that the application composes automatically
 when local credentials are configured and otherwise reports itself
-unavailable. See the [Milestone 1 review](docs/milestone-1-review.md) for the
-complete increment history and quality evidence.
-Name/domain selection, the IGDB commercial partnership, and the first live
-smoke-test run against real IGDB data remain owner-gated actions tracked
-separately in [External prerequisites](docs/external-prerequisites.md); they
-do not block Milestone 2 frontend work.
+unavailable. The owner-run live smoke test confirmed the adapter against real
+IGDB data and caught two field-name defects that fixtures alone could not;
+see the [Milestone 1 review](docs/milestone-1-review.md) for the complete
+increment history, that finding, and the quality evidence.
+Name/domain selection and the IGDB commercial partnership remain owner-gated
+actions tracked separately in
+[External prerequisites](docs/external-prerequisites.md); they do not block
+Milestone 2 frontend work.
 
 ## Local development
 
