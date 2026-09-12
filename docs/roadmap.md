@@ -72,7 +72,7 @@ closeout evidence is recorded in [Milestone 1 review](milestone-1-review.md).
 
 ## Milestone 2 — Search experience
 
-Status: divided into M2.1–M2.10; implementation not started.
+Status: active; M2.1 completed and M2.2 is next.
 
 Deliverables:
 

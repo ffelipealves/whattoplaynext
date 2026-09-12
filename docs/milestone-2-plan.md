@@ -1,6 +1,6 @@
 # Milestone 2 Plan
 
-Status: proposed execution baseline
+Status: active execution baseline; M2.1 completed and M2.2 ready
 
 Prepared: 2026-09-12
 
@@ -66,6 +66,8 @@ Every increment follows these rules:
 
 ### M2.1 — Frontend foundations
 
+Status: completed on 2026-09-12.
+
 Deliver:
 
 - Tailwind design tokens and the shadcn/ui primitives the search UI will
@@ -84,6 +86,31 @@ Acceptance:
   documented, visible failure state when the API is unreachable;
 - no request or response type for this call is hand-written outside the
   generated client.
+
+Outcome: `shadcn@latest init`/`add` (Radix base) supplied button, input,
+select, checkbox, slider, sheet, badge, and skeleton under
+`src/components/ui/`; their generated theme was rewired in `globals.css` to
+reuse this project's existing brand tokens (ink/paper/cobalt/signal) instead
+of shadcn's generic neutral palette, and a `--danger` token was added since
+none of the brand colors covered destructive actions. `src/lib/api-client.ts`
+wraps `createApiClient` from `@whattoplaynext/contracts` behind one
+`getApiClient()` factory reading `NEXT_PUBLIC_API_BASE_URL`. The home page's
+existing status line now calls it through `getCatalogStatus()` and renders
+live filter counts, proving the client end to end against the local API
+verified in M1.10.
+
+Two real bugs surfaced during manual verification rather than unit testing
+alone: `getCatalogStatus()` did not catch a rejected `fetch()` (the API
+process fully unreachable, as opposed to a classified HTTP error), which
+crashed the page instead of showing the documented offline message — found by
+actually stopping the local API and reloading, then fixed and covered by a
+regression test. Separately, `apps/web` newly depending on
+`@whattoplaynext/contracts` means its build output must exist before `next
+dev`/`next build` run; the root `dev` and `dev:web` scripts now build
+contracts first. Coverage thresholds extend to `src/lib/**`; generated
+`src/components/ui/**` primitives are excluded from the threshold, matching
+the project's existing "generated code excluded" precedent for contract
+types, but still carry a smoke test per the acceptance criteria above.
 
 ### M2.2 — `next-intl` adoption
 

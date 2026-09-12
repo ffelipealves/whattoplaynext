@@ -8,7 +8,7 @@ export default defineConfig({
   },
   test: {
     coverage: {
-      include: ["src/features/**/*.{ts,tsx}"],
+      include: ["src/features/**/*.{ts,tsx}", "src/lib/**/*.{ts,tsx}"],
       provider: "v8",
       reporter: ["text", "json-summary", "html"],
       thresholds: {
@@ -19,5 +19,6 @@ export default defineConfig({
       },
     },
     environment: "jsdom",
+    setupFiles: ["./vitest-setup.ts"],
   },
 });

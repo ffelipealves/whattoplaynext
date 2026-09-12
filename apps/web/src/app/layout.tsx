@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en">
+    <html className="font-sans" lang="en">
       <body className={`${displayFont.variable} ${bodyFont.variable}`}>
         {children}
       </body>

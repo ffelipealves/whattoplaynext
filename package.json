@@ -3,8 +3,8 @@
   "private": true,
   "scripts": {
     "setup": "pnpm install && poetry -C apps/api install",
-    "dev": "concurrently --kill-others-on-fail --names web,api \"pnpm dev:web\" \"pnpm dev:api\"",
-    "dev:web": "pnpm --filter web dev",
+    "dev": "pnpm build:contracts && concurrently --kill-others-on-fail --names web,api \"pnpm dev:web\" \"pnpm dev:api\"",
+    "dev:web": "pnpm build:contracts && pnpm --filter web dev",
     "dev:api": "poetry -C apps/api run fastapi dev src/whattoplaynext_api/main.py",
     "infra:up": "docker compose up -d --wait",
     "infra:down": "docker compose down",

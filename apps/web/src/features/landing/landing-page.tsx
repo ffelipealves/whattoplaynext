@@ -1,11 +1,30 @@
+import type { CatalogStatus } from "./get-catalog-status";
 import type { LandingContent, Locale } from "./content";
 
 type LandingPageProps = {
   content: LandingContent;
   locale: Locale;
+  catalogStatus: CatalogStatus;
 };
 
-export function LandingPage({ content, locale }: LandingPageProps) {
+function formatCatalogStatus(
+  content: LandingContent,
+  catalogStatus: CatalogStatus,
+): string {
+  if (!catalogStatus.reachable) {
+    return content.catalogOfflineMessage;
+  }
+  return content.catalogOnlineTemplate
+    .replace("{platforms}", String(catalogStatus.platformCount))
+    .replace("{genres}", String(catalogStatus.genreCount))
+    .replace("{modes}", String(catalogStatus.gameModeCount));
+}
+
+export function LandingPage({
+  content,
+  locale,
+  catalogStatus,
+}: LandingPageProps) {
   return (
     <main className="catalog-grid min-h-screen overflow-hidden px-5 py-5 sm:px-8 lg:px-12">
       <div className="mx-auto flex min-h-[calc(100vh-2.5rem)] max-w-[88rem] flex-col overflow-hidden rounded-[2rem] border border-[#17203a]/15 bg-white shadow-[0_30px_90px_rgb(23_32_58_/_12%)]">
@@ -61,8 +80,11 @@ export function LandingPage({ content, locale }: LandingPageProps) {
                 >
                   {content.primaryAction}
                 </a>
-                <p className="text-sm font-medium text-[#17203a]/62">
-                  {content.status}
+                <p
+                  aria-live="polite"
+                  className="text-sm font-medium text-[#17203a]/62"
+                >
+                  {formatCatalogStatus(content, catalogStatus)}
                 </p>
               </div>
             </div>

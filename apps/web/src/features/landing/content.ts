@@ -12,7 +12,8 @@ export type LandingContent = {
   titleEnd: string;
   description: string;
   primaryAction: string;
-  status: string;
+  catalogOnlineTemplate: string;
+  catalogOfflineMessage: string;
   exampleLabel: string;
   resultLabel: string;
   resultValue: string;
@@ -32,7 +33,9 @@ const content: Record<Locale, LandingContent> = {
     description:
       "Combine platform, genre, rating, release date, game mode, and play time. Get strict results you can compare without guessing why they appeared.",
     primaryAction: "Preview the criteria",
-    status: "Foundation online · Search tools are next",
+    catalogOnlineTemplate:
+      "Live catalog: {platforms} platforms · {genres} genres · {modes} modes",
+    catalogOfflineMessage: "Catalog temporarily unavailable",
     exampleLabel: "Example search",
     resultLabel: "Expected behavior",
     resultValue: "Only exact matches",
@@ -69,7 +72,9 @@ const content: Record<Locale, LandingContent> = {
     description:
       "Combine plataforma, gênero, nota, lançamento, modo e tempo disponível. Receba resultados estritos e comparáveis, sem precisar adivinhar por que apareceram.",
     primaryAction: "Ver os critérios",
-    status: "Fundação online · A busca vem a seguir",
+    catalogOnlineTemplate:
+      "Catálogo ao vivo: {platforms} plataformas · {genres} gêneros · {modes} modos",
+    catalogOfflineMessage: "Catálogo temporariamente indisponível",
     exampleLabel: "Exemplo de busca",
     resultLabel: "Comportamento esperado",
     resultValue: "Somente correspondências exatas",

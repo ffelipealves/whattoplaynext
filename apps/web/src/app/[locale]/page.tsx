@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { getCatalogStatus } from "@/features/landing/get-catalog-status";
 import { LandingPage } from "@/features/landing/landing-page";
 import {
   getLandingContent,
@@ -7,6 +8,7 @@ import {
   supportedLocales,
 } from "@/features/landing/content";
 
+export const dynamic = "force-dynamic";
 export const dynamicParams = false;
 
 export function generateStaticParams() {
@@ -22,5 +24,13 @@ export default async function LocaleHomePage({
     notFound();
   }
 
-  return <LandingPage content={getLandingContent(locale)} locale={locale} />;
+  const catalogStatus = await getCatalogStatus();
+
+  return (
+    <LandingPage
+      catalogStatus={catalogStatus}
+      content={getLandingContent(locale)}
+      locale={locale}
+    />
+  );
 }
