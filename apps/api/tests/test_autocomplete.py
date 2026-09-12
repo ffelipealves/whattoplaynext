@@ -10,6 +10,7 @@ from whattoplaynext_api.catalog.models import (
     BrowseCriteria,
     FilterMetadata,
     GameCover,
+    GameDetail,
     GamePage,
     PlatformId,
     ResponseMeta,
@@ -51,6 +52,9 @@ class FakeCatalog:
     async def browse_games(self, criteria: BrowseCriteria) -> GamePage:
         raise AssertionError("not used by autocomplete route tests")
 
+    async def get_game_detail(self, game_id: int) -> GameDetail:
+        raise AssertionError("not used by autocomplete route tests")
+
 
 class FailingCatalog:
     async def autocomplete(self, criteria: AutocompleteCriteria) -> AutocompleteResult:
@@ -60,6 +64,9 @@ class FailingCatalog:
         raise AssertionError("not used by autocomplete route tests")
 
     async def browse_games(self, criteria: BrowseCriteria) -> GamePage:
+        raise AssertionError("not used by autocomplete route tests")
+
+    async def get_game_detail(self, game_id: int) -> GameDetail:
         raise AssertionError("not used by autocomplete route tests")
 
 

@@ -7,6 +7,7 @@ from whattoplaynext_api.catalog.models import (
     AutocompleteResult,
     BrowseCriteria,
     FilterMetadata,
+    GameDetail,
     GamePage,
 )
 
@@ -24,4 +25,8 @@ class Catalog(Protocol):
 
     async def autocomplete(self, criteria: AutocompleteCriteria) -> AutocompleteResult:
         """Return at most eight normalized title suggestions."""
+        ...
+
+    async def get_game_detail(self, game_id: int) -> GameDetail:
+        """Return complete normalized detail for one eligible game."""
         ...

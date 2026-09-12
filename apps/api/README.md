@@ -143,6 +143,38 @@ cover values remain `null`. Classified upstream failures remain distinct from
 a successful, non-empty response, and this endpoint never affects the
 behavior of `GET /api/v1/games`.
 
+## Game detail
+
+`GET /api/v1/games/{gameId}` accepts a positive integer path parameter and
+returns complete normalized detail: official and alternative names, summary,
+cover and screenshots, platform-specific release dates, genres, themes,
+platforms, game modes, aggregated multiplayer support, user/critic/combined
+ratings, fast/normal/completionist durations, age ratings, and allow-listed
+external links. Genres, platforms, and game modes reuse the exact identifiers
+exposed by `/filters` and `/games`; themes, names, summary, age ratings, and
+external-link labels preserve the provider's own text instead of an
+application-owned identity, since they are display-only.
+
+Multiplayer fields are aggregated across every platform's
+`multiplayer_modes` record with OR logic, and `maxPlayers` is the highest
+`onlinemax`/`offlinemax` value reported for any of them. The three duration
+measures share one provider submission count rather than one count per
+measure, matching the IGDB `game_time_to_beats` shape; a measure is `null`
+when IGDB has no value for it.
+
+Eligibility enforces the MVP content scope: only released base games and
+their separately cataloged remakes and remasters resolve. An absent game ID
+and an excluded content type (DLC, expansion, bundle, mod, and similar)
+both return `GAME_NOT_FOUND`, so a request cannot distinguish "does not
+exist" from "exists but excluded." Classified upstream failures keep their
+own distinct codes. Production wiring remains deferred to M1.10, so the
+default catalog still reports unavailable.
+
+The IGDB category codes behind `WEBSITE_LABELS` and the nested
+`age_ratings` field expansion are best-effort from documentation rather than
+verified live responses; M1.10's live smoke test is expected to confirm or
+correct them.
+
 ## Checks
 
 ```bash

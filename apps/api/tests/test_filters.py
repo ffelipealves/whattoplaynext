@@ -16,6 +16,7 @@ from whattoplaynext_api.catalog.models import (
     DurationKind,
     FilterLimits,
     FilterMetadata,
+    GameDetail,
     GamePage,
     SortOption,
 )
@@ -50,6 +51,9 @@ class FakeCatalog:
         raise AssertionError("not used by filter route tests")
 
     async def autocomplete(self, criteria: AutocompleteCriteria) -> AutocompleteResult:
+        raise AssertionError("not used by filter route tests")
+
+    async def get_game_detail(self, game_id: int) -> GameDetail:
         raise AssertionError("not used by filter route tests")
 
 

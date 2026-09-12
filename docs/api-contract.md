@@ -198,23 +198,76 @@ normal name-filter submission.
 ### `GET /api/v1/games/{gameId}`
 
 Returns normalized detail data for one IGDB game ID. The slug is handled by the
-web route and does not form part of resource identity.
+web route and does not form part of resource identity. `gameId` must be a
+positive integer; a non-numeric or non-positive value fails HTTP validation
+before reaching the catalog.
 
-Detail response fields:
+Response shape:
 
-- ID, canonical slug, official and alternative names where available;
-- summary and its source language when known;
-- cover and screenshots;
-- platform-specific release dates;
-- genres and themes;
-- platforms;
-- game modes and structured multiplayer information;
-- user, external-critic, and combined ratings with counts where provided;
-- fast, normal, and completionist duration with submission count where
-  provided;
-- age ratings where available;
-- allow-listed external links;
-- freshness and attribution metadata.
+```json
+{
+  "id": 1942,
+  "slug": "the-witcher-3-wild-hunt",
+  "title": "The Witcher 3: Wild Hunt",
+  "alternativeNames": ["TW3"],
+  "summary": "A story-driven, next-generation open world role-playing game.",
+  "summaryLanguage": "en",
+  "cover": { "url": "https://...", "width": 264, "height": 374 },
+  "screenshots": [{ "url": "https://...", "width": 889, "height": 500 }],
+  "releases": [
+    { "platform": { "id": "pc", "label": "PC" }, "releaseDate": "2015-05-19" }
+  ],
+  "genres": [{ "id": "role-playing-rpg", "label": "Role-playing (RPG)" }],
+  "themes": [{ "id": 1, "name": "Action" }],
+  "platforms": [{ "id": "pc", "label": "PC" }],
+  "gameModes": [{ "id": "single-player", "label": "Single player" }],
+  "multiplayer": {
+    "onlineCoop": true,
+    "offlineCoop": false,
+    "splitScreen": true,
+    "maxPlayers": 4
+  },
+  "userRating": { "value": 88.5, "count": 5321, "source": "IGDB user" },
+  "criticRating": { "value": 92.1, "count": 45, "source": "IGDB critic" },
+  "combinedRating": {
+    "value": 92.25,
+    "count": 2745,
+    "source": "IGDB combined"
+  },
+  "durations": {
+    "fast": { "seconds": 18000, "submissionCount": 1834 },
+    "normal": { "seconds": 39600, "submissionCount": 1834 },
+    "completionist": { "seconds": 108000, "submissionCount": 1834 }
+  },
+  "ageRatings": [{ "organization": "ESRB", "rating": "Mature" }],
+  "externalLinks": [
+    { "label": "Official Website", "url": "https://thewitcher.com/en/witcher3" }
+  ],
+  "meta": {
+    "requestId": "...",
+    "servedFrom": "provider",
+    "dataMayBeStale": false,
+    "excludedUnknownDuration": false
+  }
+}
+```
+
+Names, summary, alternative names, theme names, age ratings, and external-link
+labels preserve the provider's own text rather than an application-owned
+identity; genres, platforms, and game modes reuse the same stable identifiers
+as `/filters` and `/games`. Multiplayer support is aggregated with OR logic and
+`maxPlayers` takes the highest reported player count across every platform
+record. Duration values share one provider submission count across the three
+measures; a duration measure is `null` when IGDB has no value for it. Age
+ratings and external links are provider text and allow-listed categories
+respectively; an unrecognized external-link category is omitted rather than
+guessed.
+
+The MVP includes released base games and their separately cataloged remakes
+and remasters. A game ID that does not exist, or that resolves to an excluded
+content type such as DLC, an expansion, a bundle, or a mod, returns
+`GAME_NOT_FOUND` — the same code for both cases, so a request cannot probe
+which excluded games exist. Upstream failures keep their own distinct codes.
 
 ### `GET /api/v1/health`
 

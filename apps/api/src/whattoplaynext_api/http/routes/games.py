@@ -4,7 +4,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Path, Query, Request
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -19,6 +19,7 @@ from whattoplaynext_api.catalog.models import (
     AutocompleteResult,
     BrowseCriteria,
     DurationKind,
+    GameDetail,
     GameModeId,
     GamePage,
     GenreId,
@@ -225,6 +226,41 @@ async def autocomplete_games(
         platform_ids=tuple(parameters.platform),
     )
     result = await catalog.autocomplete(criteria)
+    return result.model_copy(
+        update={
+            "meta": result.meta.model_copy(
+                update={"request_id": request.state.request_id}
+            )
+        }
+    )
+
+
+@router.get(
+    "/games/{gameId}",
+    operation_id="getGameDetail",
+    responses={
+        200: {"headers": {REQUEST_ID_HEADER: REQUEST_ID_RESPONSE_HEADER}},
+        **documented_error_responses(
+            ErrorCode.GAME_NOT_FOUND,
+            ErrorCode.UPSTREAM_INVALID_RESPONSE,
+            ErrorCode.UPSTREAM_TIMEOUT,
+            ErrorCode.UPSTREAM_UNAVAILABLE,
+            ErrorCode.RATE_LIMITED,
+            ErrorCode.VALIDATION_ERROR,
+            ErrorCode.METHOD_NOT_ALLOWED,
+            ErrorCode.INTERNAL_ERROR,
+        ),
+    },
+    response_model=GameDetail,
+    summary="Get game detail",
+)
+async def get_game_detail(
+    request: Request,
+    catalog: Annotated[Catalog, Depends(get_catalog)],
+    game_id: Annotated[int, Path(alias="gameId", gt=0)],
+) -> GameDetail:
+    """Return complete normalized detail for one eligible game."""
+    result = await catalog.get_game_detail(game_id)
     return result.model_copy(
         update={
             "meta": result.meta.model_copy(

@@ -292,3 +292,83 @@ class AutocompleteResult(BaseModel):
 
     items: list[AutocompleteSuggestion]
     meta: ResponseMeta
+
+
+class Theme(BaseModel):
+    """One provider theme, preserved without a stable public identity."""
+
+    id: int = Field(gt=0)
+    name: str
+
+
+class PlatformRelease(BaseModel):
+    """One platform-specific release date."""
+
+    platform: CatalogOption
+    release_date: date | None = Field(serialization_alias="releaseDate")
+
+
+class MultiplayerInfo(BaseModel):
+    """Structured multiplayer support aggregated across platforms."""
+
+    online_coop: bool = Field(serialization_alias="onlineCoop")
+    offline_coop: bool = Field(serialization_alias="offlineCoop")
+    split_screen: bool = Field(serialization_alias="splitScreen")
+    max_players: int | None = Field(default=None, serialization_alias="maxPlayers")
+
+
+class DetailDuration(BaseModel):
+    """One duration measure with its provider submission count."""
+
+    seconds: int = Field(gt=0)
+    submission_count: int = Field(ge=0, serialization_alias="submissionCount")
+
+
+class GameDurations(BaseModel):
+    """Fast, normal, and completionist durations where each exists."""
+
+    fast: DetailDuration | None
+    normal: DetailDuration | None
+    completionist: DetailDuration | None
+
+
+class AgeRating(BaseModel):
+    """One organization's age rating, preserved as provider text."""
+
+    organization: str
+    rating: str
+
+
+class ExternalLink(BaseModel):
+    """One allow-listed external link."""
+
+    label: str
+    url: str
+
+
+class GameDetail(BaseModel):
+    """Complete normalized detail for one game."""
+
+    id: int = Field(gt=0)
+    slug: str
+    title: str
+    alternative_names: list[str] = Field(serialization_alias="alternativeNames")
+    summary: str | None
+    summary_language: Literal["en"] | None = Field(
+        default=None, serialization_alias="summaryLanguage"
+    )
+    cover: GameCover | None
+    screenshots: list[GameCover]
+    releases: list[PlatformRelease]
+    genres: list[CatalogOption]
+    themes: list[Theme]
+    platforms: list[CatalogOption]
+    game_modes: list[CatalogOption] = Field(serialization_alias="gameModes")
+    multiplayer: MultiplayerInfo
+    user_rating: GameRating | None = Field(serialization_alias="userRating")
+    critic_rating: GameRating | None = Field(serialization_alias="criticRating")
+    combined_rating: GameRating | None = Field(serialization_alias="combinedRating")
+    durations: GameDurations
+    age_ratings: list[AgeRating] = Field(serialization_alias="ageRatings")
+    external_links: list[ExternalLink] = Field(serialization_alias="externalLinks")
+    meta: ResponseMeta

@@ -49,8 +49,13 @@ provider-neutral sorting. Release bounds now use dates for the selected
 platforms, and IGDB time-to-beat data supports inclusive duration filters,
 duration sorting, and normal-duration card enrichment.
 `GET /api/v1/games/autocomplete` now returns at most eight relevance-ordered
-title/year/cover suggestions, optionally narrowed by platform context. The
-next increment adds the game-detail endpoint.
+title/year/cover suggestions, optionally narrowed by platform context.
+`GET /api/v1/games/{gameId}` now returns complete normalized detail — names,
+summary, images, platform releases, genres, themes, platforms, modes,
+multiplayer support, ratings, durations, age ratings, and external links — for
+released base games and their remakes and remasters, with `GAME_NOT_FOUND` for
+anything absent or out of MVP scope. The next increment composes the
+production provider and adds the live smoke test.
 Name/domain selection and the external Twitch/IGDB actions remain tracked
 separately and do not block provider-independent development.
 

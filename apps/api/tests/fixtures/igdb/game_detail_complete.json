@@ -1,0 +1,61 @@
+[
+  {
+    "id": 1942,
+    "slug": "the-witcher-3-wild-hunt",
+    "name": "The Witcher 3: Wild Hunt",
+    "alternative_names": [
+      { "name": "TW3" },
+      { "name": "Wiedzmin 3: Dziki Gon" }
+    ],
+    "summary": "A story-driven, next-generation open world role-playing game.",
+    "category": 0,
+    "cover": { "id": 12345, "image_id": "co1wyy" },
+    "screenshots": [
+      { "id": 5001, "image_id": "sc1abc" },
+      { "id": 5002, "image_id": "sc2def" }
+    ],
+    "release_dates": [
+      { "platform": { "id": 6 }, "date": 1431993600 },
+      { "platform": { "id": 48 }, "date": 1431993600 },
+      { "platform": { "id": 167 }, "date": 1608595200 }
+    ],
+    "genres": [{ "id": 12 }, { "id": 31 }],
+    "themes": [
+      { "id": 1, "name": "Action" },
+      { "id": 22, "name": "Historical" }
+    ],
+    "platforms": [{ "id": 6 }, { "id": 48 }, { "id": 167 }],
+    "game_modes": [{ "id": 1 }],
+    "multiplayer_modes": [
+      {
+        "onlinecoop": true,
+        "offlinecoop": false,
+        "splitscreen": true,
+        "splitscreenonline": false,
+        "onlinemax": 4,
+        "offlinemax": 2
+      }
+    ],
+    "rating": 88.5,
+    "rating_count": 5321,
+    "aggregated_rating": 92.1,
+    "aggregated_rating_count": 45,
+    "total_rating": 92.25,
+    "total_rating_count": 2745,
+    "age_ratings": [
+      {
+        "organization": { "name": "ESRB" },
+        "rating_category": { "rating": "Mature" }
+      },
+      {
+        "organization": { "name": "PEGI" },
+        "rating_category": { "rating": "18" }
+      }
+    ],
+    "websites": [
+      { "category": 1, "url": "https://thewitcher.com/en/witcher3" },
+      { "category": 13, "url": "https://store.steampowered.com/app/292030" },
+      { "category": 999, "url": "https://unknown-example.com/ignored" }
+    ]
+  }
+]

@@ -194,6 +194,30 @@ class AutocompleteFixtureTransport:
         raise AssertionError("not used by autocomplete")
 
 
+class DetailFixtureTransport:
+    def __init__(
+        self,
+        game_fixture: str = "game_detail_complete.json",
+        duration_fixture: str = "game_time_to_beats_detail.json",
+    ) -> None:
+        self.requests: list[tuple[str, str]] = []
+        self.responses: dict[str, list[dict[str, object]]] = {
+            "games": load_records(game_fixture),
+            "game_time_to_beats": load_records(duration_fixture),
+        }
+
+    async def query(
+        self,
+        endpoint: str,
+        query: str,
+    ) -> list[dict[str, object]]:
+        self.requests.append((endpoint, query))
+        return self.responses[endpoint]
+
+    async def count(self, endpoint: str, query: str) -> int:
+        raise AssertionError("not used by detail")
+
+
 class FakeTokenProvider:
     async def get_access_token(self) -> str:
         return "sanitized-test-token"
@@ -288,6 +312,14 @@ async def test_translates_provider_failures_for_public_adapters(
 
     assert autocomplete_error.value.code is expected_code
     assert autocomplete_error.value.retry_after_seconds == (
+        2 if reason is IgdbErrorReason.RATE_LIMITED else None
+    )
+
+    with pytest.raises(ApplicationError) as detail_error:
+        await catalog.get_game_detail(1942)
+
+    assert detail_error.value.code is expected_code
+    assert detail_error.value.retry_after_seconds == (
         2 if reason is IgdbErrorReason.RATE_LIMITED else None
     )
 
@@ -859,3 +891,196 @@ async def test_escapes_autocomplete_text_inside_the_apicalypse_string_literal() 
     query = transport.requests[0][1]
     assert query.startswith('search "He said \\"hi\\";\\nfields *"; ')
     assert "\n" not in query
+
+
+@pytest.mark.anyio
+async def test_returns_complete_normalized_detail_from_a_full_projection() -> None:
+    transport = DetailFixtureTransport()
+    catalog = IgdbCatalog(transport)
+
+    result = await catalog.get_game_detail(1942)
+
+    assert result.model_dump(mode="json", by_alias=True) == {
+        "id": 1942,
+        "slug": "the-witcher-3-wild-hunt",
+        "title": "The Witcher 3: Wild Hunt",
+        "alternativeNames": ["TW3", "Wiedzmin 3: Dziki Gon"],
+        "summary": "A story-driven, next-generation open world role-playing game.",
+        "summaryLanguage": "en",
+        "cover": {
+            "url": ("https://images.igdb.com/igdb/image/upload/t_cover_big/co1wyy.jpg"),
+            "width": 264,
+            "height": 374,
+        },
+        "screenshots": [
+            {
+                "url": (
+                    "https://images.igdb.com/igdb/image/upload/"
+                    "t_screenshot_big/sc1abc.jpg"
+                ),
+                "width": 889,
+                "height": 500,
+            },
+            {
+                "url": (
+                    "https://images.igdb.com/igdb/image/upload/"
+                    "t_screenshot_big/sc2def.jpg"
+                ),
+                "width": 889,
+                "height": 500,
+            },
+        ],
+        "releases": [
+            {
+                "platform": {"id": "pc", "label": "PC"},
+                "releaseDate": "2015-05-19",
+            },
+            {
+                "platform": {"id": "playstation-4", "label": "PlayStation 4"},
+                "releaseDate": "2015-05-19",
+            },
+            {
+                "platform": {"id": "playstation-5", "label": "PlayStation 5"},
+                "releaseDate": "2020-12-22",
+            },
+        ],
+        "genres": [
+            {"id": "role-playing-rpg", "label": "Role-playing (RPG)"},
+            {"id": "adventure", "label": "Adventure"},
+        ],
+        "themes": [
+            {"id": 1, "name": "Action"},
+            {"id": 22, "name": "Historical"},
+        ],
+        "platforms": [
+            {"id": "pc", "label": "PC"},
+            {"id": "playstation-4", "label": "PlayStation 4"},
+            {"id": "playstation-5", "label": "PlayStation 5"},
+        ],
+        "gameModes": [{"id": "single-player", "label": "Single player"}],
+        "multiplayer": {
+            "onlineCoop": True,
+            "offlineCoop": False,
+            "splitScreen": True,
+            "maxPlayers": 4,
+        },
+        "userRating": {"value": 88.5, "count": 5321, "source": "IGDB user"},
+        "criticRating": {"value": 92.1, "count": 45, "source": "IGDB critic"},
+        "combinedRating": {"value": 92.25, "count": 2745, "source": "IGDB combined"},
+        "durations": {
+            "fast": {"seconds": 18000, "submissionCount": 1834},
+            "normal": {"seconds": 39600, "submissionCount": 1834},
+            "completionist": {"seconds": 108000, "submissionCount": 1834},
+        },
+        "ageRatings": [
+            {"organization": "ESRB", "rating": "Mature"},
+            {"organization": "PEGI", "rating": "18"},
+        ],
+        "externalLinks": [
+            {
+                "label": "Official Website",
+                "url": "https://thewitcher.com/en/witcher3",
+            },
+            {
+                "label": "Steam",
+                "url": "https://store.steampowered.com/app/292030",
+            },
+        ],
+        "meta": {
+            "requestId": None,
+            "servedFrom": "provider",
+            "dataMayBeStale": False,
+            "excludedUnknownDuration": False,
+        },
+    }
+    assert transport.requests[0][0] == "games"
+    assert "where id = 1942;" in transport.requests[0][1]
+    assert transport.requests[1] == (
+        "game_time_to_beats",
+        "fields hastily,normally,completely,count; where game_id = 1942; limit 1;",
+    )
+
+
+@pytest.mark.anyio
+async def test_keeps_missing_optional_detail_fields_nullable_or_empty() -> None:
+    catalog = IgdbCatalog(
+        DetailFixtureTransport(
+            "game_detail_sparse.json", "game_time_to_beats_detail_sparse.json"
+        )
+    )
+
+    result = await catalog.get_game_detail(1942)
+
+    assert result.model_dump(mode="json", by_alias=True) == {
+        "id": 1942,
+        "slug": "minimal-game",
+        "title": "Minimal Game",
+        "alternativeNames": [],
+        "summary": None,
+        "summaryLanguage": None,
+        "cover": None,
+        "screenshots": [],
+        "releases": [],
+        "genres": [],
+        "themes": [],
+        "platforms": [],
+        "gameModes": [],
+        "multiplayer": {
+            "onlineCoop": False,
+            "offlineCoop": False,
+            "splitScreen": False,
+            "maxPlayers": None,
+        },
+        "userRating": None,
+        "criticRating": None,
+        "combinedRating": None,
+        "durations": {"fast": None, "normal": None, "completionist": None},
+        "ageRatings": [],
+        "externalLinks": [],
+        "meta": {
+            "requestId": None,
+            "servedFrom": "provider",
+            "dataMayBeStale": False,
+            "excludedUnknownDuration": False,
+        },
+    }
+
+
+@pytest.mark.anyio
+async def test_rejects_an_absent_game_id_as_not_found() -> None:
+    catalog = IgdbCatalog(EmptyTransport())
+
+    with pytest.raises(ApplicationError) as error:
+        await catalog.get_game_detail(999999)
+
+    assert error.value.code is ErrorCode.GAME_NOT_FOUND
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("category", [1, 2, 3, 5, 6, 7, 10, 11, 12, 13, 14])
+async def test_rejects_an_ineligible_game_category_as_not_found(
+    category: int,
+) -> None:
+    transport = DetailFixtureTransport()
+    transport.responses["games"][0]["category"] = category
+    catalog = IgdbCatalog(transport)
+
+    with pytest.raises(ApplicationError) as error:
+        await catalog.get_game_detail(1942)
+
+    assert error.value.code is ErrorCode.GAME_NOT_FOUND
+    assert [endpoint for endpoint, _query in transport.requests] == ["games"]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("category", [0, 8, 9])
+async def test_accepts_base_game_remake_and_remaster_categories(
+    category: int,
+) -> None:
+    transport = DetailFixtureTransport()
+    transport.responses["games"][0]["category"] = category
+    catalog = IgdbCatalog(transport)
+
+    result = await catalog.get_game_detail(1942)
+
+    assert result.id == 1942

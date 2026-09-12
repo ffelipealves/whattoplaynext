@@ -1,6 +1,25 @@
 {
   "components": {
     "schemas": {
+      "AgeRating": {
+        "description": "One organization's age rating, preserved as provider text.",
+        "properties": {
+          "organization": {
+            "title": "Organization",
+            "type": "string"
+          },
+          "rating": {
+            "title": "Rating",
+            "type": "string"
+          }
+        },
+        "required": [
+          "organization",
+          "rating"
+        ],
+        "title": "AgeRating",
+        "type": "object"
+      },
       "AutocompleteResult": {
         "description": "At most eight normalized autocomplete suggestions.",
         "properties": {
@@ -106,6 +125,27 @@
         "title": "CatalogOption",
         "type": "object"
       },
+      "DetailDuration": {
+        "description": "One duration measure with its provider submission count.",
+        "properties": {
+          "seconds": {
+            "exclusiveMinimum": 0.0,
+            "title": "Seconds",
+            "type": "integer"
+          },
+          "submissionCount": {
+            "minimum": 0.0,
+            "title": "Submissioncount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "seconds",
+          "submissionCount"
+        ],
+        "title": "DetailDuration",
+        "type": "object"
+      },
       "DurationKind": {
         "description": "Supported campaign-duration measures.",
         "enum": [
@@ -178,6 +218,25 @@
           "error"
         ],
         "title": "ErrorResponse",
+        "type": "object"
+      },
+      "ExternalLink": {
+        "description": "One allow-listed external link.",
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "url"
+        ],
+        "title": "ExternalLink",
         "type": "object"
       },
       "FilterLimits": {
@@ -296,6 +355,225 @@
           "height"
         ],
         "title": "GameCover",
+        "type": "object"
+      },
+      "GameDetail": {
+        "description": "Complete normalized detail for one game.",
+        "properties": {
+          "ageRatings": {
+            "items": {
+              "$ref": "#/components/schemas/AgeRating"
+            },
+            "title": "Ageratings",
+            "type": "array"
+          },
+          "alternativeNames": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Alternativenames",
+            "type": "array"
+          },
+          "combinedRating": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GameRating"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cover": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GameCover"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "criticRating": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GameRating"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "durations": {
+            "$ref": "#/components/schemas/GameDurations"
+          },
+          "externalLinks": {
+            "items": {
+              "$ref": "#/components/schemas/ExternalLink"
+            },
+            "title": "Externallinks",
+            "type": "array"
+          },
+          "gameModes": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogOption"
+            },
+            "title": "Gamemodes",
+            "type": "array"
+          },
+          "genres": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogOption"
+            },
+            "title": "Genres",
+            "type": "array"
+          },
+          "id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Id",
+            "type": "integer"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ResponseMeta"
+          },
+          "multiplayer": {
+            "$ref": "#/components/schemas/MultiplayerInfo"
+          },
+          "platforms": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogOption"
+            },
+            "title": "Platforms",
+            "type": "array"
+          },
+          "releases": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformRelease"
+            },
+            "title": "Releases",
+            "type": "array"
+          },
+          "screenshots": {
+            "items": {
+              "$ref": "#/components/schemas/GameCover"
+            },
+            "title": "Screenshots",
+            "type": "array"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "summaryLanguage": {
+            "anyOf": [
+              {
+                "const": "en",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summarylanguage"
+          },
+          "themes": {
+            "items": {
+              "$ref": "#/components/schemas/Theme"
+            },
+            "title": "Themes",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "userRating": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GameRating"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "title",
+          "alternativeNames",
+          "summary",
+          "cover",
+          "screenshots",
+          "releases",
+          "genres",
+          "themes",
+          "platforms",
+          "gameModes",
+          "multiplayer",
+          "userRating",
+          "criticRating",
+          "combinedRating",
+          "durations",
+          "ageRatings",
+          "externalLinks",
+          "meta"
+        ],
+        "title": "GameDetail",
+        "type": "object"
+      },
+      "GameDurations": {
+        "description": "Fast, normal, and completionist durations where each exists.",
+        "properties": {
+          "completionist": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DetailDuration"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fast": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DetailDuration"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "normal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DetailDuration"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "fast",
+          "normal",
+          "completionist"
+        ],
+        "title": "GameDurations",
         "type": "object"
       },
       "GameModeId": {
@@ -505,6 +783,41 @@
         "title": "HealthResponse",
         "type": "object"
       },
+      "MultiplayerInfo": {
+        "description": "Structured multiplayer support aggregated across platforms.",
+        "properties": {
+          "maxPlayers": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxplayers"
+          },
+          "offlineCoop": {
+            "title": "Offlinecoop",
+            "type": "boolean"
+          },
+          "onlineCoop": {
+            "title": "Onlinecoop",
+            "type": "boolean"
+          },
+          "splitScreen": {
+            "title": "Splitscreen",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "onlineCoop",
+          "offlineCoop",
+          "splitScreen"
+        ],
+        "title": "MultiplayerInfo",
+        "type": "object"
+      },
       "Pagination": {
         "description": "Page location and total result information.",
         "properties": {
@@ -550,6 +863,32 @@
         ],
         "title": "PlatformId",
         "type": "string"
+      },
+      "PlatformRelease": {
+        "description": "One platform-specific release date.",
+        "properties": {
+          "platform": {
+            "$ref": "#/components/schemas/CatalogOption"
+          },
+          "releaseDate": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Releasedate"
+          }
+        },
+        "required": [
+          "platform",
+          "releaseDate"
+        ],
+        "title": "PlatformRelease",
+        "type": "object"
       },
       "ResponseMeta": {
         "description": "Freshness and processing metadata for one catalog response.",
@@ -611,6 +950,26 @@
         ],
         "title": "SortOption",
         "type": "string"
+      },
+      "Theme": {
+        "description": "One provider theme, preserved without a stable public identity.",
+        "properties": {
+          "id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "Theme",
+        "type": "object"
       }
     }
   },
@@ -1280,6 +1639,192 @@
           }
         },
         "summary": "Autocomplete game titles",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/games/{gameId}": {
+      "get": {
+        "description": "Return complete normalized detail for one eligible game.",
+        "operationId": "getGameDetail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "gameId",
+            "required": true,
+            "schema": {
+              "exclusiveMinimum": 0,
+              "title": "Gameid",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameDetail"
+                }
+              }
+            },
+            "description": "Successful Response",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Game not found.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Method not allowed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "One or more parameter values are invalid.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too many requests.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "An unexpected error occurred.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Game data provider returned an invalid response.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Game data is temporarily unavailable.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Game data provider timed out.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get game detail",
         "tags": [
           "catalog"
         ]

@@ -11,23 +11,31 @@ from whattoplaynext_api.adapters.igdb.transport import (
     IgdbTransportError,
 )
 from whattoplaynext_api.catalog.models import (
+    AgeRating,
     AutocompleteCriteria,
     AutocompleteResult,
     AutocompleteSuggestion,
     BrowseCriteria,
     BrowseQuery,
     CatalogOption,
+    DetailDuration,
     DurationKind,
+    ExternalLink,
     FilterLimits,
     FilterMetadata,
     GameCover,
+    GameDetail,
+    GameDurations,
     GamePage,
     GameRating,
     GameSummary,
+    MultiplayerInfo,
     Pagination,
+    PlatformRelease,
     ResponseMeta,
     SortDirection,
     SortOption,
+    Theme,
 )
 from whattoplaynext_api.core.errors import ApplicationError, ErrorCode
 
@@ -106,6 +114,22 @@ DURATION_PROVIDER_FIELDS = {
 }
 
 AUTOCOMPLETE_SUGGESTION_LIMIT = 8
+
+# Released base games plus their separately cataloged remakes and remasters;
+# DLC, expansions, bundles, mods, and other non-base entries are excluded
+# from MVP content per docs/product-requirements.md#3.2.
+ELIGIBLE_GAME_CATEGORIES = frozenset({0, 8, 9})
+
+WEBSITE_LABELS = {
+    1: "Official Website",
+    3: "Wikipedia",
+    6: "Twitch",
+    9: "YouTube",
+    13: "Steam",
+    16: "Epic Games Store",
+    17: "GOG",
+    18: "Discord",
+}
 
 
 class IgdbCatalog:
@@ -234,6 +258,22 @@ class IgdbCatalog:
             for record in records[:AUTOCOMPLETE_SUGGESTION_LIMIT]
         ]
         return AutocompleteResult(items=items, meta=ResponseMeta())
+
+    async def get_game_detail(self, game_id: int) -> GameDetail:
+        """Return complete normalized detail for one eligible game."""
+        try:
+            records = await self._transport.query("games", _detail_query(game_id))
+            if not records or not _is_eligible_category(records[0]):
+                raise ApplicationError(ErrorCode.GAME_NOT_FOUND)
+            duration_records = await self._transport.query(
+                "game_time_to_beats",
+                _detail_duration_query(game_id),
+            )
+        except IgdbTransportError as error:
+            raise _application_error(error) from error
+        except OSError, OverflowError, TypeError, ValueError:
+            raise ApplicationError(ErrorCode.UPSTREAM_INVALID_RESPONSE) from None
+        return _normalize_detail(records[0], duration_records)
 
     async def _locally_evaluated_page(
         self,
@@ -806,17 +846,31 @@ def _required_string(record: dict[str, object], field: str) -> str:
     return value
 
 
-def _normalize_cover(value: object) -> GameCover | None:
+def _normalize_image(
+    value: object,
+    *,
+    transform: str,
+    width: int,
+    height: int,
+) -> GameCover | None:
     if not isinstance(value, dict):
         return None
     image_id = value.get("image_id")
     if not isinstance(image_id, str) or not image_id:
         return None
     return GameCover(
-        url=(f"https://images.igdb.com/igdb/image/upload/t_cover_big/{image_id}.jpg"),
-        width=264,
-        height=374,
+        url=f"https://images.igdb.com/igdb/image/upload/t_{transform}/{image_id}.jpg",
+        width=width,
+        height=height,
     )
+
+
+def _normalize_cover(value: object) -> GameCover | None:
+    return _normalize_image(value, transform="cover_big", width=264, height=374)
+
+
+def _normalize_screenshot(value: object) -> GameCover | None:
+    return _normalize_image(value, transform="screenshot_big", width=889, height=500)
 
 
 def _normalize_record_options(
@@ -839,9 +893,14 @@ def _normalize_record_options(
     ]
 
 
-def _normalize_rating(record: dict[str, object]) -> GameRating | None:
-    value = record.get("total_rating")
-    count = record.get("total_rating_count")
+def _normalize_named_rating(
+    record: dict[str, object],
+    value_field: str,
+    count_field: str,
+    source: str,
+) -> GameRating | None:
+    value = record.get(value_field)
+    count = record.get(count_field)
     if (
         not isinstance(value, int | float)
         or isinstance(value, bool)
@@ -849,7 +908,263 @@ def _normalize_rating(record: dict[str, object]) -> GameRating | None:
         or isinstance(count, bool)
     ):
         return None
-    return GameRating(value=float(value), count=count, source="IGDB combined")
+    return GameRating(value=float(value), count=count, source=source)
+
+
+def _normalize_rating(record: dict[str, object]) -> GameRating | None:
+    return _normalize_named_rating(
+        record, "total_rating", "total_rating_count", "IGDB combined"
+    )
+
+
+def _detail_query(game_id: int) -> str:
+    return (
+        "fields id,slug,name,alternative_names.name,summary,category,"
+        "cover.image_id,screenshots.image_id,"
+        "release_dates.platform,release_dates.date,"
+        "genres.id,themes.id,themes.name,platforms.id,game_modes.id,"
+        "multiplayer_modes.onlinecoop,multiplayer_modes.offlinecoop,"
+        "multiplayer_modes.splitscreen,multiplayer_modes.splitscreenonline,"
+        "multiplayer_modes.onlinemax,multiplayer_modes.offlinemax,"
+        "rating,rating_count,aggregated_rating,aggregated_rating_count,"
+        "total_rating,total_rating_count,"
+        "age_ratings.organization.name,age_ratings.rating_category.rating,"
+        "websites.category,websites.url; "
+        f"where id = {game_id};"
+    )
+
+
+def _detail_duration_query(game_id: int) -> str:
+    return (
+        f"fields hastily,normally,completely,count; where game_id = {game_id}; limit 1;"
+    )
+
+
+def _is_eligible_category(record: dict[str, object]) -> bool:
+    category = record.get("category")
+    return (
+        isinstance(category, int)
+        and not isinstance(category, bool)
+        and category in ELIGIBLE_GAME_CATEGORIES
+    )
+
+
+def _normalize_detail(
+    record: dict[str, object],
+    duration_records: list[dict[str, object]],
+) -> GameDetail:
+    summary = record.get("summary")
+    summary_text = summary if isinstance(summary, str) and summary else None
+    return GameDetail(
+        id=_required_int(record, "id"),
+        slug=_required_string(record, "slug"),
+        title=_required_string(record, "name"),
+        alternative_names=_normalize_alternative_names(record.get("alternative_names")),
+        summary=summary_text,
+        summary_language="en" if summary_text is not None else None,
+        cover=_normalize_cover(record.get("cover")),
+        screenshots=_normalize_screenshots(record.get("screenshots")),
+        releases=_normalize_platform_releases(record.get("release_dates")),
+        genres=_normalize_record_options(record.get("genres"), GENRES),
+        themes=_normalize_themes(record.get("themes")),
+        platforms=_normalize_record_options(record.get("platforms"), PLATFORMS),
+        game_modes=_normalize_record_options(record.get("game_modes"), GAME_MODES),
+        multiplayer=_normalize_multiplayer(record.get("multiplayer_modes")),
+        user_rating=_normalize_named_rating(
+            record, "rating", "rating_count", "IGDB user"
+        ),
+        critic_rating=_normalize_named_rating(
+            record, "aggregated_rating", "aggregated_rating_count", "IGDB critic"
+        ),
+        combined_rating=_normalize_rating(record),
+        durations=_normalize_detail_durations(duration_records),
+        age_ratings=_normalize_age_ratings(record.get("age_ratings")),
+        external_links=_normalize_external_links(record.get("websites")),
+        meta=ResponseMeta(),
+    )
+
+
+def _normalize_alternative_names(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    names: list[str] = []
+    for item in value:
+        if isinstance(item, dict):
+            name = item.get("name")
+            if isinstance(name, str) and name:
+                names.append(name)
+    return names
+
+
+def _normalize_screenshots(value: object) -> list[GameCover]:
+    if not isinstance(value, list):
+        return []
+    return [
+        screenshot
+        for item in value
+        if (screenshot := _normalize_screenshot(item)) is not None
+    ]
+
+
+def _normalize_platform_releases(value: object) -> list[PlatformRelease]:
+    if not isinstance(value, list):
+        return []
+    releases: list[PlatformRelease] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        platform_field = item.get("platform")
+        platform_id = (
+            platform_field.get("id")
+            if isinstance(platform_field, dict)
+            else platform_field
+        )
+        if not isinstance(platform_id, int) or isinstance(platform_id, bool):
+            continue
+        option = next(
+            (option for option in PLATFORMS if option.provider_id == platform_id),
+            None,
+        )
+        if option is None:
+            continue
+        date_value = item.get("date")
+        release_date = (
+            datetime.fromtimestamp(date_value, tz=UTC).date()
+            if isinstance(date_value, int) and not isinstance(date_value, bool)
+            else None
+        )
+        releases.append(
+            PlatformRelease(
+                platform=CatalogOption(id=option.public_id, label=option.label),
+                release_date=release_date,
+            )
+        )
+    return releases
+
+
+def _normalize_themes(value: object) -> list[Theme]:
+    if not isinstance(value, list):
+        return []
+    themes: list[Theme] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        theme_id = item.get("id")
+        name = item.get("name")
+        if (
+            isinstance(theme_id, int)
+            and not isinstance(theme_id, bool)
+            and isinstance(name, str)
+            and name
+        ):
+            themes.append(Theme(id=theme_id, name=name))
+    return themes
+
+
+def _normalize_multiplayer(value: object) -> MultiplayerInfo:
+    online_coop = False
+    offline_coop = False
+    split_screen = False
+    max_players: int | None = None
+    if isinstance(value, list):
+        for item in value:
+            if not isinstance(item, dict):
+                continue
+            online_coop = online_coop or bool(item.get("onlinecoop"))
+            offline_coop = offline_coop or bool(item.get("offlinecoop"))
+            split_screen = (
+                split_screen
+                or bool(item.get("splitscreen"))
+                or bool(item.get("splitscreenonline"))
+            )
+            for field in ("onlinemax", "offlinemax"):
+                candidate = item.get(field)
+                if (
+                    isinstance(candidate, int)
+                    and not isinstance(candidate, bool)
+                    and candidate > 0
+                ):
+                    max_players = (
+                        candidate
+                        if max_players is None
+                        else max(max_players, candidate)
+                    )
+    return MultiplayerInfo(
+        online_coop=online_coop,
+        offline_coop=offline_coop,
+        split_screen=split_screen,
+        max_players=max_players,
+    )
+
+
+def _normalize_detail_durations(records: list[dict[str, object]]) -> GameDurations:
+    if not records:
+        return GameDurations(fast=None, normal=None, completionist=None)
+    record = records[0]
+    count = record.get("count")
+    submission_count = (
+        count
+        if isinstance(count, int) and not isinstance(count, bool) and count >= 0
+        else 0
+    )
+
+    def duration_for(field: str) -> DetailDuration | None:
+        value = record.get(field)
+        if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+            return DetailDuration(seconds=value, submission_count=submission_count)
+        return None
+
+    return GameDurations(
+        fast=duration_for("hastily"),
+        normal=duration_for("normally"),
+        completionist=duration_for("completely"),
+    )
+
+
+def _normalize_age_ratings(value: object) -> list[AgeRating]:
+    if not isinstance(value, list):
+        return []
+    ratings: list[AgeRating] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        organization_field = item.get("organization")
+        organization = (
+            organization_field.get("name")
+            if isinstance(organization_field, dict)
+            else None
+        )
+        category_field = item.get("rating_category")
+        rating = (
+            category_field.get("rating") if isinstance(category_field, dict) else None
+        )
+        if (
+            isinstance(organization, str)
+            and organization
+            and isinstance(rating, str)
+            and rating
+        ):
+            ratings.append(AgeRating(organization=organization, rating=rating))
+    return ratings
+
+
+def _normalize_external_links(value: object) -> list[ExternalLink]:
+    if not isinstance(value, list):
+        return []
+    links: list[ExternalLink] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        category = item.get("category")
+        url = item.get("url")
+        label = (
+            WEBSITE_LABELS.get(category)
+            if isinstance(category, int) and not isinstance(category, bool)
+            else None
+        )
+        if label is not None and isinstance(url, str) and url:
+            links.append(ExternalLink(label=label, url=url))
+    return links
 
 
 def _application_error(error: IgdbTransportError) -> ApplicationError:

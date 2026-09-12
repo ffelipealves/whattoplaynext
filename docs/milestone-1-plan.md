@@ -1,6 +1,6 @@
 # Milestone 1 Plan
 
-Status: active execution baseline; M1.8 completed and M1.9 ready
+Status: active execution baseline; M1.9 completed and M1.10 ready
 
 Prepared: 2026-09-10
 
@@ -276,6 +276,8 @@ the TypeScript client expose the new operation.
 
 ### M1.9 — Game-detail vertical slice
 
+Status: completed on 2026-09-12.
+
 Deliver:
 
 - `GET /api/v1/games/{gameId}` through the catalog interface;
@@ -291,6 +293,30 @@ Acceptance:
   their own error codes;
 - the numeric IGDB ID is the resource identity and provider text is preserved
   without automatic translation.
+
+Outcome: `GET /api/v1/games/{gameId}` now extends the catalog interface with a
+provider-neutral detail capability returning names, summary, cover,
+screenshots, platform-specific releases, genres, themes, platforms, game
+modes, aggregated multiplayer support, user/critic/combined ratings,
+fast/normal/completionist durations with a shared submission count, age
+ratings, and allow-listed external links. Genres, platforms, and game modes
+reuse the same stable identifiers as `/filters` and `/games`; names, summary,
+theme names, age ratings, and external-link labels preserve provider text
+without translation. Eligibility enforces the MVP content scope from
+`docs/product-requirements.md#3.2` — released base games plus their
+separately cataloged remakes and remasters — collapsing both an absent game
+ID and an excluded content type into the same `GAME_NOT_FOUND` response so a
+request cannot distinguish the two. Complete and sparse sanitized fixtures
+cover full and nullable/empty detail; classified upstream failures remain
+distinct from not-found. OpenAPI and the TypeScript client expose the
+complete M1.9 operation.
+
+The exact numeric IGDB category codes for external-link types and the
+`age_ratings` field shape used here are best-effort from documentation and
+training knowledge, not verified against live data (M1.1–M1.9 use only
+fixtures by design). Confirm both during the M1.10 live smoke test and adjust
+`WEBSITE_LABELS` or the age-rating field expansion in
+`adapters/igdb/catalog.py` if real responses disagree.
 
 ### M1.10 — Composition, live smoke test, and closeout
 
@@ -326,17 +352,18 @@ Client Secret in the ignored local API environment file. The IGDB commercial
 inquiry and final product-domain decision remain public-beta gates rather than
 M1 implementation blockers.
 
-## 7. M1.9 next-session handoff
+## 7. M1.10 next-session handoff
 
-Start from the completed M1.8 commit with a clean tree. Extend `Catalog` with a
-provider-neutral game-detail capability and expose it through
-`GET /api/v1/games/{gameId}`. Normalize names, summary and its source language,
-cover and screenshots, platform-specific release dates, genres, themes,
-platforms, game modes, structured multiplayer information, user/critic/combined
-ratings with counts, fast/normal/completionist durations with submission
-counts, age ratings, and allow-listed external links. Provider text must not be
-automatically translated. An absent eligible game must return `GAME_NOT_FOUND`
-while upstream failures keep their own error codes; the numeric IGDB ID remains
-resource identity and the slug stays a web-route concern. Continue TDD through
-the `Catalog` and HTTP seams with fakes and sanitized complete/sparse fixtures,
-regenerate the contract, run `pnpm quality`, and avoid live provider access.
+Start from the completed M1.9 commit with a clean tree. Compose the production
+Twitch token manager, IGDB transport, and `IgdbCatalog` behind `create_app` so
+the application only reports itself unavailable when local credentials are
+genuinely absent, never as a hardcoded default. Add one opt-in manual smoke
+command, excluded from `pnpm quality` and CI, that reads local Twitch
+credentials and exercises real filter, browse, autocomplete, and detail calls
+without printing secrets. Use its live results to confirm or correct the
+best-effort IGDB assumptions flagged in the M1.9 outcome above — the
+`WEBSITE_LABELS` category codes and the `age_ratings` field expansion in
+`adapters/igdb/catalog.py` — plus any other schema mismatch the smoke test
+surfaces. Run a final `pnpm contract:check` for client drift and record
+Milestone 1 evidence against every exit criterion in `docs/roadmap.md`. Keep
+`pnpm quality` green without network access or credentials throughout.
