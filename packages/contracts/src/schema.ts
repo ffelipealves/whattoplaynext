@@ -394,15 +394,18 @@ export interface operations {
         parameters: {
             query?: {
                 direction?: components["schemas"]["SortDirection"] | null;
+                durationKind?: components["schemas"]["DurationKind"];
                 gameMode?: components["schemas"]["GameModeId"][];
                 genre?: components["schemas"]["GenreId"][];
+                maximumDurationHours?: number | null;
+                minimumDurationHours?: number | null;
                 minimumRating?: number | null;
                 name?: string | null;
                 page?: number;
                 platform?: components["schemas"]["PlatformId"][];
                 releaseFrom?: string | null;
                 releaseTo?: string | null;
-                sort?: "popularity" | "rating" | "release-date" | "title";
+                sort?: components["schemas"]["SortOption"];
             };
             header?: never;
             path?: never;

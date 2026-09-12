@@ -45,8 +45,10 @@ classification. `GET /api/v1/filters` now exposes provider-neutral platform,
 genre, game-mode, duration, sort, and validation metadata. `GET /api/v1/games`
 now validates and combines name, platform, genre, release-date, rating, and
 game-mode criteria with strict AND/OR semantics, bounded pagination, and
-provider-neutral sorting. The next increment adds platform-specific release
-semantics and duration enrichment.
+provider-neutral sorting. Release bounds now use dates for the selected
+platforms, and IGDB time-to-beat data supports inclusive duration filters,
+duration sorting, and normal-duration card enrichment. The next increment adds
+game-title autocomplete.
 Name/domain selection and the external Twitch/IGDB actions remain tracked
 separately and do not block provider-independent development.
 

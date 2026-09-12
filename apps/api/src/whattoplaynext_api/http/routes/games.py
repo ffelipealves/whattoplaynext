@@ -1,13 +1,22 @@
 """Public HTTP adapter for game browsing."""
 
 from datetime import date
-from typing import Annotated, Literal
+from decimal import Decimal
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    WithJsonSchema,
+    field_validator,
+    model_validator,
+)
 
 from whattoplaynext_api.catalog.models import (
     BrowseCriteria,
+    DurationKind,
     GameModeId,
     GamePage,
     GenreId,
@@ -26,16 +35,14 @@ from whattoplaynext_api.http.routes.filters import get_catalog
 
 router = APIRouter(tags=["catalog"])
 
-ImplementedSortOption = Literal[
-    SortOption.POPULARITY,
-    SortOption.RATING,
-    SortOption.RELEASE_DATE,
-    SortOption.TITLE,
+DurationHours = Annotated[
+    Decimal,
+    WithJsonSchema({"type": "number", "minimum": 1, "maximum": 1000}),
 ]
 
 
 class BrowseParameters(BaseModel):
-    """Strict HTTP query parameters implemented by the M1.6 search slice."""
+    """Strict HTTP query parameters implemented through the M1.7 search slice."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -51,7 +58,23 @@ class BrowseParameters(BaseModel):
         alias="minimumRating",
     )
     game_mode: list[GameModeId] = Field(default_factory=list, alias="gameMode")
-    sort: ImplementedSortOption = SortOption.POPULARITY
+    duration_kind: DurationKind = Field(
+        default=DurationKind.NORMAL,
+        alias="durationKind",
+    )
+    minimum_duration_hours: DurationHours | None = Field(
+        default=None,
+        ge=1,
+        le=1000,
+        alias="minimumDurationHours",
+    )
+    maximum_duration_hours: DurationHours | None = Field(
+        default=None,
+        ge=1,
+        le=1000,
+        alias="maximumDurationHours",
+    )
+    sort: SortOption = SortOption.POPULARITY
     direction: SortDirection | None = None
     page: int = Field(default=1, ge=1, le=100)
 
@@ -63,13 +86,29 @@ class BrowseParameters(BaseModel):
 
     @model_validator(mode="after")
     def validate_release_range(self) -> BrowseParameters:
-        """Reject an inverted release interval at the HTTP boundary."""
+        """Reject inconsistent release and duration inputs at the HTTP boundary."""
         if (
             self.release_from is not None
             and self.release_to is not None
             and self.release_from > self.release_to
         ):
             raise ValueError("releaseFrom must not be after releaseTo")
+        if (
+            self.minimum_duration_hours is not None
+            and self.maximum_duration_hours is not None
+            and self.minimum_duration_hours > self.maximum_duration_hours
+        ):
+            raise ValueError(
+                "minimumDurationHours must not exceed maximumDurationHours"
+            )
+        for duration in (
+            self.minimum_duration_hours,
+            self.maximum_duration_hours,
+        ):
+            if duration is not None:
+                seconds = duration * 3600
+                if seconds != seconds.to_integral_value():
+                    raise ValueError("duration bounds must resolve to whole seconds")
         return self
 
 
@@ -113,6 +152,17 @@ async def browse_games(
         release_to=parameters.release_to,
         minimum_rating=parameters.minimum_rating,
         game_mode_ids=tuple(parameters.game_mode),
+        duration_kind=parameters.duration_kind,
+        minimum_duration_seconds=(
+            int(parameters.minimum_duration_hours * 3600)
+            if parameters.minimum_duration_hours is not None
+            else None
+        ),
+        maximum_duration_seconds=(
+            int(parameters.maximum_duration_hours * 3600)
+            if parameters.maximum_duration_hours is not None
+            else None
+        ),
         sort=parameters.sort,
         direction=parameters.direction or _default_direction(parameters.sort),
         page=parameters.page,

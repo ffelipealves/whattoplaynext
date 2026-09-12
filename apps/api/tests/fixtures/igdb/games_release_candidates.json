@@ -1,0 +1,38 @@
+[
+  {
+    "id": 101,
+    "slug": "pc-window",
+    "name": "PC Window",
+    "first_release_date": 1514764800,
+    "platforms": [{ "id": 6 }],
+    "release_dates": [{ "platform": { "id": 6 }, "date": 1590969600 }]
+  },
+  {
+    "id": 102,
+    "slug": "ps5-window-no-duration",
+    "name": "PS5 Window No Duration",
+    "platforms": [{ "id": 167 }],
+    "release_dates": [{ "platform": { "id": 167 }, "date": 1609372800 }]
+  },
+  {
+    "id": 103,
+    "slug": "pc-outside-window",
+    "name": "PC Outside Window",
+    "platforms": [{ "id": 6 }],
+    "release_dates": [{ "platform": { "id": 6 }, "date": 1556668800 }]
+  },
+  {
+    "id": 104,
+    "slug": "missing-platform-release",
+    "name": "Missing Platform Release",
+    "first_release_date": 1583020800,
+    "platforms": [{ "id": 6 }]
+  },
+  {
+    "id": 105,
+    "slug": "inclusive-duration-bound",
+    "name": "Inclusive Duration Bound",
+    "platforms": [{ "id": 167 }],
+    "release_dates": [{ "platform": 167, "date": 1583020800 }]
+  }
+]

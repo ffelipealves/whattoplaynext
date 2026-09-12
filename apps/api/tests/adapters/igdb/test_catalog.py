@@ -16,6 +16,7 @@ from whattoplaynext_api.adapters.igdb.transport import (
 )
 from whattoplaynext_api.catalog.models import (
     BrowseCriteria,
+    DurationKind,
     GameModeId,
     GenreId,
     PlatformId,
@@ -35,7 +36,7 @@ def load_records(name: str) -> list[dict[str, object]]:
 class FixtureTransport:
     def __init__(self) -> None:
         self.requests: list[tuple[str, str]] = []
-        self.responses = {
+        self.responses: dict[str, list[dict[str, object]]] = {
             "platforms": load_records("platforms.json"),
             "genres": load_records("genres.json"),
             "game_modes": load_records("game_modes.json"),
@@ -87,6 +88,11 @@ class BrowseFixtureTransport:
         self.responses = {
             "popularity_primitives": load_records("popularity_complete.json"),
             "games": load_records(games_fixture),
+            "game_time_to_beats": load_records(
+                "game_time_to_beats_sparse.json"
+                if games_fixture == "games_sparse.json"
+                else "game_time_to_beats_complete.json"
+            ),
         }
 
     async def query(
@@ -113,6 +119,8 @@ class SearchFixtureTransport:
         query: str,
     ) -> list[dict[str, object]]:
         self.requests.append((endpoint, query))
+        if endpoint == "game_time_to_beats":
+            return []
         return load_records("games_complete.json")
 
     async def count(self, endpoint: str, query: str) -> int:
@@ -138,6 +146,32 @@ class QueuedFixtureTransport:
     async def count(self, endpoint: str, query: str) -> int:
         self.count_requests.append((endpoint, query))
         return self.total
+
+
+class M17FixtureTransport:
+    def __init__(self) -> None:
+        self.requests: list[tuple[str, str]] = []
+        self.count_requests: list[tuple[str, str]] = []
+        self.responses: dict[str, list[dict[str, object]]] = {
+            "games": load_records("games_release_candidates.json"),
+            "game_time_to_beats": load_records("game_time_to_beats_candidates.json"),
+            "popularity_primitives": [
+                {"game_id": 101, "value": 0.5},
+                {"game_id": 105, "value": 0.9},
+            ],
+        }
+
+    async def query(
+        self,
+        endpoint: str,
+        query: str,
+    ) -> list[dict[str, object]]:
+        self.requests.append((endpoint, query))
+        return self.responses[endpoint]
+
+    async def count(self, endpoint: str, query: str) -> int:
+        self.count_requests.append((endpoint, query))
+        return 5
 
 
 class FakeTokenProvider:
@@ -278,7 +312,7 @@ async def test_browses_complete_game_summaries_with_an_explicit_projection() -> 
                     "count": 2745,
                     "source": "IGDB combined",
                 },
-                "normalDurationSeconds": None,
+                "normalDurationSeconds": 144000,
                 "gameModes": [
                     {"id": "single-player", "label": "Single player"},
                     {"id": "multiplayer", "label": "Multiplayer"},
@@ -317,6 +351,10 @@ async def test_browses_complete_game_summaries_with_an_explicit_projection() -> 
                 "platforms.id,genres.id,total_rating,total_rating_count,"
                 "game_modes.id; where id = (1942); limit 24;"
             ),
+        ),
+        (
+            "game_time_to_beats",
+            ("fields game_id,normally; where game_id = (1942); limit 500;"),
         ),
     ]
     assert all("*" not in query for _endpoint, query in transport.requests)
@@ -452,8 +490,6 @@ async def test_translates_strict_and_or_criteria_to_the_games_endpoint() -> None
             name="Hollow Knight",
             platform_ids=(PlatformId.PC, PlatformId.PLAYSTATION_5),
             genre_ids=(GenreId.PLATFORM, GenreId.ADVENTURE),
-            release_from=date(2017, 1, 1),
-            release_to=date(2018, 12, 31),
             minimum_rating=80,
             game_mode_ids=(GameModeId.SINGLE_PLAYER,),
             sort=SortOption.RATING,
@@ -478,8 +514,6 @@ async def test_translates_strict_and_or_criteria_to_the_games_endpoint() -> None
         'name ~ *"Hollow Knight"*',
         "platforms = (6,167)",
         "genres = (8,31)",
-        "first_release_date >= 1483228800",
-        "first_release_date <= 1546300799",
         "total_rating >= 80.0",
         "game_modes = (1)",
     }
@@ -511,6 +545,7 @@ async def test_keeps_strict_filters_when_sorting_by_popularity() -> None:
                 {"game_id": 3000, "value": 0.9},
             ],
             [games[0], second_game],
+            [],
         ],
         total=2,
     )
@@ -532,6 +567,7 @@ async def test_keeps_strict_filters_when_sorting_by_popularity() -> None:
         "games",
         "popularity_primitives",
         "games",
+        "game_time_to_beats",
     ]
     matching_games_query = transport.requests[0][1]
     assert "fields id" in matching_games_query
@@ -591,13 +627,100 @@ async def test_escapes_name_text_inside_the_apicalypse_string_literal() -> None:
 
 
 @pytest.mark.anyio
-async def test_defers_duration_sorting_without_calling_the_provider() -> None:
+async def test_sorts_by_the_selected_duration_and_keeps_unknown_values() -> None:
+    transport = M17FixtureTransport()
+    catalog = IgdbCatalog(transport)
+
+    result = await catalog.browse_games(
+        BrowseCriteria(
+            duration_kind=DurationKind.NORMAL,
+            sort=SortOption.DURATION,
+            direction=SortDirection.DESCENDING,
+        )
+    )
+
+    assert [item.id for item in result.items] == [105, 103, 104, 101, 102]
+    assert result.pagination.total_items == 5
+    assert result.meta.excluded_unknown_duration is False
+    games_query = next(
+        query for endpoint, query in transport.requests if endpoint == "games"
+    )
+    assert "release_dates" not in games_query
+
+
+@pytest.mark.anyio
+async def test_filters_platform_releases_and_durations_before_paging() -> None:
+    transport = M17FixtureTransport()
+    catalog = IgdbCatalog(transport)
+
+    result = await catalog.browse_games(
+        BrowseCriteria(
+            platform_ids=(PlatformId.PC, PlatformId.PLAYSTATION_5),
+            release_from=date(2020, 1, 1),
+            release_to=date(2020, 12, 31),
+            duration_kind=DurationKind.NORMAL,
+            minimum_duration_seconds=7200,
+            maximum_duration_seconds=36000,
+        )
+    )
+
+    assert [item.id for item in result.items] == [105, 101]
+    assert [item.normal_duration_seconds for item in result.items] == [36000, 7200]
+    assert result.pagination.total_items == 2
+    assert result.pagination.total_pages == 1
+    assert result.meta.excluded_unknown_duration is True
+    games_query = next(
+        query for endpoint, query in transport.requests if endpoint == "games"
+    )
+    assert "platforms = (6,167)" in games_query
+    assert "release_dates.platform,release_dates.date" in games_query
+    assert "first_release_date" not in games_query.split("where", 1)[-1]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("kind", "minimum", "maximum", "expected_ids"),
+    [
+        (DurationKind.FAST, 3600, 3600, [105, 101]),
+        (DurationKind.NORMAL, 36000, 36000, [105]),
+        (DurationKind.COMPLETIONIST, 18000, 18000, [101]),
+    ],
+)
+async def test_maps_each_duration_kind_for_inclusive_filtering(
+    kind: DurationKind,
+    minimum: int,
+    maximum: int,
+    expected_ids: list[int],
+) -> None:
+    catalog = IgdbCatalog(M17FixtureTransport())
+
+    result = await catalog.browse_games(
+        BrowseCriteria(
+            duration_kind=kind,
+            minimum_duration_seconds=minimum,
+            maximum_duration_seconds=maximum,
+            sort=SortOption.TITLE,
+            direction=SortDirection.ASCENDING,
+        )
+    )
+
+    assert [item.id for item in result.items] == expected_ids
+    assert result.meta.excluded_unknown_duration is True
+
+
+@pytest.mark.anyio
+async def test_uses_first_release_date_bounds_when_no_platform_is_selected() -> None:
     transport = SearchFixtureTransport()
     catalog = IgdbCatalog(transport)
 
-    with pytest.raises(ApplicationError) as error:
-        await catalog.browse_games(BrowseCriteria(sort=SortOption.DURATION))
+    await catalog.browse_games(
+        BrowseCriteria(
+            release_from=date(2017, 1, 1),
+            release_to=date(2018, 12, 31),
+            sort=SortOption.TITLE,
+        )
+    )
 
-    assert error.value.code is ErrorCode.INVALID_QUERY
-    assert transport.count_requests == []
-    assert transport.requests == []
+    count_query = transport.count_requests[0][1]
+    assert "first_release_date >= 1483228800" in count_query
+    assert "first_release_date <= 1546300799" in count_query

@@ -1,0 +1,26 @@
+[
+  {
+    "game_id": 101,
+    "hastily": 3600,
+    "normally": 7200,
+    "completely": 18000
+  },
+  {
+    "game_id": 103,
+    "hastily": 7200,
+    "normally": 18000,
+    "completely": 36000
+  },
+  {
+    "game_id": 104,
+    "hastily": 7200,
+    "normally": 14400,
+    "completely": 28800
+  },
+  {
+    "game_id": 105,
+    "hastily": 3600,
+    "normally": 36000,
+    "completely": 72000
+  }
+]

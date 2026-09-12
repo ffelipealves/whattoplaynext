@@ -135,6 +135,9 @@ class BrowseCriteria(BaseModel):
     release_to: date | None = None
     minimum_rating: float | None = Field(default=None, ge=0, le=100)
     game_mode_ids: tuple[GameModeId, ...] = ()
+    duration_kind: DurationKind = DurationKind.NORMAL
+    minimum_duration_seconds: int | None = Field(default=None, ge=3600, le=3600000)
+    maximum_duration_seconds: int | None = Field(default=None, ge=3600, le=3600000)
     page: int = Field(default=1, ge=1, le=100)
     page_size: Literal[24] = 24
     sort: SortOption = SortOption.POPULARITY
@@ -159,13 +162,21 @@ class BrowseCriteria(BaseModel):
 
     @model_validator(mode="after")
     def validate_release_range(self) -> BrowseCriteria:
-        """Require chronological release bounds."""
+        """Require chronological release and duration bounds."""
         if (
             self.release_from is not None
             and self.release_to is not None
             and self.release_from > self.release_to
         ):
             raise ValueError("releaseFrom must not be after releaseTo")
+        if (
+            self.minimum_duration_seconds is not None
+            and self.maximum_duration_seconds is not None
+            and self.minimum_duration_seconds > self.maximum_duration_seconds
+        ):
+            raise ValueError(
+                "minimumDurationHours must not exceed maximumDurationHours"
+            )
         return self
 
 

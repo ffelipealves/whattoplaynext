@@ -96,6 +96,12 @@ GAME_MODES = (
     AllowedOption(6, "battle-royale", "Battle Royale"),
 )
 
+DURATION_PROVIDER_FIELDS = {
+    DurationKind.FAST: "hastily",
+    DurationKind.NORMAL: "normally",
+    DurationKind.COMPLETIONIST: "completely",
+}
+
 
 class IgdbCatalog:
     """Normalize IGDB data behind the catalog application interface."""
@@ -143,11 +149,12 @@ class IgdbCatalog:
 
     async def browse_games(self, criteria: BrowseCriteria) -> GamePage:
         """Return one strictly filtered and ordered page of games."""
-        if criteria.sort is SortOption.DURATION:
-            raise ApplicationError(ErrorCode.INVALID_QUERY)
         offset = (criteria.page - 1) * criteria.page_size
+        needs_local_evaluation = _needs_local_evaluation(criteria)
         try:
-            if criteria.sort is SortOption.POPULARITY:
+            if needs_local_evaluation:
+                total_items, items = await self._locally_evaluated_page(criteria)
+            elif criteria.sort is SortOption.POPULARITY:
                 if _has_game_filters(criteria):
                     total_items, game_ids = await self._filtered_popularity_ids(
                         criteria
@@ -184,6 +191,8 @@ class IgdbCatalog:
                     _search_query(criteria, where_query, offset),
                 )
                 items = [_normalize_game(record) for record in game_records]
+            if not needs_local_evaluation:
+                items = await self._enrich_page_durations(items)
         except IgdbTransportError as error:
             raise _application_error(error) from error
         except OSError, OverflowError, TypeError, ValueError:
@@ -201,8 +210,112 @@ class IgdbCatalog:
                 sort=criteria.sort,
                 direction=criteria.direction,
             ),
-            meta=ResponseMeta(),
+            meta=ResponseMeta(excluded_unknown_duration=_has_duration_filter(criteria)),
         )
+
+    async def _locally_evaluated_page(
+        self,
+        criteria: BrowseCriteria,
+    ) -> tuple[int, list[GameSummary]]:
+        where_query = _where_query(
+            criteria,
+            include_release_bounds=not bool(criteria.platform_ids),
+        )
+        candidate_total = await self._transport.count("games", where_query)
+        records: list[dict[str, object]] = []
+        for batch_offset in range(0, candidate_total, 500):
+            records.extend(
+                await self._transport.query(
+                    "games",
+                    _candidate_games_query(
+                        where_query,
+                        batch_offset,
+                        include_release_dates=_needs_platform_release_data(criteria),
+                    ),
+                )
+            )
+        if _has_platform_release_filter(criteria):
+            records = [
+                record
+                for record in records
+                if _matches_platform_release(record, criteria)
+            ]
+
+        duration_kinds = tuple(
+            dict.fromkeys(
+                (
+                    DurationKind.NORMAL,
+                    criteria.duration_kind,
+                )
+            )
+        )
+        durations = await self._duration_values(_record_ids(records), duration_kinds)
+        if _has_duration_filter(criteria):
+            records = [
+                record
+                for record in records
+                if _matches_duration(_required_int(record, "id"), durations, criteria)
+            ]
+
+        popularity = (
+            await self._popularity_for_ids(_record_ids(records))
+            if criteria.sort is SortOption.POPULARITY
+            else {}
+        )
+        records = _order_local_records(records, criteria, durations, popularity)
+        total_items = len(records)
+        offset = (criteria.page - 1) * criteria.page_size
+        page_records = records[offset : offset + criteria.page_size]
+        return total_items, _normalize_games_with_durations(page_records, durations)
+
+    async def _enrich_page_durations(
+        self,
+        items: list[GameSummary],
+    ) -> list[GameSummary]:
+        durations = await self._duration_values(
+            [item.id for item in items],
+            (DurationKind.NORMAL,),
+        )
+        return [
+            item.model_copy(
+                update={
+                    "normal_duration_seconds": durations.get(item.id, {}).get(
+                        DurationKind.NORMAL
+                    )
+                }
+            )
+            for item in items
+        ]
+
+    async def _duration_values(
+        self,
+        game_ids: list[int],
+        kinds: tuple[DurationKind, ...],
+    ) -> dict[int, dict[DurationKind, int]]:
+        durations: dict[int, dict[DurationKind, int]] = {}
+        fields = ",".join(DURATION_PROVIDER_FIELDS[kind] for kind in kinds)
+        for game_id_batch in _chunks(game_ids, 500):
+            ids = ",".join(str(game_id) for game_id in game_id_batch)
+            records = await self._transport.query(
+                "game_time_to_beats",
+                (f"fields game_id,{fields}; where game_id = ({ids}); limit 500;"),
+            )
+            durations.update(_normalize_duration_records(records, kinds))
+        return durations
+
+    async def _popularity_for_ids(self, game_ids: list[int]) -> dict[int, float]:
+        popularity: dict[int, float] = {}
+        for game_id_batch in _chunks(game_ids, 500):
+            ids = ",".join(str(game_id) for game_id in game_id_batch)
+            records = await self._transport.query(
+                "popularity_primitives",
+                (
+                    "fields game_id,value; where popularity_type = 1 & "
+                    f"game_id = ({ids}); limit 500;"
+                ),
+            )
+            popularity.update(_popularity_values(records))
+        return popularity
 
     async def _filtered_popularity_ids(
         self,
@@ -221,17 +334,7 @@ class IgdbCatalog:
             )
             matching_ids.extend(_record_ids(records))
 
-        popularity: dict[int, float] = {}
-        for game_id_batch in _chunks(matching_ids, 500):
-            ids = ",".join(str(game_id) for game_id in game_id_batch)
-            records = await self._transport.query(
-                "popularity_primitives",
-                (
-                    "fields game_id,value; where popularity_type = 1 & "
-                    f"game_id = ({ids}); limit 500;"
-                ),
-            )
-            popularity.update(_popularity_values(records))
+        popularity = await self._popularity_for_ids(matching_ids)
 
         reverse_value = criteria.direction is SortDirection.DESCENDING
         ordered_ids = sorted(
@@ -302,6 +405,27 @@ def _record_ids(records: list[dict[str, object]]) -> list[int]:
     return [_required_int(record, "id") for record in records]
 
 
+def _normalize_duration_records(
+    records: list[dict[str, object]],
+    kinds: tuple[DurationKind, ...],
+) -> dict[int, dict[DurationKind, int]]:
+    durations: dict[int, dict[DurationKind, int]] = {}
+    for record in records:
+        game_id = _required_int(record, "game_id")
+        game_durations: dict[DurationKind, int] = {}
+        for kind in kinds:
+            field = DURATION_PROVIDER_FIELDS[kind]
+            value = record.get(field)
+            if value is None:
+                continue
+            if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                raise ValueError(f"invalid duration field: {field}")
+            if value > 0:
+                game_durations[kind] = value
+        durations[game_id] = game_durations
+    return durations
+
+
 def _chunks(values: list[int], size: int) -> list[list[int]]:
     return [values[index : index + size] for index in range(0, len(values), size)]
 
@@ -312,6 +436,24 @@ def _games_query(game_ids: list[int], page_size: int) -> str:
         "fields id,slug,name,first_release_date,cover.image_id,platforms.id,"
         "genres.id,total_rating,total_rating_count,game_modes.id; "
         f"where id = ({ids}); limit {page_size};"
+    )
+
+
+def _candidate_games_query(
+    where_query: str,
+    offset: int,
+    *,
+    include_release_dates: bool,
+) -> str:
+    where = f" {where_query}" if where_query else ""
+    release_fields = (
+        ",release_dates.platform,release_dates.date" if include_release_dates else ""
+    )
+    return (
+        "fields id,slug,name,first_release_date,cover.image_id,platforms.id,"
+        "genres.id,total_rating,total_rating_count,game_modes.id"
+        f"{release_fields};"
+        f"{where} sort id asc; limit 500; offset {offset};"
     )
 
 
@@ -329,18 +471,50 @@ def _has_game_filters(criteria: BrowseCriteria) -> bool:
     )
 
 
-def _where_query(criteria: BrowseCriteria) -> str:
+def _has_duration_filter(criteria: BrowseCriteria) -> bool:
+    return (
+        criteria.minimum_duration_seconds is not None
+        or criteria.maximum_duration_seconds is not None
+    )
+
+
+def _has_platform_release_filter(criteria: BrowseCriteria) -> bool:
+    return bool(criteria.platform_ids) and (
+        criteria.release_from is not None or criteria.release_to is not None
+    )
+
+
+def _needs_platform_release_data(criteria: BrowseCriteria) -> bool:
+    return bool(criteria.platform_ids) and (
+        _has_platform_release_filter(criteria)
+        or criteria.sort is SortOption.RELEASE_DATE
+    )
+
+
+def _needs_local_evaluation(criteria: BrowseCriteria) -> bool:
+    return (
+        _has_duration_filter(criteria)
+        or criteria.sort is SortOption.DURATION
+        or _needs_platform_release_data(criteria)
+    )
+
+
+def _where_query(
+    criteria: BrowseCriteria,
+    *,
+    include_release_bounds: bool = True,
+) -> str:
     clauses: list[str] = []
     if criteria.name is not None:
         clauses.append(f"name ~ *{dumps(criteria.name, ensure_ascii=False)}*")
     _append_option_clause(clauses, "platforms", criteria.platform_ids, PLATFORMS)
     _append_option_clause(clauses, "genres", criteria.genre_ids, GENRES)
-    if criteria.release_from is not None:
+    if include_release_bounds and criteria.release_from is not None:
         clauses.append(
             "first_release_date >= "
             f"{int(datetime.combine(criteria.release_from, time.min, UTC).timestamp())}"
         )
-    if criteria.release_to is not None:
+    if include_release_bounds and criteria.release_to is not None:
         clauses.append(
             "first_release_date <= "
             f"{int(datetime.combine(criteria.release_to, time.max, UTC).timestamp())}"
@@ -402,6 +576,152 @@ def _normalize_games(
 ) -> list[GameSummary]:
     games = {_required_int(record, "id"): _normalize_game(record) for record in records}
     return [games[game_id] for game_id in ordered_ids if game_id in games]
+
+
+def _normalize_games_with_durations(
+    records: list[dict[str, object]],
+    durations: dict[int, dict[DurationKind, int]],
+) -> list[GameSummary]:
+    return [
+        _normalize_game(record).model_copy(
+            update={
+                "normal_duration_seconds": durations.get(
+                    _required_int(record, "id"), {}
+                ).get(DurationKind.NORMAL)
+            }
+        )
+        for record in records
+    ]
+
+
+def _matches_platform_release(
+    record: dict[str, object],
+    criteria: BrowseCriteria,
+) -> bool:
+    selected_platform_ids = {
+        option.provider_id
+        for option in PLATFORMS
+        if option.public_id in criteria.platform_ids
+    }
+    lower = (
+        int(datetime.combine(criteria.release_from, time.min, UTC).timestamp())
+        if criteria.release_from is not None
+        else None
+    )
+    upper = (
+        int(datetime.combine(criteria.release_to, time.max, UTC).timestamp())
+        if criteria.release_to is not None
+        else None
+    )
+    return any(
+        platform_id in selected_platform_ids
+        and (lower is None or release_timestamp >= lower)
+        and (upper is None or release_timestamp <= upper)
+        for platform_id, release_timestamp in _release_dates(record)
+    )
+
+
+def _release_dates(record: dict[str, object]) -> list[tuple[int, int]]:
+    value = record.get("release_dates")
+    if not isinstance(value, list):
+        return []
+    releases: list[tuple[int, int]] = []
+    for release in value:
+        if not isinstance(release, dict):
+            continue
+        platform = release.get("platform")
+        platform_id = platform.get("id") if isinstance(platform, dict) else platform
+        release_timestamp = release.get("date")
+        if (
+            isinstance(platform_id, int)
+            and not isinstance(platform_id, bool)
+            and isinstance(release_timestamp, int)
+            and not isinstance(release_timestamp, bool)
+        ):
+            releases.append((platform_id, release_timestamp))
+    return releases
+
+
+def _matches_duration(
+    game_id: int,
+    durations: dict[int, dict[DurationKind, int]],
+    criteria: BrowseCriteria,
+) -> bool:
+    duration = durations.get(game_id, {}).get(criteria.duration_kind)
+    return (
+        duration is not None
+        and (
+            criteria.minimum_duration_seconds is None
+            or duration >= criteria.minimum_duration_seconds
+        )
+        and (
+            criteria.maximum_duration_seconds is None
+            or duration <= criteria.maximum_duration_seconds
+        )
+    )
+
+
+def _order_local_records(
+    records: list[dict[str, object]],
+    criteria: BrowseCriteria,
+    durations: dict[int, dict[DurationKind, int]],
+    popularity: dict[int, float],
+) -> list[dict[str, object]]:
+    records = sorted(records, key=lambda record: _required_int(record, "id"))
+    known: list[tuple[dict[str, object], str | int | float]] = []
+    unknown: list[dict[str, object]] = []
+    for record in records:
+        value = _local_sort_value(record, criteria, durations, popularity)
+        if value is None:
+            unknown.append(record)
+        else:
+            known.append((record, value))
+    ordered_known = sorted(
+        known,
+        key=lambda item: item[1],
+        reverse=criteria.direction is SortDirection.DESCENDING,
+    )
+    return [record for record, _value in ordered_known] + unknown
+
+
+def _local_sort_value(
+    record: dict[str, object],
+    criteria: BrowseCriteria,
+    durations: dict[int, dict[DurationKind, int]],
+    popularity: dict[int, float],
+) -> str | int | float | None:
+    game_id = _required_int(record, "id")
+    if criteria.sort is SortOption.POPULARITY:
+        return popularity.get(game_id)
+    if criteria.sort is SortOption.RATING:
+        rating = record.get("total_rating")
+        return (
+            float(rating)
+            if isinstance(rating, int | float) and not isinstance(rating, bool)
+            else None
+        )
+    if criteria.sort is SortOption.RELEASE_DATE:
+        if criteria.platform_ids:
+            selected = {
+                option.provider_id
+                for option in PLATFORMS
+                if option.public_id in criteria.platform_ids
+            }
+            dates = [
+                date
+                for platform, date in _release_dates(record)
+                if platform in selected
+            ]
+            return min(dates) if dates else None
+        release = record.get("first_release_date")
+        return (
+            release
+            if isinstance(release, int) and not isinstance(release, bool)
+            else None
+        )
+    if criteria.sort is SortOption.DURATION:
+        return durations.get(game_id, {}).get(criteria.duration_kind)
+    return _required_string(record, "name")
 
 
 def _normalize_game(record: dict[str, object]) -> GameSummary:

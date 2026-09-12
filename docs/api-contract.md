@@ -60,27 +60,26 @@ not derive their identity from mutable provider labels.
 
 ### `GET /api/v1/games`
 
-M1.6 implements strict search for name, platform, genre, release bounds,
-minimum rating, game mode, sort, direction, and page. Duration parameters and
-duration sorting remain reserved for M1.7.
+M1.7 implements strict search for name, platform, genre, release bounds,
+minimum rating, game mode, duration, sort, direction, and page.
 
 Query parameters:
 
-| Parameter              | Type            | Meaning                                           |
-| ---------------------- | --------------- | ------------------------------------------------- |
-| `name`                 | string          | Partial title query                               |
-| `platform`             | repeated string | OR within platform category                       |
-| `genre`                | repeated string | OR within genre category                          |
-| `releaseFrom`          | date            | Inclusive lower release bound                     |
-| `releaseTo`            | date            | Inclusive upper release bound                     |
-| `minimumRating`        | number          | Combined IGDB rating from 0 to 100                |
-| `gameMode`             | repeated string | OR within mode category                           |
-| `durationKind`         | enum            | Reserved for M1.7                                 |
-| `minimumDurationHours` | number          | Reserved for M1.7                                 |
-| `maximumDurationHours` | number          | Reserved for M1.7                                 |
-| `sort`                 | enum            | Defaults to `popularity`                          |
-| `direction`            | enum            | `asc` or `desc`; sensible default depends on sort |
-| `page`                 | integer         | Defaults to 1; maximum 100                        |
+| Parameter              | Type            | Meaning                                              |
+| ---------------------- | --------------- | ---------------------------------------------------- |
+| `name`                 | string          | Partial title query                                  |
+| `platform`             | repeated string | OR within platform category                          |
+| `genre`                | repeated string | OR within genre category                             |
+| `releaseFrom`          | date            | Inclusive lower release bound                        |
+| `releaseTo`            | date            | Inclusive upper release bound                        |
+| `minimumRating`        | number          | Combined IGDB rating from 0 to 100                   |
+| `gameMode`             | repeated string | OR within mode category                              |
+| `durationKind`         | enum            | `fast`, `normal`, or `completionist`; default normal |
+| `minimumDurationHours` | number          | Inclusive lower duration bound                       |
+| `maximumDurationHours` | number          | Inclusive upper duration bound                       |
+| `sort`                 | enum            | Defaults to `popularity`                             |
+| `direction`            | enum            | `asc` or `desc`; sensible default depends on sort    |
+| `page`                 | integer         | Defaults to 1; maximum 100                           |
 
 Response shape:
 
@@ -127,22 +126,31 @@ Values repeated within platform, genre, or game mode are deduplicated and use
 OR semantics. Active categories are combined with AND semantics and are never
 silently relaxed. Name matching uses the provider's case-insensitive partial
 comparison. Rating uses `total_rating`; release bounds are inclusive and use
-`first_release_date` until M1.7 adds platform-specific release selection.
+the release dates belonging to any selected platform. Without a platform
+criterion they fall back to `first_release_date`.
 
 Popularity without filters uses the IGDB Visits primitive directly. With
 filters, the adapter obtains the exact matching game IDs, batches their Visits
 values, orders them stably, and then selects the requested 24-item page. Rating,
-release-date, and title sorts use their explicit IGDB game fields. Duration sort
-requests fail HTTP validation without catalog access until M1.7.
+release-date, and title sorts use their explicit IGDB game fields when no join
+is required. Duration and platform-specific release evaluation resolve exact
+candidate sets before paging.
 
-`totalItems` is exact for the active criteria. `normalDurationSeconds` remains
-`null` until M1.7 adds duration enrichment.
+Duration bounds accept 1–1,000 hours, are inclusive, and must convert exactly to
+whole seconds. The default duration kind is `normal`. Duration values come from
+IGDB `game_time_to_beats`: `hastily`, `normally`, and `completely` map to fast,
+normal, and completionist. Cards expose `normally` as
+`normalDurationSeconds`; a missing record remains `null`. Unknown duration
+sorts last and is excluded only when a duration bound is active. Unknown rating
+is likewise excluded only by an active minimum-rating filter.
+
+`totalItems` is exact for the active criteria. Joins happen before the requested
+24-item page is selected and preserve the chosen order.
 
 An empty provider page is a successful response with an empty `items` list.
-Provider failures retain their classified error responses. Until caching and
-duration filtering are implemented, metadata is always
-`servedFrom="provider"`, `dataMayBeStale=false`, and
-`excludedUnknownDuration=false`.
+Provider failures retain their classified error responses. Metadata remains
+`servedFrom="provider"` and `dataMayBeStale=false`;
+`excludedUnknownDuration` is true exactly when duration bounds are active.
 
 ### `GET /api/v1/games/autocomplete`
 

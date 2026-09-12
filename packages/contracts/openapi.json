@@ -802,18 +802,56 @@
           },
           {
             "in": "query",
+            "name": "durationKind",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DurationKind",
+              "default": "normal"
+            }
+          },
+          {
+            "in": "query",
+            "name": "minimumDurationHours",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 1000,
+                  "minimum": 1,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Minimumdurationhours"
+            }
+          },
+          {
+            "in": "query",
+            "name": "maximumDurationHours",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 1000,
+                  "minimum": 1,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Maximumdurationhours"
+            }
+          },
+          {
+            "in": "query",
             "name": "sort",
             "required": false,
             "schema": {
-              "default": "popularity",
-              "enum": [
-                "popularity",
-                "rating",
-                "release-date",
-                "title"
-              ],
-              "title": "Sort",
-              "type": "string"
+              "$ref": "#/components/schemas/SortOption",
+              "default": "popularity"
             }
           },
           {

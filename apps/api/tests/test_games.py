@@ -9,6 +9,7 @@ from whattoplaynext_api.catalog.models import (
     BrowseCriteria,
     BrowseQuery,
     CatalogOption,
+    DurationKind,
     FilterMetadata,
     GameCover,
     GameModeId,
@@ -252,6 +253,33 @@ async def test_normalizes_strict_search_criteria() -> None:
 
 
 @pytest.mark.anyio
+async def test_normalizes_duration_hours_to_whole_seconds() -> None:
+    catalog = FakeCatalog()
+    application = create_app(Settings(environment="test"), catalog=catalog)
+    transport = ASGITransport(app=application)
+
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.get(
+            "/api/v1/games",
+            params={
+                "durationKind": "normal",
+                "minimumDurationHours": "1.5",
+                "maximumDurationHours": "20",
+                "sort": "duration",
+            },
+        )
+
+    assert response.status_code == 200
+    assert catalog.criteria == BrowseCriteria(
+        duration_kind=DurationKind.NORMAL,
+        minimum_duration_seconds=5400,
+        maximum_duration_seconds=72000,
+        sort=SortOption.DURATION,
+        direction=SortDirection.ASCENDING,
+    )
+
+
+@pytest.mark.anyio
 @pytest.mark.parametrize(
     "query",
     [
@@ -266,7 +294,11 @@ async def test_normalizes_strict_search_criteria() -> None:
         "minimumRating=100.1",
         "sort=unknown-sort",
         "direction=sideways",
-        "durationKind=normal",
+        "durationKind=normal&minimumDurationHours=0.5",
+        "durationKind=normal&maximumDurationHours=1000.1",
+        "durationKind=normal&minimumDurationHours=2.0001",
+        "durationKind=normal&minimumDurationHours=10&maximumDurationHours=9",
+        "durationKind=unknown",
     ],
 )
 async def test_rejects_invalid_or_not_yet_supported_criteria(query: str) -> None:
@@ -313,17 +345,49 @@ async def test_uses_a_sensible_default_direction_for_each_sort(
 
 
 @pytest.mark.anyio
-async def test_rejects_duration_sort_until_milestone_1_7() -> None:
+async def test_accepts_a_duration_kind_without_filtering() -> None:
     catalog = FakeCatalog()
     application = create_app(Settings(environment="test"), catalog=catalog)
     transport = ASGITransport(app=application)
 
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
-        response = await client.get("/api/v1/games?sort=duration")
+        response = await client.get("/api/v1/games?durationKind=completionist")
 
-    assert response.status_code == 422
-    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
-    assert catalog.criteria is None
+    assert response.status_code == 200
+    assert catalog.criteria is not None
+    assert catalog.criteria.duration_kind is DurationKind.COMPLETIONIST
+
+
+@pytest.mark.anyio
+async def test_defaults_duration_bounds_and_sorting_to_normal_play() -> None:
+    catalog = FakeCatalog()
+    application = create_app(Settings(environment="test"), catalog=catalog)
+    transport = ASGITransport(app=application)
+
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.get(
+            "/api/v1/games?minimumDurationHours=5&sort=duration"
+        )
+
+    assert response.status_code == 200
+    assert catalog.criteria is not None
+    assert catalog.criteria.duration_kind is DurationKind.NORMAL
+    assert catalog.criteria.minimum_duration_seconds == 18000
+    assert catalog.criteria.direction is SortDirection.ASCENDING
+
+
+@pytest.mark.anyio
+async def test_converts_decimal_duration_hours_exactly_to_seconds() -> None:
+    catalog = FakeCatalog()
+    application = create_app(Settings(environment="test"), catalog=catalog)
+    transport = ASGITransport(app=application)
+
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.get("/api/v1/games?minimumDurationHours=1.1")
+
+    assert response.status_code == 200
+    assert catalog.criteria is not None
+    assert catalog.criteria.minimum_duration_seconds == 3960
 
 
 @pytest.mark.anyio

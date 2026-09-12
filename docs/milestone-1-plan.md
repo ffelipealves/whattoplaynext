@@ -1,6 +1,6 @@
 # Milestone 1 Plan
 
-Status: active execution baseline; M1.6 completed and M1.7 ready
+Status: active execution baseline; M1.7 completed and M1.8 ready
 
 Prepared: 2026-09-10
 
@@ -215,6 +215,8 @@ M1.7. OpenAPI and the TypeScript client expose the M1.6 criteria.
 
 ### M1.7 — Release and duration semantics
 
+Status: completed on 2026-09-11.
+
 Deliver:
 
 - platform-specific release-date filtering and first-release fallback;
@@ -230,6 +232,17 @@ Acceptance:
 - duration bounds are inclusive and use whole seconds internally;
 - joins preserve result order, pagination, and games with unrelated missing
   data.
+
+Outcome: selected-platform release bounds now evaluate the matching platform
+records with OR semantics, while searches without platforms retain the
+first-release fallback. Duration criteria default to normal play, convert
+validated hour values to inclusive whole seconds, and map fast, normal, and
+completionist measures from the IGDB time-to-beat endpoint. Cross-resource
+criteria are evaluated before paging so ordering and exact totals survive the
+join. Cards receive normal duration when available; unrelated missing fields
+remain intact, unknown duration sorts last, and only active duration bounds set
+`excludedUnknownDuration=true`. OpenAPI and the TypeScript client expose the
+complete M1.7 query surface.
 
 ### M1.8 — Autocomplete vertical slice
 
@@ -300,15 +313,13 @@ Client Secret in the ignored local API environment file. The IGDB commercial
 inquiry and final product-domain decision remain public-beta gates rather than
 M1 implementation blockers.
 
-## 7. M1.7 next-session handoff
+## 7. M1.8 next-session handoff
 
-Start from the completed M1.6 commit with a clean tree. Extend the existing
-`BrowseCriteria`, `Catalog.browse_games()`, HTTP route, and IGDB adapter with
-duration kind/bounds, platform-specific release-date evaluation, duration
-enrichment, and duration sorting. Preserve strict AND/OR behavior, provider
-ordering, page totals, and games whose unrelated optional fields are missing.
-Unknown rating or duration values are excluded only when the corresponding
-filter is active, and duration filtering must set `excludedUnknownDuration`.
-Continue TDD through the `Catalog` and HTTP seams using fakes and sanitized
-fixtures, regenerate the contract, run `pnpm quality`, and avoid live provider
-access.
+Start from the completed M1.7 commit with a clean tree. Extend `Catalog` with a
+provider-neutral autocomplete capability and expose it through
+`GET /api/v1/games/autocomplete`. Validate a trimmed `q` from 2–100 characters,
+accept optional repeated platform context, and return at most eight normalized
+title/year/cover suggestions. Keep autocomplete failures distinct and do not
+change normal search behavior. Continue TDD through the `Catalog` and HTTP seams
+with fakes and sanitized fixtures, regenerate the contract, run `pnpm quality`,
+and avoid live provider access.

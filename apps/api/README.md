@@ -100,11 +100,12 @@ unavailable when this endpoint is called without an injected catalog.
 
 `GET /api/v1/games` exposes strict provider-neutral search. It accepts name,
 repeated platform/genre/game-mode identifiers, release bounds, minimum combined
-rating, sort, direction, and page. Inputs are normalized before reaching the
+rating, duration kind and bounds, sort, direction, and page. Duration bounds are
+submitted in hours from 1 through 1,000 and converted to inclusive whole-second
+bounds; `normal` is the default kind. Inputs are normalized before reaching the
 catalog: names are trimmed, repeated values are deduplicated, public IDs are
 allow-listed, ranges are checked, unknown parameters are rejected, and the page
-size remains fixed at 24. Values within one category use OR; categories use
-AND.
+size remains fixed at 24. Values within one category use OR; categories use AND.
 
 Rating, release-date, and title sorts translate directly to explicit IGDB game
 fields. Popularity without filters keeps the efficient M1.5 IGDB Visits path.
@@ -114,14 +115,17 @@ selects the requested page. This preserves every validated filter instead of
 substituting another popularity measure.
 
 Missing cover, release year, combined rating, duration, platform, genre, or
-mode data is represented as `null` or an empty list. Duration remains `null`
-until M1.7 enrichment. Successful empty pages remain distinct from classified
-provider failures. Current response metadata is `servedFrom="provider"`,
-`dataMayBeStale=false`, and `excludedUnknownDuration=false`. M1.6 release bounds
-use `first_release_date`; platform-specific release selection and duration
-filtering/sorting remain M1.7 work. A duration sort therefore fails HTTP
-validation without contacting the catalog. Production wiring remains
-deferred to M1.10, so the default catalog still reports unavailable.
+mode data is represented as `null` or an empty list. The adapter joins the
+minimal `game_time_to_beats` projection and exposes `normally` as
+`normalDurationSeconds`; fast and completionist values are requested only when
+their criteria require them. With selected platforms, a game satisfies release
+bounds when any selected platform release is inside the interval; without a
+platform filter, `first_release_date` is used. Duration and platform-release
+evaluation happen before paging so totals remain exact. Unknown durations sort
+last and are excluded only by active duration bounds, which sets
+`excludedUnknownDuration=true`. Successful empty pages remain distinct from
+classified provider failures. Production wiring remains deferred to M1.10, so
+the default catalog still reports unavailable.
 
 ## Checks
 

@@ -182,9 +182,9 @@ popularity primitive: it counts and pages `popularity_primitives` ordered by
 `value` descending, fetches a minimal explicit projection from `games`, and
 restores primitive order. The transport has a separate validated `count()`
 operation for IGDB's object response while its general `query()` contract
-remains array-only. Optional provider data becomes `null` or an empty list;
-duration enrichment remains deferred to M1.7. Current metadata reports direct,
-non-stale provider data and no duration-based exclusion.
+remains array-only. Optional provider data becomes `null` or an empty list. At
+the M1.5 boundary, metadata reported direct, non-stale provider data and no
+duration-based exclusion; M1.7 extends that behavior below.
 
 M1.6 expands those criteria with allow-listed public platform, genre, and mode
 identifiers plus normalized name, release, rating, sort, direction, and page
@@ -194,8 +194,21 @@ inside repeated categories and AND across categories. Rating, release-date, and
 title ordering stay on `games`. Filtered popularity first obtains every exact
 matching game ID in provider-sized batches, resolves the corresponding IGDB
 Visits values, applies an ID tie-breaker, and only then selects the requested
-page; this avoids silently replacing popularity or dropping filters. M1.7 still
-owns platform-specific release selection and all duration joins and sorting.
+page; this avoids silently replacing popularity or dropping filters. At that
+increment boundary, platform-specific release selection and all duration joins
+and sorting remained assigned to M1.7.
+
+M1.7 evaluates criteria that span IGDB resources before pagination. When a
+platform and release range are both present, the candidate game projection adds
+only `release_dates.platform` and `release_dates.date`; any selected-platform
+release may satisfy the interval. Without a platform, filtering stays on
+`first_release_date`. Duration values are joined from `game_time_to_beats`, with
+`hastily`, `normally`, and `completely` mapped to provider-neutral fast, normal,
+and completionist seconds. The query requests only the selected measure plus
+`normally` when card enrichment also needs it. Candidate IDs are filtered and
+ordered before slicing the 24-item page, keeping totals exact and unknown values
+last for sorting. Missing durations remain eligible unless an inclusive duration
+bound is active; only that policy sets `excludedUnknownDuration`.
 
 ## 7. Caching
 
