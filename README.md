@@ -24,7 +24,9 @@ approximate matching.
 - [Milestone 1 plan](docs/milestone-1-plan.md) — provider/API increments,
   acceptance checks, and scope guardrails.
 - [Milestone 1 review](docs/milestone-1-review.md) — provider/API closeout,
-  quality evidence, and the deferred live-verification action.
+  quality evidence, and the live smoke-test findings.
+- [Milestone 2 plan](docs/milestone-2-plan.md) — search-experience increments,
+  acceptance checks, and scope guardrails.
 - [MVP roadmap](docs/roadmap.md) — delivery sequence and milestone exit checks.
 
 ## Planned stack

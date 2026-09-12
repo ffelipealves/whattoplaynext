@@ -72,6 +72,8 @@ closeout evidence is recorded in [Milestone 1 review](milestone-1-review.md).
 
 ## Milestone 2 — Search experience
 
+Status: divided into M2.1–M2.10; implementation not started.
+
 Deliverables:
 
 - localized home and search form;
@@ -88,6 +90,9 @@ Exit criteria:
 - back and forward navigation behave correctly;
 - no filter is applied before explicit submission;
 - 24-item pagination is stable and bounded.
+
+The ordered vertical slices, module seams, test expectations, and scope
+guardrails are defined in [Milestone 2 plan](milestone-2-plan.md).
 
 ## Milestone 3 — Game pages, localization, and SEO
 
