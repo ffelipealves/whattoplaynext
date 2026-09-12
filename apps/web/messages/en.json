@@ -1,0 +1,35 @@
+{
+  "Locale": {
+    "en": "English",
+    "pt-br": "Português"
+  },
+  "Landing": {
+    "languageNavLabel": "Language",
+    "eyebrow": "Structured game discovery",
+    "titleLead": "Find a game",
+    "titleEmphasis": "that fits",
+    "titleEnd": "tonight.",
+    "description": "Combine platform, genre, rating, release date, game mode, and play time. Get strict results you can compare without guessing why they appeared.",
+    "primaryAction": "Preview the criteria",
+    "catalogOnline": "Live catalog: {platforms} platforms · {genres} genres · {modes} modes",
+    "catalogOffline": "Catalog temporarily unavailable",
+    "exampleLabel": "Example search",
+    "exampleBadge": "Draft",
+    "resultLabel": "Expected behavior",
+    "resultValue": "Only exact matches",
+    "constraintPlatformLabel": "Platform",
+    "constraintPlatformValue": "PC + Switch",
+    "constraintTimeLabel": "Time",
+    "constraintTimeValue": "2–8 hours",
+    "constraintModeLabel": "Mode",
+    "constraintModeValue": "Single player",
+    "constraintRatingLabel": "Rating",
+    "constraintRatingValue": "80 or higher",
+    "principleVisibleTitle": "Your constraints stay visible",
+    "principleVisibleDescription": "Every applied criterion remains clear and removable.",
+    "principleMissingTitle": "Missing data stays missing",
+    "principleMissingDescription": "Unknown values are shown honestly, never invented.",
+    "principleZeroTitle": "Zero means zero",
+    "principleZeroDescription": "We suggest what to relax without sneaking in near matches."
+  }
+}

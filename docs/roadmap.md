@@ -72,7 +72,7 @@ closeout evidence is recorded in [Milestone 1 review](milestone-1-review.md).
 
 ## Milestone 2 — Search experience
 
-Status: active; M2.1 completed and M2.2 is next.
+Status: active; M2.2 completed and M2.3 is next.
 
 Deliverables:
 

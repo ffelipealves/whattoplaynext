@@ -1,52 +1,78 @@
+import { useLocale, useTranslations } from "next-intl";
+
+import { Link } from "@/i18n/navigation";
+import { routing } from "@/i18n/routing";
+
 import type { CatalogStatus } from "./get-catalog-status";
-import type { LandingContent, Locale } from "./content";
 
 type LandingPageProps = {
-  content: LandingContent;
-  locale: Locale;
   catalogStatus: CatalogStatus;
 };
 
-function formatCatalogStatus(
-  content: LandingContent,
-  catalogStatus: CatalogStatus,
-): string {
-  if (!catalogStatus.reachable) {
-    return content.catalogOfflineMessage;
-  }
-  return content.catalogOnlineTemplate
-    .replace("{platforms}", String(catalogStatus.platformCount))
-    .replace("{genres}", String(catalogStatus.genreCount))
-    .replace("{modes}", String(catalogStatus.gameModeCount));
-}
+export function LandingPage({ catalogStatus }: LandingPageProps) {
+  const locale = useLocale();
+  const t = useTranslations("Landing");
+  const localeName = useTranslations("Locale");
 
-export function LandingPage({
-  content,
-  locale,
-  catalogStatus,
-}: LandingPageProps) {
+  const alternateLocale = routing.locales.find(
+    (candidate) => candidate !== locale,
+  )!;
+
+  const catalogStatusText = catalogStatus.reachable
+    ? t("catalogOnline", {
+        platforms: catalogStatus.platformCount,
+        genres: catalogStatus.genreCount,
+        modes: catalogStatus.gameModeCount,
+      })
+    : t("catalogOffline");
+
+  const constraints = [
+    {
+      label: t("constraintPlatformLabel"),
+      value: t("constraintPlatformValue"),
+    },
+    { label: t("constraintTimeLabel"), value: t("constraintTimeValue") },
+    { label: t("constraintModeLabel"), value: t("constraintModeValue") },
+    { label: t("constraintRatingLabel"), value: t("constraintRatingValue") },
+  ];
+
+  const principles = [
+    {
+      title: t("principleVisibleTitle"),
+      description: t("principleVisibleDescription"),
+    },
+    {
+      title: t("principleMissingTitle"),
+      description: t("principleMissingDescription"),
+    },
+    {
+      title: t("principleZeroTitle"),
+      description: t("principleZeroDescription"),
+    },
+  ];
+
   return (
     <main className="catalog-grid min-h-screen overflow-hidden px-5 py-5 sm:px-8 lg:px-12">
       <div className="mx-auto flex min-h-[calc(100vh-2.5rem)] max-w-[88rem] flex-col overflow-hidden rounded-[2rem] border border-[#17203a]/15 bg-white shadow-[0_30px_90px_rgb(23_32_58_/_12%)]">
         <header className="flex items-center justify-between border-b border-[#17203a]/15 px-5 py-4 sm:px-8">
-          <a
+          <Link
             className="flex items-center gap-3 rounded-sm font-semibold tracking-[-0.02em]"
-            href={`/${locale}`}
+            href="/"
           >
             <span className="grid size-9 place-items-center rounded-full bg-[#17203a] font-[family-name:var(--font-display)] text-sm text-white">
               W
             </span>
             <span>What To Play Next</span>
-          </a>
+          </Link>
 
-          <nav aria-label={content.languageLabel}>
-            <a
+          <nav aria-label={t("languageNavLabel")}>
+            <Link
               className="rounded-full border border-[#17203a]/20 px-4 py-2 text-sm font-semibold transition-colors hover:border-[#3157d5] hover:bg-[#dce6fb]/50"
-              href={`/${content.alternateLocale}`}
-              hrefLang={content.alternateLocale}
+              href="/"
+              locale={alternateLocale}
             >
-              {content.alternateLanguage}
-            </a>
+              {localeName(alternateLocale)}
+            </Link>
           </nav>
         </header>
 
@@ -55,22 +81,22 @@ export function LandingPage({
             <div>
               <p className="mb-8 flex items-center gap-3 text-xs font-bold tracking-[0.2em] text-[#3157d5] uppercase">
                 <span className="h-px w-10 bg-[#3157d5]" />
-                {content.eyebrow}
+                {t("eyebrow")}
               </p>
 
               <h1
-                aria-label={`${content.titleLead} ${content.titleEmphasis} ${content.titleEnd}`}
+                aria-label={`${t("titleLead")} ${t("titleEmphasis")} ${t("titleEnd")}`}
                 className="max-w-4xl font-[family-name:var(--font-display)] text-[clamp(3.7rem,8vw,8rem)] leading-[0.83] font-semibold tracking-[-0.075em]"
               >
-                <span className="block">{content.titleLead}</span>
+                <span className="block">{t("titleLead")}</span>
                 <span className="block text-[#3157d5]">
-                  {content.titleEmphasis}
+                  {t("titleEmphasis")}
                 </span>
-                <span className="block">{content.titleEnd}</span>
+                <span className="block">{t("titleEnd")}</span>
               </h1>
 
               <p className="mt-9 max-w-2xl text-lg leading-8 text-[#17203a]/72 sm:text-xl">
-                {content.description}
+                {t("description")}
               </p>
 
               <div className="mt-10 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
@@ -78,19 +104,19 @@ export function LandingPage({
                   className="rounded-full bg-[#ff694f] px-6 py-3.5 font-bold text-[#17203a] shadow-[0_8px_0_#17203a] transition-transform hover:-translate-y-0.5 active:translate-y-1 active:shadow-[0_4px_0_#17203a]"
                   href="#criteria"
                 >
-                  {content.primaryAction}
+                  {t("primaryAction")}
                 </a>
                 <p
                   aria-live="polite"
                   className="text-sm font-medium text-[#17203a]/62"
                 >
-                  {formatCatalogStatus(content, catalogStatus)}
+                  {catalogStatusText}
                 </p>
               </div>
             </div>
 
             <ol className="mt-16 grid gap-6 border-t border-[#17203a]/15 pt-8 sm:grid-cols-3">
-              {content.principles.map((principle, index) => (
+              {principles.map((principle, index) => (
                 <li key={principle.title}>
                   <p className="mb-3 text-xs font-bold tracking-[0.16em] text-[#3157d5]">
                     0{index + 1}
@@ -107,7 +133,7 @@ export function LandingPage({
           </section>
 
           <aside
-            aria-label={content.exampleLabel}
+            aria-label={t("exampleLabel")}
             className="relative flex min-h-[36rem] items-center justify-center overflow-hidden border-t border-[#17203a]/15 bg-[#3157d5] p-6 sm:p-10 lg:min-h-0 lg:border-t-0 lg:border-l"
             id="criteria"
           >
@@ -115,15 +141,15 @@ export function LandingPage({
             <div className="relative w-full max-w-xl rotate-[-1.5deg] rounded-[1.75rem] border-2 border-[#17203a] bg-[#f2f6ff] p-5 shadow-[14px_16px_0_#17203a] sm:p-7">
               <div className="mb-6 flex items-center justify-between border-b border-[#17203a]/20 pb-5">
                 <p className="text-xs font-bold tracking-[0.18em] text-[#3157d5] uppercase">
-                  {content.exampleLabel}
+                  {t("exampleLabel")}
                 </p>
                 <span className="rounded-full bg-[#17203a] px-3 py-1 text-[0.7rem] font-bold tracking-[0.14em] text-white uppercase">
-                  Draft
+                  {t("exampleBadge")}
                 </span>
               </div>
 
               <dl className="space-y-3">
-                {content.constraints.map((constraint) => (
+                {constraints.map((constraint) => (
                   <div
                     className="grid grid-cols-[7rem_1fr] items-center rounded-2xl border border-[#17203a]/15 bg-white px-4 py-4 sm:grid-cols-[8rem_1fr]"
                     key={constraint.label}
@@ -141,10 +167,10 @@ export function LandingPage({
               <div className="relative mt-6 overflow-hidden rounded-2xl bg-[#17203a] px-5 py-5 text-white">
                 <div className="constraint-scan absolute top-0 h-full w-1/3 bg-gradient-to-r from-transparent via-[#ff694f]/45 to-transparent" />
                 <p className="relative text-xs font-bold tracking-[0.13em] text-[#dce6fb]/70 uppercase">
-                  {content.resultLabel}
+                  {t("resultLabel")}
                 </p>
                 <p className="relative mt-1 font-[family-name:var(--font-display)] text-2xl font-semibold tracking-[-0.03em]">
-                  {content.resultValue}
+                  {t("resultValue")}
                 </p>
               </div>
             </div>

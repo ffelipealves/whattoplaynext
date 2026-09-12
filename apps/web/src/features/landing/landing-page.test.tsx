@@ -1,21 +1,24 @@
+import { NextIntlClientProvider } from "next-intl";
 import { render, screen } from "@testing-library/react";
 import { expect, test } from "vitest";
 
-import { getLandingContent, isSupportedLocale } from "./content";
+import enMessages from "../../../messages/en.json";
+import ptBrMessages from "../../../messages/pt-br.json";
+
 import { LandingPage } from "./landing-page";
+
+const reachableCatalogStatus = {
+  reachable: true as const,
+  platformCount: 6,
+  genreCount: 23,
+  gameModeCount: 6,
+};
 
 test("renders the English product promise and strict-match behavior", () => {
   render(
-    <LandingPage
-      catalogStatus={{
-        reachable: true,
-        platformCount: 6,
-        genreCount: 23,
-        gameModeCount: 6,
-      }}
-      content={getLandingContent("en")}
-      locale="en"
-    />,
+    <NextIntlClientProvider locale="en" messages={enMessages}>
+      <LandingPage catalogStatus={reachableCatalogStatus} />
+    </NextIntlClientProvider>,
   );
 
   expect(
@@ -28,22 +31,32 @@ test("renders the English product promise and strict-match behavior", () => {
   expect(
     screen.getByRole("link", { name: "Português" }).getAttribute("href"),
   ).toBe("/pt-br");
-  expect(isSupportedLocale("pt-br")).toBe(true);
-  expect(isSupportedLocale("es")).toBe(false);
+});
+
+test("renders the Brazilian Portuguese product promise", () => {
+  render(
+    <NextIntlClientProvider locale="pt-br" messages={ptBrMessages}>
+      <LandingPage catalogStatus={reachableCatalogStatus} />
+    </NextIntlClientProvider>,
+  );
+
+  expect(
+    screen.getByRole("heading", {
+      level: 1,
+      name: "Encontre um jogo que caiba na sua noite.",
+    }),
+  ).toBeDefined();
+  expect(screen.getByText("Somente correspondências exatas")).toBeDefined();
+  expect(
+    screen.getByRole("link", { name: "English" }).getAttribute("href"),
+  ).toBe("/en");
 });
 
 test("renders live catalog counts when the API is reachable", () => {
   render(
-    <LandingPage
-      catalogStatus={{
-        reachable: true,
-        platformCount: 6,
-        genreCount: 23,
-        gameModeCount: 6,
-      }}
-      content={getLandingContent("en")}
-      locale="en"
-    />,
+    <NextIntlClientProvider locale="en" messages={enMessages}>
+      <LandingPage catalogStatus={reachableCatalogStatus} />
+    </NextIntlClientProvider>,
   );
 
   expect(
@@ -53,11 +66,9 @@ test("renders live catalog counts when the API is reachable", () => {
 
 test("renders an offline message when the API is unreachable", () => {
   render(
-    <LandingPage
-      catalogStatus={{ reachable: false }}
-      content={getLandingContent("en")}
-      locale="en"
-    />,
+    <NextIntlClientProvider locale="en" messages={enMessages}>
+      <LandingPage catalogStatus={{ reachable: false }} />
+    </NextIntlClientProvider>,
   );
 
   expect(screen.getByText("Catalog temporarily unavailable")).toBeDefined();

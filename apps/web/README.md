@@ -10,13 +10,36 @@ secondary locale.
 pnpm dev:web
 ```
 
-Open <http://localhost:3000/en>. The root route redirects to the English page;
-the Portuguese foundation is available at <http://localhost:3000/pt-br>.
+Open <http://localhost:3000/>. `src/proxy.ts` (Next.js 16's renamed
+middleware) redirects the bare root to a locale — the visitor's browser
+language when recognized, otherwise English — and remembers the choice in a
+`NEXT_LOCALE` cookie so a later visit or the language switcher does not
+re-negotiate it. English is the default locale and Brazilian Portuguese is
+the secondary locale, both always prefixed (`/en`, `/pt-br`).
 
 Copy `.env.example` to `.env.local` when overriding local configuration. Every
 `NEXT_PUBLIC_` value is visible to browsers and must not contain a credential.
 `NEXT_PUBLIC_API_BASE_URL` is the API origin; generated endpoint paths already
 contain the `/api/v1` prefix.
+
+## Internationalization
+
+`next-intl` owns locale routing and every first-party UI string; provider
+text (game titles, summaries) is never routed through it. `src/i18n/routing.ts`
+is the single source of truth for supported locales, consumed by the
+middleware (`src/proxy.ts`), the navigation helpers (`src/i18n/navigation.ts`,
+re-exporting a locale-aware `Link`), and `src/i18n/request.ts`. The request
+config reads the current locale through `next/root-params` (Next.js 16.3+)
+rather than the deprecated `requestLocale` callback parameter, which is only
+possible because `app/[locale]/layout.tsx` is the actual root layout — there
+is no separate unlocalized `app/layout.tsx`.
+
+Messages live in `messages/en.json` and `messages/pt-br.json`, one flat
+namespace per feature (for example `Landing`). Components read them with
+`useTranslations("Landing")` from `"next-intl"`, which works in both Server
+and Client Components; there is no more hand-rolled per-locale content
+dictionary. Add a new UI string by adding the same key to both message files,
+not by branching on the locale in component code.
 
 ## API client and design system
 

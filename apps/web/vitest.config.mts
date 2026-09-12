@@ -19,6 +19,14 @@ export default defineConfig({
       },
     },
     environment: "jsdom",
+    server: {
+      // next-intl's navigation helpers import extensionless "next/..."
+      // subpaths that only resolve when bundled (as Next.js itself does);
+      // left external, Vitest hands them to Node's stricter ESM resolver.
+      deps: {
+        inline: [/next-intl/, /^next$/],
+      },
+    },
     setupFiles: ["./vitest-setup.ts"],
   },
 });

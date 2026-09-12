@@ -1,6 +1,6 @@
 # Milestone 2 Plan
 
-Status: active execution baseline; M2.1 completed and M2.2 ready
+Status: active execution baseline; M2.2 completed and M2.3 ready
 
 Prepared: 2026-09-12
 
@@ -114,6 +114,8 @@ types, but still carry a smoke test per the acceptance criteria above.
 
 ### M2.2 — `next-intl` adoption
 
+Status: completed on 2026-09-12.
+
 Deliver:
 
 - locale routing and message catalogs for English and Brazilian Portuguese
@@ -130,6 +132,30 @@ Acceptance:
   keyed to an identifier;
 - `content.ts`'s bespoke locale dictionary is removed, not left as a second
   parallel pattern.
+
+Outcome: `app/[locale]/layout.tsx` is now the application's actual root
+layout — `app/layout.tsx` and the manual `redirect("/en")` at `app/page.tsx`
+are both gone, since `src/proxy.ts` (Next.js 16's renamed middleware)
+redirects the bare root to a locale itself. Because the root layout now lives
+inside the `[locale]` segment, `src/i18n/request.ts` reads the current locale
+through `next/root-params` (introduced in Next.js 16.3, days before this
+increment) rather than the officially deprecated `requestLocale` callback
+parameter; this only works because there is no non-localized route above
+`[locale]` competing for the root-layout position. `messages/en.json` and
+`messages/pt-br.json` replace `features/landing/content.ts` entirely,
+including one pre-existing bug the migration exposed: the "Draft" badge on
+the example card was a hardcoded English string never wired to the old
+content dictionary, so it never translated — it now reads `exampleBadge` like
+everything else. Locale detection, the `NEXT_LOCALE` cookie, and its
+override via the language-switcher `Link` are next-intl's built-in
+middleware behavior, not hand-rolled logic; verified live by switching
+locales and confirming a fresh visit to `/` afterward lands on the
+last-chosen locale without a signed-in identifier. `vitest.config.mts` gained
+`server.deps.inline` for `next-intl`/`next` — left external, Vitest hands
+next-intl's extensionless `next/...` subpath imports to Node's stricter ESM
+resolver, which fails outside of Next's own bundler. Component tests wrap
+`LandingPage` in `NextIntlClientProvider` with the real message files (not a
+hand-duplicated subset) for both locales.
 
 ### M2.3 — Unfiltered search results
 

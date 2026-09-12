@@ -1,0 +1,35 @@
+{
+  "Locale": {
+    "en": "English",
+    "pt-br": "Português"
+  },
+  "Landing": {
+    "languageNavLabel": "Idioma",
+    "eyebrow": "Descoberta estruturada de jogos",
+    "titleLead": "Encontre um jogo",
+    "titleEmphasis": "que caiba",
+    "titleEnd": "na sua noite.",
+    "description": "Combine plataforma, gênero, nota, lançamento, modo e tempo disponível. Receba resultados estritos e comparáveis, sem precisar adivinhar por que apareceram.",
+    "primaryAction": "Ver os critérios",
+    "catalogOnline": "Catálogo ao vivo: {platforms} plataformas · {genres} gêneros · {modes} modos",
+    "catalogOffline": "Catálogo temporariamente indisponível",
+    "exampleLabel": "Exemplo de busca",
+    "exampleBadge": "Rascunho",
+    "resultLabel": "Comportamento esperado",
+    "resultValue": "Somente correspondências exatas",
+    "constraintPlatformLabel": "Plataforma",
+    "constraintPlatformValue": "PC + Switch",
+    "constraintTimeLabel": "Tempo",
+    "constraintTimeValue": "2–8 horas",
+    "constraintModeLabel": "Modo",
+    "constraintModeValue": "Um jogador",
+    "constraintRatingLabel": "Nota",
+    "constraintRatingValue": "80 ou mais",
+    "principleVisibleTitle": "Seus critérios continuam visíveis",
+    "principleVisibleDescription": "Todo filtro aplicado permanece claro e removível.",
+    "principleMissingTitle": "Dado ausente continua ausente",
+    "principleMissingDescription": "Valores desconhecidos são mostrados, nunca inventados.",
+    "principleZeroTitle": "Zero significa zero",
+    "principleZeroDescription": "Sugerimos o que flexibilizar sem inserir resultados aproximados."
+  }
+}
