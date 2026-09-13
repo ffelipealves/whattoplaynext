@@ -59,27 +59,65 @@ crashed page; `getCatalogStatus()` treats both a classified API error and a
 rejected fetch (API process unreachable) as the same graceful "unreachable"
 state.
 
-## Unfiltered search (`/games`)
+## Search (`/games`)
 
-`app/[locale]/games/page.tsx` is the search results route. Submitted state
-lives entirely in the URL — `features/search/browse-params.ts` parses `name`,
-`sort`, `direction`, and `page` from `searchParams` with Zod, clamping
-out-of-range values (page above 100, an unknown sort) to the nearest valid
-bound rather than forwarding a request the API would reject anyway. Sorting
-and pagination (`sort-links.tsx`, `pagination-links.tsx`) are plain
-server-rendered `Link`s that carry the rest of the active query forward; the
-name field (`name-search-form.tsx`) is a native GET `<form>` with hidden
-`sort`/`direction` inputs so a new search preserves them while intentionally
-resetting to page 1. None of this needs a Client Component.
+`app/[locale]/games/page.tsx` fetches; `features/search/search-page.tsx`
+renders. Submitted state lives entirely in the URL — nothing is applied before
+an explicit action, and a copied link restores the same search.
 
-`getSearchResults()` follows `getCatalogStatus()`'s pattern from the home
-page: a classified API error and a rejected `fetch()` both become one
-`{ok: false}` result. `results-grid.tsx` renders that as a state visually and
-semantically distinct from a genuine zero-result page, which itself echoes
-the submitted name back to the visitor. `app/[locale]/games/loading.tsx`
-shows a skeleton grid via Next's route-level Suspense boundary while the
-server-rendered fetch resolves. Game cover art renders through `next/image`;
-`next.config.ts` allow-lists `images.igdb.com` for this.
+`features/search/browse-params.ts` parses every criterion with Zod against the
+bounds `GET /api/v1/filters` publishes, so the allow-listed platform, genre,
+and game-mode ids exist in one place only: the API's own response. It returns
+what it had to ignore alongside what it parsed, and `ignored-criteria.tsx`
+says so, rather than quietly searching for something other than the URL claims.
+
+Everything that can be a link is one. Sorting, pagination, each active-filter
+chip's remove affordance, Clear all, and the retry on a failed search are all
+plain server-rendered `Link`s carrying the rest of the criteria forward.
+
+Three surfaces need a Client Component, and each degrades:
+
+- **the filter form** (`filter-form.tsx`, react-hook-form) keeps a draft that
+  reaches neither the URL nor the network until Apply. Its controls carry the
+  API's own parameter names, so a submit that lands before hydration still
+  produces a valid filtered URL. `filter-sidebar.tsx` and `filter-drawer.tsx`
+  render the same form, which is why both layouts cannot drift apart;
+- **the name field** (`name-search-form.tsx`) is still a native GET form
+  carrying every applied filter as hidden fields; the ARIA combobox sits on
+  top. `use-autocomplete.ts` asks for nothing below the published minimum
+  length or inside a 300 ms window, aborts superseded requests, and turns
+  itself off for good on failure rather than retrying against a provider that
+  just rate-limited us. The browser reaches suggestions through
+  `app/api/autocomplete/route.ts`, not the API directly, so the API's base URL
+  and the typed client stay on the server;
+- **the drawer** owns only whether it is open.
+
+`lib/api-failure.ts` classifies one API error response into a state the UI can
+speak about, including the two the envelope cannot express — a request that
+never arrived, and a response that was not the published envelope at all.
+`search-failure.tsx` renders one distinct explanation per state, with the
+retry timing a rate-limited response provides, and offers no retry for the
+codes that mean the criteria themselves were rejected.
+
+## Accessibility
+
+`search-page.a11y.test.tsx` runs axe over four states — desktop, the opened
+drawer, a failed search, and the ignored-criteria notice — and fails on any
+critical or serious violation. Colour contrast is the one rule jsdom cannot
+evaluate and is checked in a real browser instead.
+
+The result count is a live region that is always present, because a
+`role="status"` rendered only alongside its content announces nothing, and
+applying a filter is a client navigation with no page load to announce it.
+
+## End-to-end
+
+`e2e/` holds the Playwright suite; `pnpm e2e` runs it from the repository
+root. It starts the real API composed with a fixture catalog
+(`apps/api/tests/e2e/`) and a production build of this application on ports
+8100 and 3100, so it needs no credentials and collides with nothing you have
+running. A production build rather than `next dev`, which refuses to run twice
+in one directory.
 
 ## Checks
 
@@ -87,6 +125,7 @@ server-rendered fetch resolves. Game cover art renders through `next/image`;
 pnpm lint:web
 pnpm typecheck:web
 pnpm test:web
+pnpm e2e
 pnpm build:web
 ```
 

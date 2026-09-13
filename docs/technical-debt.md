@@ -8,7 +8,7 @@ This is not a bug list: everything here works as designed. Defects go to the
 milestone plans and their outcome notes. Items marked **blocking** must be
 resolved before the release gate that names them.
 
-Last reviewed: 2026-09-13, after Milestone 2.8.
+Last reviewed: 2026-09-13, after Milestone 2.9.
 
 ## Provider and API
 
@@ -111,9 +111,14 @@ retry storm, but needs a deliberate policy rather than a guessed interval.
 
 Coverage thresholds cover `src/features/**` and `src/lib/**`. Pages and route
 handlers are excluded, so the autocomplete route handler's tests — which do
-exist — count for nothing in the gate, and a regression in a page would not
-fail it. The exclusion made sense when `app/` held only composition; it holds
-real request handling now.
+exist — count for nothing in the gate.
+
+Milestone 2.8 shrank this by moving the search page's composition into
+`features/search/search-page.tsx`, leaving the route with data fetching alone;
+what remains outside the floor is four thin files and one route handler. It is
+worth either extending the floor to `src/app/**` or writing down why those
+files are exempt, rather than leaving the boundary where it landed by
+accident.
 
 ### 8. Selected ids are cast to the contract's unions
 
@@ -138,3 +143,51 @@ against an endpoint the API caches for seven days.
 Removing it means either giving up URL validation against the published
 allow-list, or caching the metadata in the web application — the latter is a
 Milestone 4 concern.
+
+## End-to-end suite
+
+### 10. The browser suite stops at the Milestone 2.3 journeys
+
+The six scenarios cover exactly the six journeys Milestone 2.9 named: name
+search, URL restoration with back and forward, pagination, the locale switch,
+an upstream failure, and a zero-result. Everything built after that — the
+filter sidebar and drawer, the chips, autocomplete, the ignored-criteria
+notice — has component tests and was verified by hand in a browser, but no
+browser-level regression test.
+
+The gap that matters most is Apply, because it is the one interaction whose
+correctness depends on hydration: a draft that reaches the URL only on submit,
+through a client navigation. Component tests assert the query string it
+pushes; nothing asserts that a real click in a real browser gets there. Adding
+a filters scenario to the existing suite is cheap now that the fixture catalog
+honours platform and genre criteria.
+
+### 11. `pnpm e2e` leaves the build pointing at the fixture API
+
+The suite builds the web application with `NEXT_PUBLIC_API_BASE_URL` pointing
+at its own fixture server, because that value is inlined at build time and
+cannot be changed afterwards. The quality gate runs the suite _before_ `pnpm
+build` so the canonical output is the last one written, but running `pnpm e2e`
+on its own leaves `.next` built against port 8100 — a later `pnpm start` would
+then talk to a server that is no longer running.
+
+`pnpm dev:web` is unaffected, which is why this has not bitten anyone yet.
+Paying it off means building the suite's application into its own `distDir`,
+so the two builds stop sharing one directory.
+
+### 12. A stale server can be reused locally
+
+`reuseExistingServer` is on outside CI, so a run reuses whatever already
+listens on 3100 or 8100. That is what makes repeated local runs fast, and it
+is also how a suite can pass against a build from twenty minutes ago. CI
+always starts its own, so this never produces a false green there — but it can
+locally, and the failure mode (passing tests, stale code) is the kind that
+costs an afternoon.
+
+### 13. Only Chromium
+
+One browser project is configured. Milestone 2.10 owns the cross-browser pass
+(the two latest stable releases of Chrome, Edge, Firefox, and Safari), and
+whether that becomes a permanent matrix in the gate or a periodic manual pass
+is a decision for that increment: a four-browser matrix on every push buys
+less than it costs when the suite is six scenarios long.

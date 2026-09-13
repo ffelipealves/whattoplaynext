@@ -304,9 +304,12 @@ used locally, so the two environments do not encode different validation
 rules. The workflow receives read-only repository access and does not require
 provider credentials or live infrastructure.
 
-A small critical Playwright suite will join this gate when those user journeys
-exist. Production deploys only from the main branch after required checks pass,
-and deployment secrets are scoped separately by environment.
+A small critical Playwright suite runs inside that gate, driving a real browser
+against the real application composed with a fixture catalog: it needs no
+provider credentials and no live infrastructure, exactly like the rest of the
+suite. The workflow installs the one browser it drives. Production deploys only
+from the main branch after required checks pass, and deployment secrets are
+scoped separately by environment.
 
 ## 14. Testing strategy
 
@@ -336,7 +339,9 @@ change.
 - no live IGDB dependency in the normal automated suite;
 - FastAPI endpoint integration tests;
 - frontend component tests for filter and result states;
-- Playwright for search, URL restoration, pagination, locale switch, game
-  detail, upstream error, and zero-result behavior;
+- Playwright for search, URL restoration, pagination, locale switch, upstream
+  error, and zero-result behavior, against the application's own composition
+  root with a fixture catalog injected in place of the provider; game detail
+  joins it with Milestone 3;
 - automated accessibility checks plus manual keyboard and screen-reader smoke
   testing on critical flows.

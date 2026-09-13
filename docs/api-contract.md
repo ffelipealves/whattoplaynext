@@ -72,7 +72,7 @@ Query parameters:
 | `genre`                | repeated string | OR within genre category                             |
 | `releaseFrom`          | date            | Inclusive lower release bound                        |
 | `releaseTo`            | date            | Inclusive upper release bound                        |
-| `minimumRating`        | number          | Combined IGDB rating from 0 to 100                   |
+| `minimumRating`        | integer         | Combined IGDB rating, a whole number from 0 to 100   |
 | `gameMode`             | repeated string | OR within mode category                              |
 | `durationKind`         | enum            | `fast`, `normal`, or `completionist`; default normal |
 | `minimumDurationHours` | number          | Inclusive lower duration bound                       |
@@ -125,7 +125,9 @@ Response shape:
 Values repeated within platform, genre, or game mode are deduplicated and use
 OR semantics. Active categories are combined with AND semantics and are never
 silently relaxed. Name matching uses the provider's case-insensitive partial
-comparison. Rating uses `total_rating`; release bounds are inclusive and use
+comparison. Rating uses `total_rating` and is a whole number: IGDB's query
+language rejects a decimal literal, so the bound is published as an integer
+rather than accepted and then failed upstream. Release bounds are inclusive and use
 the release dates belonging to any selected platform. Without a platform
 criterion they fall back to `first_release_date`.
 

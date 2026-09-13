@@ -55,15 +55,22 @@ actions tracked separately in
 [External prerequisites](docs/external-prerequisites.md); they do not block
 Milestone 2 frontend work.
 
-Milestone 2 (search experience) is in progress: the design system
-(shadcn/ui themed to this project's own palette), `next-intl` locale routing
-and message catalogs, and `GET /[locale]/games` — a working unfiltered
-search with name search, sorting, real IGDB cover art, and pagination, all
-driven by the URL rather than client-side state — are done. Structured
-filters (desktop sidebar, mobile drawer), autocomplete, validation/error
-states, an accessibility pass, and the Playwright critical path remain. See
-[Milestone 2 plan](docs/milestone-2-plan.md) for the full increment
-breakdown and the current handoff notes.
+Milestone 2 (search experience) is nearly complete. `GET /[locale]/games` is
+a working faceted search: name search with debounced autocomplete, structured
+filters in a desktop sidebar and a mobile drawer, removable active-filter
+chips, sorting, pagination, and distinct states for validation, rate limits,
+and upstream failures — all driven by the URL rather than client-side state,
+so a copied link restores the same search. An axe pass and a keyboard pass
+cover both layouts, and a Playwright suite drives the critical journeys
+against a fixture-backed API. Only the closeout increment (cross-browser and
+responsive verification, plus the evidence report) remains.
+
+Driving the new UI against live IGDB also surfaced three API defects that
+fixtures alone could not: a rating filter that could never be served, and two
+query shapes that read the whole catalog to page it. All three are fixed;
+[Milestone 2 plan](docs/milestone-2-plan.md) has the full increment breakdown,
+and [Technical debt](docs/technical-debt.md) records what was deliberately
+left behind.
 
 ## Local development
 
@@ -167,16 +174,22 @@ pnpm quality
 ```
 
 The gate verifies generated contracts, formatting, linting, static types,
-coverage thresholds, tests, and production builds. It does not require Redis,
-Twitch credentials, or live IGDB access. Useful focused commands are:
+coverage thresholds, tests, the end-to-end suite, and production builds. It
+does not require Redis, Twitch credentials, or live IGDB access: the browser
+journeys run against the application's own composition root with a fixture
+catalog in place of the provider. Useful focused commands are:
 
 ```bash
 pnpm test
 pnpm coverage
+pnpm e2e
 pnpm lint
 pnpm typecheck
 pnpm build
 ```
+
+`pnpm e2e` drives a real browser and needs it installed once — `pnpm setup`
+does that, and `pnpm e2e:install` does it on its own.
 
 `pnpm check` remains an alias for `pnpm quality`. See
 [CONTRIBUTING.md](CONTRIBUTING.md#root-commands) for every package-specific
