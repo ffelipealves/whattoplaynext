@@ -226,6 +226,12 @@ test("treats a zero minimum rating as no rating filter", () => {
   ).toBeUndefined();
 });
 
+test("drops a fractional minimum rating the API cannot serve", () => {
+  expect(
+    parseBrowseParams({ minimumRating: "80.5" }).minimumRating,
+  ).toBeUndefined();
+});
+
 test("drops a minimum rating outside the public range", () => {
   expect(
     parseBrowseParams({ minimumRating: "101" }).minimumRating,

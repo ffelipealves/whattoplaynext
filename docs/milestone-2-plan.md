@@ -278,10 +278,11 @@ OR/AND semantics (PC or Nintendo Switch, and Shooter → 19,430 games), chip
 removal keeping every other criterion, the Clear-all URL returning to the M2.3
 baseline, both locales rendering with provider labels left untranslated, and
 the `excludedUnknownDuration` notice appearing only for a duration-bounded
-search. Apply itself was exercised live only as far as its pending state:
-IGDB throttled the local API partway through the pass, so the click-through
-to a filtered URL rests on the component tests, which assert the exact query
-string both layouts push.
+search. Apply's own click-through was blocked during that pass by the two
+API defects below; once those were fixed it was verified end to end, a real
+click landing on
+`?sort=popularity&direction=desc&page=1&platform=pc&platform=playstation-5&gameMode=co-operative&minimumRating=85`
+with the chip row and result count following it.
 
 Worth knowing before verifying this route again: because `loading.tsx` puts
 the page inside a Suspense boundary, React leaves that boundary dehydrated
@@ -292,15 +293,9 @@ enough to look like broken hydration. It is also the reason the form's
 controls carry the API's own param names — that fall-through now produces a
 valid filtered URL rather than a broken one.
 
-Two backend characteristics surfaced during that pass and are **not** fixed
-here. `GET /api/v1/games?minimumRating=<any value>` always fails with
-`UPSTREAM_INVALID_RESPONSE`, which is also the code the API maps IGDB's
-invalid-request reason onto; the only rating-specific thing it sends is the
-generated `total_rating >= 80.0` clause, and the API's own suite asserts that
-string against a fake transport only, so no test exercises it against the real
-provider. The rating control is therefore wired end to end but unusable until
-that is fixed. Separately, cold filtered queries can take 30–60 s, long enough
-to surface as an upstream failure until the API's cache is warm.
+Two API defects surfaced during that pass, both invisible to a suite that
+only ever talks to a fake transport, and both fixed immediately afterwards —
+see "M2.4 follow-up: two API defects" below.
 
 ### M2.5 — Mobile filter drawer
 
@@ -328,6 +323,60 @@ they cannot drift. Only the drawer's open/closed state lives in the component
 (the criteria stay in the URL), Apply closes it, and the actions row is pinned
 to the bottom of the scrolling sheet so Apply and Clear all stay reachable
 without scrolling past every group.
+
+### M2.4 follow-up: two API defects
+
+Status: completed on 2026-09-13.
+
+Both defects were found by driving the new filter UI against live IGDB, and
+neither could have been caught by the API's own suite, which reaches the
+provider only through a fake transport.
+
+**A rating filter could never be served.** Every
+`GET /api/v1/games?minimumRating=<value>` returned `UPSTREAM_INVALID_RESPONSE`.
+IGDB's query language rejects a decimal literal in a `where` comparison:
+`total_rating >= 80` is accepted, `total_rating >= 80.0` and
+`total_rating >= 80.5` both come back as 400 "Invalid filter operation". The
+API modelled the threshold as a float, so every value it forwarded carried a
+decimal point — and its own test asserted the string `total_rating >= 80.0`
+against a fake, locking the bug in. `minimum_rating` is now an integer in
+`BrowseCriteria` and in the public query contract, so the constraint is
+published in the OpenAPI schema rather than hidden, a fractional threshold is
+a plain `VALIDATION_ERROR`, and the frontend's Zod mirror drops one from a
+handcrafted URL instead of round-tripping it.
+
+**Filtered queries read the whole result set to page it.** Any filter combined
+with the default popularity sort listed every matching id (one request per 500
+matches) and then every id's popularity, to rank a page that can only ever
+show 24 of them: `platform=pc` alone meant roughly 830 requests against a
+provider that allows four per second. The duration path had the same shape,
+reading every matching game and then asking for each one's play time.
+
+Both now read whichever index is smaller. Popularity pages the index in value
+order and intersects each page with the filter, stopping as soon as the
+requested page is full; it falls back to the exhaustive listing for a small
+match set (where two requests already suffice) and for the rare page that
+extends past the ranked matches, which is also the only path that can order
+unranked games. Duration bounds the `game_time_to_beats` index first — that
+whole index holds ~9,300 rows against a catalog of ~375,000 games — and reads
+only those games, unless a count of both sides shows the match list is the
+smaller one. Measured end to end against live IGDB with no cache in front of
+it, each pair the same query before and after:
+
+| Query                                             | Before  | After |
+| ------------------------------------------------- | ------- | ----- |
+| `minimumRating=80`                                | 502     | 2.9 s |
+| `platform=pc`                                     | > 240 s | 1.9 s |
+| `platform=pc&platform=nintendo-switch`            | > 240 s | 2.4 s |
+| `platform=nintendo-switch&genre=indie` + 2–10 h   | 29 s    | 10 s  |
+| `genre=shooter&minimumRating=80` + ≤ 20 h, page 3 | 502     | 6 s   |
+
+A filter narrow enough to have been on the cheap path all along keeps taking
+it, with the same request count as before: `genre=pinball` answers in 5.6 s.
+
+Result sets were compared before and after on every shape that previously
+returned at all, and the M2.3 no-filter baseline is untouched: it still pages
+the popularity index directly.
 
 ### M2.6 — Name autocomplete
 

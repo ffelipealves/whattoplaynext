@@ -1207,7 +1207,7 @@
                 {
                   "maximum": 100,
                   "minimum": 0,
-                  "type": "number"
+                  "type": "integer"
                 },
                 {
                   "type": "null"

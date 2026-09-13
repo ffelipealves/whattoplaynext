@@ -150,7 +150,8 @@ class QueuedFixtureTransport:
 
 
 class M17FixtureTransport:
-    def __init__(self) -> None:
+    def __init__(self, counts: dict[str, int] | None = None) -> None:
+        self.counts = counts or {}
         self.requests: list[tuple[str, str]] = []
         self.count_requests: list[tuple[str, str]] = []
         self.responses: dict[str, list[dict[str, object]]] = {
@@ -172,7 +173,7 @@ class M17FixtureTransport:
 
     async def count(self, endpoint: str, query: str) -> int:
         self.count_requests.append((endpoint, query))
-        return 5
+        return self.counts.get(endpoint, 5)
 
 
 class AutocompleteFixtureTransport:
@@ -574,7 +575,7 @@ async def test_translates_strict_and_or_criteria_to_the_games_endpoint() -> None
         'name ~ *"Hollow Knight"*',
         "platforms = (6,167)",
         "genres = (8,31)",
-        "total_rating >= 80.0",
+        "total_rating >= 80",
         "game_modes = (1)",
     }
     assert count_query.startswith("where ")
@@ -590,24 +591,9 @@ async def test_translates_strict_and_or_criteria_to_the_games_endpoint() -> None
 
 @pytest.mark.anyio
 async def test_keeps_strict_filters_when_sorting_by_popularity() -> None:
-    games = load_records("games_complete.json")
-    second_game = {
-        **games[0],
-        "id": 3000,
-        "slug": "more-popular-game",
-        "name": "More Popular Game",
-    }
-    transport = QueuedFixtureTransport(
-        responses=[
-            [{"id": 1942}, {"id": 3000}],
-            [
-                {"game_id": 1942, "value": 0.5},
-                {"game_id": 3000, "value": 0.9},
-            ],
-            [games[0], second_game],
-            [],
-        ],
-        total=2,
+    transport = PopularityIndexTransport(
+        ranked=[(1942, 0.5), (3000, 0.9)],
+        matching=[1942, 3000],
     )
     catalog = IgdbCatalog(transport)
 
@@ -623,24 +609,12 @@ async def test_keeps_strict_filters_when_sorting_by_popularity() -> None:
     assert result.pagination.total_items == 2
     assert transport.count_requests[0][0] == "games"
     assert "genres = (31)" in transport.count_requests[0][1]
-    assert [endpoint for endpoint, _query in transport.requests] == [
-        "games",
-        "popularity_primitives",
-        "games",
-        "game_time_to_beats",
-    ]
-    matching_games_query = transport.requests[0][1]
-    assert "fields id" in matching_games_query
-    assert "genres = (31)" in matching_games_query
-    assert "sort id asc" in matching_games_query
-    assert "limit 500" in matching_games_query
-    assert "offset 0" in matching_games_query
-    popularity_query = transport.requests[1][1]
-    assert "fields game_id,value" in popularity_query
-    assert "popularity_type = 1" in popularity_query
-    assert "game_id = (1942,3000)" in popularity_query
-    assert "limit 500" in popularity_query
-    assert "where id = (3000,1942)" in transport.requests[2][1]
+    assert all(
+        "genres = (31)" in query
+        for endpoint, query in transport.requests
+        if endpoint == "games" and "fields id;" in query
+    )
+    assert "where id = (3000,1942)" in transport.requests[-2][1]
 
 
 @pytest.mark.anyio
@@ -1084,3 +1058,294 @@ async def test_accepts_base_game_remake_and_remaster_game_types(
     result = await catalog.get_game_detail(1942)
 
     assert result.id == 1942
+
+
+class PopularityIndexTransport:
+    """Simulates the popularity index, a game filter, and their intersection.
+
+    Request-order scripts cannot express "stops early", which is the whole
+    point of paging the index, so this fake answers from data and counts what
+    the adapter actually asked for.
+    """
+
+    def __init__(
+        self,
+        *,
+        ranked: list[tuple[int, float]],
+        matching: list[int],
+        total: int | None = None,
+    ) -> None:
+        self.ranked = ranked
+        self.matching = matching
+        self.total = len(matching) if total is None else total
+        self.requests: list[tuple[str, str]] = []
+        self.count_requests: list[tuple[str, str]] = []
+
+    @staticmethod
+    def _ids(query: str, field: str) -> list[int]:
+        inside = query.split(f"{field} = (", 1)[1].split(")", 1)[0]
+        return [int(value) for value in inside.split(",") if value]
+
+    @staticmethod
+    def _window(query: str) -> tuple[int, int]:
+        limit = int(query.split("limit ", 1)[1].split(";", 1)[0])
+        offset = (
+            int(query.split("offset ", 1)[1].split(";", 1)[0])
+            if "offset " in query
+            else 0
+        )
+        return limit, offset
+
+    async def query(
+        self,
+        endpoint: str,
+        query: str,
+    ) -> list[dict[str, object]]:
+        self.requests.append((endpoint, query))
+        if endpoint == "popularity_primitives":
+            if "game_id = (" in query:
+                wanted = set(self._ids(query, "game_id"))
+                return [
+                    {"game_id": game_id, "value": value}
+                    for game_id, value in self.ranked
+                    if game_id in wanted
+                ]
+            ordered = sorted(
+                self.ranked,
+                key=lambda entry: entry[1],
+                reverse="sort value desc" in query,
+            )
+            limit, offset = self._window(query)
+            return [
+                {"game_id": game_id, "value": value}
+                for game_id, value in ordered[offset : offset + limit]
+            ]
+        if endpoint == "games":
+            if "id = (" in query:
+                candidates = self._ids(query, "id")
+                selected = [
+                    game_id for game_id in candidates if game_id in self.matching
+                ]
+            else:
+                limit, offset = self._window(query)
+                selected = sorted(self.matching)[offset : offset + limit]
+            if query.startswith("fields id;"):
+                return [{"id": game_id} for game_id in selected]
+            return [
+                {"id": game_id, "slug": f"game-{game_id}", "name": f"Game {game_id}"}
+                for game_id in selected
+            ]
+        if endpoint == "game_time_to_beats":
+            return []
+        raise AssertionError(f"unexpected endpoint: {endpoint}")
+
+    async def count(self, endpoint: str, query: str) -> int:
+        self.count_requests.append((endpoint, query))
+        return self.total
+
+    def endpoints(self) -> list[str]:
+        return [endpoint for endpoint, _query in self.requests]
+
+
+@pytest.mark.anyio
+async def test_pages_the_popularity_index_instead_of_listing_every_match() -> None:
+    # A broad filter matches far more games than one page can show; reading
+    # every matching id just to rank it is what made these queries time out.
+    transport = PopularityIndexTransport(
+        ranked=[(game_id, 1.0 - game_id / 10000) for game_id in range(1, 1001)],
+        matching=list(range(1, 900)),
+        total=200_000,
+    )
+    catalog = IgdbCatalog(transport)
+
+    result = await catalog.browse_games(
+        BrowseCriteria(
+            genre_ids=(GenreId.ADVENTURE,),
+            sort=SortOption.POPULARITY,
+            direction=SortDirection.DESCENDING,
+        )
+    )
+
+    assert [game.id for game in result.items] == list(range(1, 25))
+    assert result.pagination.total_items == 200_000
+    index_query = transport.requests[0][1]
+    assert transport.requests[0][0] == "popularity_primitives"
+    assert "sort value desc" in index_query
+    assert "offset 0;" in index_query
+    intersect_query = transport.requests[1][1]
+    assert transport.requests[1][0] == "games"
+    assert intersect_query.startswith("fields id;")
+    assert "genres = (31)" in intersect_query
+    assert "id = (" in intersect_query
+    # One index page already contains a full result page, so the adapter must
+    # not walk any further.
+    assert transport.endpoints() == [
+        "popularity_primitives",
+        "games",
+        "games",
+        "game_time_to_beats",
+    ]
+
+
+@pytest.mark.anyio
+async def test_keeps_walking_the_index_until_the_requested_page_is_full() -> None:
+    transport = PopularityIndexTransport(
+        ranked=[(game_id, 1.0 - game_id / 10000) for game_id in range(1, 2001)],
+        matching=[game_id for game_id in range(1, 2001) if game_id % 50 == 0],
+        total=50_000,
+    )
+    catalog = IgdbCatalog(transport)
+
+    result = await catalog.browse_games(
+        BrowseCriteria(
+            genre_ids=(GenreId.ADVENTURE,),
+            sort=SortOption.POPULARITY,
+            page=1,
+        )
+    )
+
+    # The 24th most popular match sits in the third index page, so the walk
+    # reads three and stops rather than draining the index.
+    assert [game.id for game in result.items] == list(range(50, 1201, 50))
+    assert transport.endpoints().count("popularity_primitives") == 3
+
+
+@pytest.mark.anyio
+async def test_lists_a_small_match_set_without_touching_the_index() -> None:
+    # Paging the index cannot beat two requests, and it would be wasted work
+    # whenever the few matches turn out to be unranked.
+    transport = PopularityIndexTransport(
+        ranked=[(game_id, 1.0 - game_id / 10000) for game_id in range(1, 1001)],
+        matching=list(range(1, 101)),
+    )
+    catalog = IgdbCatalog(transport)
+
+    await catalog.browse_games(
+        BrowseCriteria(genre_ids=(GenreId.ADVENTURE,), sort=SortOption.POPULARITY)
+    )
+
+    index_pages = [
+        query
+        for endpoint, query in transport.requests
+        if endpoint == "popularity_primitives" and "game_id = (" not in query
+    ]
+    assert index_pages == []
+
+
+@pytest.mark.anyio
+async def test_lists_every_match_when_too_few_are_ranked_to_fill_the_page() -> None:
+    # A narrow filter whose matches are mostly unranked: the index cannot fill
+    # the page, so the adapter falls back to ordering the full match list and
+    # keeps unranked games after ranked ones.
+    transport = PopularityIndexTransport(
+        ranked=[(30, 0.9)],
+        matching=[10, 20, 30],
+    )
+    catalog = IgdbCatalog(transport)
+
+    result = await catalog.browse_games(
+        BrowseCriteria(
+            genre_ids=(GenreId.ADVENTURE,),
+            sort=SortOption.POPULARITY,
+            direction=SortDirection.DESCENDING,
+        )
+    )
+
+    assert [game.id for game in result.items] == [30, 10, 20]
+    assert result.pagination.total_items == 3
+
+
+@pytest.mark.anyio
+async def test_bounds_the_duration_index_before_reading_matching_games() -> None:
+    # The duration index is orders of magnitude smaller than the catalog, so
+    # bounding it first replaces a full scan of every matching game.
+    transport = M17FixtureTransport({"games": 200_000, "game_time_to_beats": 4})
+    catalog = IgdbCatalog(transport)
+
+    await catalog.browse_games(
+        BrowseCriteria(
+            duration_kind=DurationKind.NORMAL,
+            minimum_duration_seconds=7200,
+            maximum_duration_seconds=36000,
+        )
+    )
+
+    duration_query = next(
+        query
+        for endpoint, query in transport.requests
+        if endpoint == "game_time_to_beats"
+    )
+    assert "normally >= 7200" in duration_query
+    assert "normally <= 36000" in duration_query
+    games_query = next(
+        query for endpoint, query in transport.requests if endpoint == "games"
+    )
+    assert "id = (101,103,104,105)" in games_query
+    assert "offset" not in games_query
+    assert [endpoint for endpoint, _query in transport.count_requests] == [
+        "games",
+        "game_time_to_beats",
+    ]
+
+
+@pytest.mark.anyio
+async def test_excludes_unrecorded_durations_under_an_upper_bound_only() -> None:
+    # IGDB stores "not recorded" as zero, which would otherwise satisfy a
+    # maximum-only bound.
+    transport = M17FixtureTransport()
+    catalog = IgdbCatalog(transport)
+
+    await catalog.browse_games(
+        BrowseCriteria(
+            duration_kind=DurationKind.COMPLETIONIST,
+            maximum_duration_seconds=36000,
+        )
+    )
+
+    duration_query = next(
+        query
+        for endpoint, query in transport.requests
+        if endpoint == "game_time_to_beats"
+    )
+    assert "completely > 0" in duration_query
+    assert "completely <= 36000" in duration_query
+
+
+@pytest.mark.anyio
+async def test_still_scans_candidates_when_only_sorting_by_duration() -> None:
+    # Without a duration bound there is no index to narrow, so the candidate
+    # scan remains the only way to order by a value the games endpoint lacks.
+    transport = M17FixtureTransport()
+    catalog = IgdbCatalog(transport)
+
+    await catalog.browse_games(
+        BrowseCriteria(sort=SortOption.DURATION, direction=SortDirection.ASCENDING)
+    )
+
+    assert [endpoint for endpoint, _query in transport.count_requests] == ["games"]
+
+
+@pytest.mark.anyio
+async def test_reads_the_matching_games_when_they_outnumber_the_duration_index() -> (
+    None
+):
+    # A narrow filter with a generous duration ceiling inverts the economics:
+    # listing the few matches beats walking a duration index that covers most
+    # of the catalog.
+    transport = M17FixtureTransport({"games": 5, "game_time_to_beats": 9_000})
+    catalog = IgdbCatalog(transport)
+
+    await catalog.browse_games(
+        BrowseCriteria(
+            genre_ids=(GenreId.ADVENTURE,),
+            duration_kind=DurationKind.NORMAL,
+            maximum_duration_seconds=72_000,
+        )
+    )
+
+    games_query = next(
+        query for endpoint, query in transport.requests if endpoint == "games"
+    )
+    assert "genres = (31)" in games_query
+    assert "offset 0;" in games_query
+    assert "id = (" not in games_query

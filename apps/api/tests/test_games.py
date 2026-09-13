@@ -307,6 +307,9 @@ async def test_normalizes_duration_hours_to_whole_seconds() -> None:
         "releaseFrom=2020-01-02&releaseTo=2020-01-01",
         "minimumRating=-0.1",
         "minimumRating=100.1",
+        # IGDB's query language rejects a decimal literal in a where clause,
+        # so a fractional threshold could never be served.
+        "minimumRating=80.5",
         "sort=unknown-sort",
         "direction=sideways",
         "durationKind=normal&minimumDurationHours=0.5",

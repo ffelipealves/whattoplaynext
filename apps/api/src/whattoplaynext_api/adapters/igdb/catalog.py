@@ -115,6 +115,15 @@ DURATION_PROVIDER_FIELDS = {
 
 AUTOCOMPLETE_SUGGESTION_LIMIT = 8
 
+# IGDB's maximum page size for a single query, and therefore the unit every
+# index walk in this adapter is measured in.
+PROVIDER_BATCH_SIZE = 500
+
+# Listing every match costs two requests per provider page, which is both
+# cheap and exact while the matches are few; paging the popularity index only
+# earns its place once that list grows past a handful of pages.
+POPULARITY_WALK_THRESHOLD = 4 * PROVIDER_BATCH_SIZE
+
 # Released base games plus their separately cataloged remakes and remasters;
 # DLC, expansions, bundles, mods, and other non-base `game_type` values are
 # excluded from MVP content per docs/product-requirements.md#3.2. Verified
@@ -284,19 +293,43 @@ class IgdbCatalog:
             criteria,
             include_release_bounds=not bool(criteria.platform_ids),
         )
+        duration_kinds = tuple(
+            dict.fromkeys((DurationKind.NORMAL, criteria.duration_kind))
+        )
+        include_release_dates = _needs_platform_release_data(criteria)
+
+        # Both sides have to be read in full to evaluate a duration filter
+        # locally, so the cheaper plan is whichever index is smaller: a narrow
+        # play-time window covers a fraction of the duration index, while a
+        # narrow game filter matches a fraction of the catalog.
         candidate_total = await self._transport.count("games", where_query)
-        records: list[dict[str, object]] = []
-        for batch_offset in range(0, candidate_total, 500):
-            records.extend(
-                await self._transport.query(
-                    "games",
-                    _candidate_games_query(
-                        where_query,
-                        batch_offset,
-                        include_release_dates=_needs_platform_release_data(criteria),
-                    ),
-                )
+        duration_total = (
+            await self._transport.count(
+                "game_time_to_beats",
+                _duration_range_where(criteria),
             )
+            if _has_duration_filter(criteria)
+            else None
+        )
+
+        if duration_total is not None and duration_total <= candidate_total:
+            durations = await self._durations_in_range(criteria, duration_kinds)
+            records = await self._games_by_ids(
+                list(durations),
+                where_query,
+                include_release_dates=include_release_dates,
+            )
+        else:
+            records = await self._candidate_records(
+                where_query,
+                candidate_total,
+                include_release_dates=include_release_dates,
+            )
+            durations = await self._duration_values(
+                _record_ids(records),
+                duration_kinds,
+            )
+
         if _has_platform_release_filter(criteria):
             records = [
                 record
@@ -304,15 +337,6 @@ class IgdbCatalog:
                 if _matches_platform_release(record, criteria)
             ]
 
-        duration_kinds = tuple(
-            dict.fromkeys(
-                (
-                    DurationKind.NORMAL,
-                    criteria.duration_kind,
-                )
-            )
-        )
-        durations = await self._duration_values(_record_ids(records), duration_kinds)
         if _has_duration_filter(criteria):
             records = [
                 record
@@ -330,6 +354,73 @@ class IgdbCatalog:
         offset = (criteria.page - 1) * criteria.page_size
         page_records = records[offset : offset + criteria.page_size]
         return total_items, _normalize_games_with_durations(page_records, durations)
+
+    async def _candidate_records(
+        self,
+        where_query: str,
+        candidate_total: int,
+        *,
+        include_release_dates: bool,
+    ) -> list[dict[str, object]]:
+        """Read every game the strict filter matches, one provider page apart."""
+        records: list[dict[str, object]] = []
+        for batch_offset in range(0, candidate_total, PROVIDER_BATCH_SIZE):
+            records.extend(
+                await self._transport.query(
+                    "games",
+                    _candidate_games_query(
+                        where_query,
+                        batch_offset,
+                        include_release_dates=include_release_dates,
+                    ),
+                )
+            )
+        return records
+
+    async def _durations_in_range(
+        self,
+        criteria: BrowseCriteria,
+        kinds: tuple[DurationKind, ...],
+    ) -> dict[int, dict[DurationKind, int]]:
+        """Read every game whose selected duration falls inside the bounds."""
+        fields = ",".join(DURATION_PROVIDER_FIELDS[kind] for kind in kinds)
+        where = _duration_range_where(criteria)
+        durations: dict[int, dict[DurationKind, int]] = {}
+        offset = 0
+        while True:
+            records = await self._transport.query(
+                "game_time_to_beats",
+                (
+                    f"fields game_id,{fields}; {where} sort game_id asc; "
+                    f"limit {PROVIDER_BATCH_SIZE}; offset {offset};"
+                ),
+            )
+            durations.update(_normalize_duration_records(records, kinds))
+            if len(records) < PROVIDER_BATCH_SIZE:
+                return durations
+            offset += PROVIDER_BATCH_SIZE
+
+    async def _games_by_ids(
+        self,
+        game_ids: list[int],
+        where_query: str,
+        *,
+        include_release_dates: bool,
+    ) -> list[dict[str, object]]:
+        """Read the games in one id set that also satisfy the strict filter."""
+        records: list[dict[str, object]] = []
+        for game_id_batch in _chunks(game_ids, PROVIDER_BATCH_SIZE):
+            records.extend(
+                await self._transport.query(
+                    "games",
+                    _candidate_games_by_ids_query(
+                        where_query,
+                        game_id_batch,
+                        include_release_dates=include_release_dates,
+                    ),
+                )
+            )
+        return records
 
     async def _enrich_page_durations(
         self,
@@ -357,7 +448,7 @@ class IgdbCatalog:
     ) -> dict[int, dict[DurationKind, int]]:
         durations: dict[int, dict[DurationKind, int]] = {}
         fields = ",".join(DURATION_PROVIDER_FIELDS[kind] for kind in kinds)
-        for game_id_batch in _chunks(game_ids, 500):
+        for game_id_batch in _chunks(game_ids, PROVIDER_BATCH_SIZE):
             ids = ",".join(str(game_id) for game_id in game_id_batch)
             records = await self._transport.query(
                 "game_time_to_beats",
@@ -368,7 +459,7 @@ class IgdbCatalog:
 
     async def _popularity_for_ids(self, game_ids: list[int]) -> dict[int, float]:
         popularity: dict[int, float] = {}
-        for game_id_batch in _chunks(game_ids, 500):
+        for game_id_batch in _chunks(game_ids, PROVIDER_BATCH_SIZE):
             ids = ",".join(str(game_id) for game_id in game_id_batch)
             records = await self._transport.query(
                 "popularity_primitives",
@@ -386,21 +477,112 @@ class IgdbCatalog:
     ) -> tuple[int, list[int]]:
         where_query = _where_query(criteria)
         total_items = await self._transport.count("games", where_query)
+        required = criteria.page * criteria.page_size
+        ordered_ids = (
+            await self._ranked_matching_ids(
+                where_query,
+                criteria.direction,
+                required=required,
+                total_items=total_items,
+            )
+            if total_items > POPULARITY_WALK_THRESHOLD
+            else None
+        )
+        if ordered_ids is None:
+            ordered_ids = await self._every_matching_id_by_popularity(
+                where_query,
+                criteria.direction,
+                total_items,
+            )
+        offset = (criteria.page - 1) * criteria.page_size
+        return total_items, ordered_ids[offset : offset + criteria.page_size]
+
+    async def _ranked_matching_ids(
+        self,
+        where_query: str,
+        direction: SortDirection,
+        *,
+        required: int,
+        total_items: int,
+    ) -> list[int] | None:
+        """Page the popularity index until the requested page is full.
+
+        Only the most popular `required` matches can ever be shown, so reading
+        the index in popularity order and intersecting each page with the
+        filter answers a broad search in a couple of requests, where listing
+        every matching id first costs one request per 500 matches.
+
+        Returns `None` when the index cannot fill the page — either it ran out
+        of ranked games or filling it would cost more requests than listing
+        every match — leaving that case to the exhaustive path, which is also
+        the only one that can order unranked matches.
+        """
+        budget = max(1, ceil(total_items / PROVIDER_BATCH_SIZE))
+        ranked: list[tuple[int, float]] = []
+        seen: set[int] = set()
+        for batch in range(budget):
+            records = await self._transport.query(
+                "popularity_primitives",
+                (
+                    "fields game_id,value; where popularity_type = 1; "
+                    f"sort value {direction.value}; "
+                    f"limit {PROVIDER_BATCH_SIZE}; "
+                    f"offset {batch * PROVIDER_BATCH_SIZE};"
+                ),
+            )
+            # Validated once: the keys are this index page's ids, already in
+            # the provider's popularity order.
+            values = _popularity_values(records)
+            candidate_ids = list(values)
+            for game_id in await self._matching_ids(candidate_ids, where_query):
+                if game_id not in seen:
+                    seen.add(game_id)
+                    ranked.append((game_id, values[game_id]))
+            if len(ranked) >= required:
+                return _ids_by_popularity(ranked, direction)
+            if len(records) < PROVIDER_BATCH_SIZE:
+                return None
+        return None
+
+    async def _matching_ids(
+        self,
+        candidate_ids: list[int],
+        where_query: str,
+    ) -> list[int]:
+        """Keep the candidates the strict filter accepts, in candidate order."""
+        if not candidate_ids:
+            return []
+        records = await self._transport.query(
+            "games",
+            (
+                f"fields id; {_where_with_ids(where_query, candidate_ids)} "
+                f"limit {len(candidate_ids)};"
+            ),
+        )
+        matching = set(_record_ids(records))
+        return [game_id for game_id in candidate_ids if game_id in matching]
+
+    async def _every_matching_id_by_popularity(
+        self,
+        where_query: str,
+        direction: SortDirection,
+        total_items: int,
+    ) -> list[int]:
         matching_ids: list[int] = []
-        for batch_offset in range(0, total_items, 500):
+        for batch_offset in range(0, total_items, PROVIDER_BATCH_SIZE):
             records = await self._transport.query(
                 "games",
                 (
                     f"fields id; {where_query} sort id asc; "
-                    f"limit 500; offset {batch_offset};"
+                    f"limit {PROVIDER_BATCH_SIZE}; offset {batch_offset};"
                 ),
             )
             matching_ids.extend(_record_ids(records))
 
         popularity = await self._popularity_for_ids(matching_ids)
 
-        reverse_value = criteria.direction is SortDirection.DESCENDING
-        ordered_ids = sorted(
+        reverse_value = direction is SortDirection.DESCENDING
+        return sorted(
             matching_ids,
             key=lambda game_id: (
                 game_id not in popularity,
@@ -412,8 +594,6 @@ class IgdbCatalog:
                 game_id,
             ),
         )
-        offset = (criteria.page - 1) * criteria.page_size
-        return total_items, ordered_ids[offset : offset + criteria.page_size]
 
 
 def _options_query(options: tuple[AllowedOption, ...]) -> str:
@@ -464,6 +644,33 @@ def _popularity_values(records: list[dict[str, object]]) -> dict[int, float]:
     return values
 
 
+def _ids_by_popularity(
+    ranked: list[tuple[int, float]],
+    direction: SortDirection,
+) -> list[int]:
+    """Order ranked matches by value, breaking ties on id for stable paging."""
+    reverse_value = direction is SortDirection.DESCENDING
+    return [
+        game_id
+        for game_id, _value in sorted(
+            ranked,
+            key=lambda entry: (
+                -entry[1] if reverse_value else entry[1],
+                entry[0],
+            ),
+        )
+    ]
+
+
+def _where_with_ids(where_query: str, game_ids: list[int]) -> str:
+    """Narrow an existing where clause to one batch of candidate ids."""
+    ids = ",".join(str(game_id) for game_id in game_ids)
+    id_clause = f"id = ({ids})"
+    if not where_query:
+        return f"where {id_clause};"
+    return f"{where_query.removesuffix(';')} & {id_clause};"
+
+
 def _record_ids(records: list[dict[str, object]]) -> list[int]:
     return [_required_int(record, "id") for record in records]
 
@@ -502,6 +709,40 @@ def _games_query(game_ids: list[int], page_size: int) -> str:
     )
 
 
+def _duration_range_where(criteria: BrowseCriteria) -> str:
+    field = DURATION_PROVIDER_FIELDS[criteria.duration_kind]
+    # IGDB records an unknown duration as zero, which a maximum-only bound
+    # would otherwise accept as the shortest possible game.
+    clauses = [f"{field} > 0"]
+    if criteria.minimum_duration_seconds is not None:
+        clauses.append(f"{field} >= {criteria.minimum_duration_seconds}")
+    if criteria.maximum_duration_seconds is not None:
+        clauses.append(f"{field} <= {criteria.maximum_duration_seconds}")
+    return f"where {' & '.join(clauses)};"
+
+
+def _candidate_games_by_ids_query(
+    where_query: str,
+    game_ids: list[int],
+    *,
+    include_release_dates: bool,
+) -> str:
+    return (
+        f"{_candidate_games_fields(include_release_dates)}; "
+        f"{_where_with_ids(where_query, game_ids)} limit {len(game_ids)};"
+    )
+
+
+def _candidate_games_fields(include_release_dates: bool) -> str:
+    release_fields = (
+        ",release_dates.platform,release_dates.date" if include_release_dates else ""
+    )
+    return (
+        "fields id,slug,name,first_release_date,cover.image_id,platforms.id,"
+        f"genres.id,total_rating,total_rating_count,game_modes.id{release_fields}"
+    )
+
+
 def _candidate_games_query(
     where_query: str,
     offset: int,
@@ -509,14 +750,9 @@ def _candidate_games_query(
     include_release_dates: bool,
 ) -> str:
     where = f" {where_query}" if where_query else ""
-    release_fields = (
-        ",release_dates.platform,release_dates.date" if include_release_dates else ""
-    )
     return (
-        "fields id,slug,name,first_release_date,cover.image_id,platforms.id,"
-        "genres.id,total_rating,total_rating_count,game_modes.id"
-        f"{release_fields};"
-        f"{where} sort id asc; limit 500; offset {offset};"
+        f"{_candidate_games_fields(include_release_dates)};"
+        f"{where} sort id asc; limit {PROVIDER_BATCH_SIZE}; offset {offset};"
     )
 
 

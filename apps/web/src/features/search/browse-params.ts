@@ -208,6 +208,9 @@ function parseIsoDate(raw: string | string[] | undefined): string | undefined {
 function parseRating(raw: string | string[] | undefined): number | undefined {
   const result = z.coerce
     .number()
+    // The API publishes this bound as an integer: IGDB's query language
+    // rejects a decimal literal, so a fractional threshold is never servable.
+    .int()
     .min(MIN_RATING)
     .max(MAX_RATING)
     .safeParse(firstValue(raw));

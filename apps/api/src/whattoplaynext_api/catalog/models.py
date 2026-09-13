@@ -133,7 +133,9 @@ class BrowseCriteria(BaseModel):
     genre_ids: tuple[GenreId, ...] = ()
     release_from: date | None = None
     release_to: date | None = None
-    minimum_rating: float | None = Field(default=None, ge=0, le=100)
+    # A whole-number threshold: IGDB's query language rejects a decimal
+    # literal in a where clause, so a fractional minimum could never be served.
+    minimum_rating: int | None = Field(default=None, ge=0, le=100)
     game_mode_ids: tuple[GameModeId, ...] = ()
     duration_kind: DurationKind = DurationKind.NORMAL
     minimum_duration_seconds: int | None = Field(default=None, ge=3600, le=3600000)

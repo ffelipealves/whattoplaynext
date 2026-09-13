@@ -54,7 +54,7 @@ class BrowseParameters(BaseModel):
     genre: list[GenreId] = Field(default_factory=list)
     release_from: date | None = Field(default=None, alias="releaseFrom")
     release_to: date | None = Field(default=None, alias="releaseTo")
-    minimum_rating: float | None = Field(
+    minimum_rating: int | None = Field(
         default=None,
         ge=0,
         le=100,
