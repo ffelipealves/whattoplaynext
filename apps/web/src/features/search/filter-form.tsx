@@ -400,7 +400,7 @@ export function FilterForm({
                     <div className="flex items-center gap-2" key={kind}>
                       <input
                         checked={durationKind === kind}
-                        className="size-4 accent-[#3157d5]"
+                        className="size-4 accent-[#3157d5] focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-[var(--signal)]"
                         id={inputId}
                         name="durationKind"
                         onChange={() => setValue("durationKind", kind)}

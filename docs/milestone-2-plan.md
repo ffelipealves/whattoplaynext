@@ -1,6 +1,6 @@
 # Milestone 2 Plan
 
-Status: active execution baseline; M2.7 completed and M2.8 ready
+Status: active execution baseline; M2.8 completed and M2.9 ready
 
 Prepared: 2026-09-12
 
@@ -522,6 +522,48 @@ Acceptance:
   product requirements without a mouse;
 - announced live-region text is verified by a component test, not only
   visual inspection.
+
+Status: completed on 2026-09-13.
+
+Outcome: the route's composition moved into `features/search/search-page.tsx`,
+leaving `app/[locale]/games/page.tsx` as data fetching alone, so the automated
+check runs against the markup the page actually ships rather than a rebuilt
+approximation of it. `axe-core` runs over four states — desktop, the opened
+mobile drawer, a failed search, and the ignored-criteria notice — and reports
+no critical or serious violations. Colour contrast is the one rule jsdom
+cannot evaluate (it has no layout or paint), so it was measured in a real
+browser instead: every text node on the search page clears the WCAG AA
+threshold for its size and weight.
+
+axe found one real defect. The rating slider's `aria-label` sat on the Radix
+root while `role="slider"` is on the thumb, so the control shipped unnamed;
+the primitive now forwards `aria-label`/`aria-labelledby` to its thumbs. The
+duration radios were the only bare native controls without a focus treatment
+and now carry the same 3 px signal outline the global `a:focus-visible` rule
+gives links.
+
+The result count became a live region. It matters more than it looks: Apply is
+a client navigation, so results change with nothing said about it — and the
+region is rendered unconditionally, because a `role="status"` that only
+appears alongside its content announces nothing. A component test asserts the
+same node carries the new count after a re-render, which is the part a
+screen-reader-free check would miss.
+
+The keyboard pass ran in a real browser rather than only in jsdom: 57 focusable
+stops on a filtered search page, **none of them unnamed**, in document order
+from the name field through the sidebar, sort links, chips and pagination.
+Focus is visible throughout (`:focus-visible` matched with a 3 px `--signal`
+outline on both a duration radio and a sort link). Radix already traps focus in
+the drawer and closes it on Escape; both now have tests so a primitive upgrade
+cannot quietly drop them.
+
+One finding came out of that pass and is **not** fixed here: pressing Enter on
+the "Release date" sort link with a platform applied never completes. The
+keyboard path is correct — the click fires, `next/link` starts the client
+navigation — but the destination takes over 75 s to render, because that
+combination is the one remaining full-catalog scan in the adapter. It is
+recorded in the [technical debt register](technical-debt.md) as entry 2b,
+blocking for closed beta.
 
 ### M2.9 — Playwright critical path
 

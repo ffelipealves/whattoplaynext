@@ -146,6 +146,28 @@ test("the drawer keeps its actions pinned while the groups scroll", async () => 
   expect(apply.parentElement!.className).toContain("sticky");
 });
 
+test("the drawer closes on Escape without applying anything", async () => {
+  render(withIntl(<FilterDrawer metadata={metadata} params={params()} />));
+
+  fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+  const dialog = await screen.findByRole("dialog");
+  fireEvent.keyDown(dialog, { key: "Escape" });
+
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(pushMock).not.toHaveBeenCalled();
+});
+
+test("the drawer moves focus into itself when it opens", async () => {
+  render(withIntl(<FilterDrawer metadata={metadata} params={params()} />));
+
+  fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+  const dialog = await screen.findByRole("dialog");
+
+  await waitFor(() =>
+    expect(dialog.contains(document.activeElement)).toBe(true),
+  );
+});
+
 test("the drawer closes itself once its selection is applied", async () => {
   render(withIntl(<FilterDrawer metadata={metadata} params={params()} />));
 
