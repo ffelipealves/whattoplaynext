@@ -358,3 +358,52 @@ every increment against real API responses from the first increment onward;
 no new external action is required before any M2 increment. Automated tests
 still never depend on live IGDB access, matching the M1 rule extended to the
 API boundary the web app now also crosses.
+
+## 7. M2.4 next-session handoff
+
+Start from the completed M2.3 commit with a clean tree. `GET /[locale]/games`
+already exists end to end (name search, sort, pagination, loading/zero-result/
+upstream-failure states) — M2.4 adds the desktop filter sidebar alongside it,
+without changing that existing baseline behavior.
+
+Reuse rather than re-derive:
+
+- `features/search/browse-params.ts` — extend `BrowseParams`/`parseBrowseParams`
+  with `platformIds`, `genreIds`, `releaseFrom`, `releaseTo`, `minimumRating`,
+  `gameModeIds`, `durationKind`, `minimumDurationHours`, `maximumDurationHours`,
+  validated with the exact same bounds `GET /api/v1/filters` publishes
+  (`limits.maximumNameLength`, `limits.minimumDurationHours/maximumDurationHours`,
+  and the allow-listed platform/genre/game-mode IDs from that same response —
+  do not hardcode a second copy of those enums in the frontend).
+- `features/search/get-search-results.ts` — extend the forwarded query with
+  the new filter fields; the API already validates strict AND/OR semantics,
+  so the frontend's job is producing the right repeated query params, not
+  re-implementing that logic.
+- The `sort-links.tsx` pattern (plain server-rendered `Link`s carrying
+  `withBrowseParams`-built query objects) is _not_ the right model for the
+  filter sidebar itself, because M2.4 explicitly requires draft state that
+  does not reach the URL until an explicit Apply — that needs a real Client
+  Component form. `react-hook-form` is the architecture's chosen tool for
+  this (not yet installed); reach for it now rather than hand-rolling form
+  state, matching `docs/architecture.md`'s stated stack.
+- Active-filter chips and the Clear-all action should still produce plain
+  navigable URLs (a chip's "remove" affordance can be a real `Link` to the
+  criteria-minus-one-filter URL, matching the pagination/sort links' zero-JS
+  approach) even though the filter _form_ itself is a Client Component.
+- Add the new UI strings to both `messages/en.json` and `messages/pt-br.json`
+  under a `Search` (or new `Filters`) namespace — do not branch on locale in
+  component code.
+
+Fetch `GET /api/v1/filters` once, server-side, to source the sidebar's
+options (platform/genre/game-mode labels, duration bounds) — the same call
+`getCatalogStatus()` already makes from the home page, so a small shared
+helper may be worth extracting rather than duplicating the fetch.
+
+Continue TDD through component tests with fakes (per M2's cross-cutting
+rules): drive Apply, Clear-all, and single-chip removal without a network
+call before Apply, verify strict AND-within-category/OR-across-category
+query construction, and verify the `excludedUnknownDuration` copy appears
+only when a duration bound is active. Run `pnpm quality` (now covering the
+web app's build, lint, typecheck, and coverage alongside the API and
+contracts) before calling M2.4 done, and update this plan's M2.4 entry with
+its own "Status: completed" line and outcome paragraph, matching M2.1–M2.3.

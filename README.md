@@ -55,6 +55,16 @@ actions tracked separately in
 [External prerequisites](docs/external-prerequisites.md); they do not block
 Milestone 2 frontend work.
 
+Milestone 2 (search experience) is in progress: the design system
+(shadcn/ui themed to this project's own palette), `next-intl` locale routing
+and message catalogs, and `GET /[locale]/games` — a working unfiltered
+search with name search, sorting, real IGDB cover art, and pagination, all
+driven by the URL rather than client-side state — are done. Structured
+filters (desktop sidebar, mobile drawer), autocomplete, validation/error
+states, an accessibility pass, and the Playwright critical path remain. See
+[Milestone 2 plan](docs/milestone-2-plan.md) for the full increment
+breakdown and the current handoff notes.
+
 ## Local development
 
 This section is the complete path from a fresh clone to both applications
