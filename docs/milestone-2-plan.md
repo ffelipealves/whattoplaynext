@@ -1,6 +1,6 @@
 # Milestone 2 Plan
 
-Status: active execution baseline; M2.2 completed and M2.3 ready
+Status: active execution baseline; M2.3 completed and M2.4 ready
 
 Prepared: 2026-09-12
 
@@ -159,6 +159,8 @@ hand-duplicated subset) for both locales.
 
 ### M2.3 — Unfiltered search results
 
+Status: completed on 2026-09-12.
+
 Deliver:
 
 - the localized search route with name search, default popularity sort, and
@@ -181,6 +183,30 @@ Acceptance:
   semantically distinguishable states;
 - a component test covers the loading, populated, zero-result, and card
   null-field states.
+
+Outcome: `GET /[locale]/games` reads `name`/`sort`/`direction`/`page` from the
+URL through a small Zod-backed parser (`features/search/browse-params.ts`)
+that clamps out-of-range values to the nearest bound rather than forwarding a
+guaranteed-invalid request, mirroring the API's own bounds. Sorting and
+pagination are plain server-rendered `Link`s carrying the full query forward
+(no client JS, no state beyond the URL); the name field is a native GET
+`<form>` that preserves the active sort while resetting to page 1. A route
+`loading.tsx` shows a skeleton grid via Next's built-in Suspense boundary
+while the server-rendered fetch resolves. `getSearchResults()` mirrors
+`getCatalogStatus()`'s M2.1 pattern exactly — a classified API error and a
+rejected `fetch()` (API process unreachable) both collapse to one `{ok:
+false}` result, kept visually and semantically distinct from a genuine
+zero-result page. Verified live: real IGDB cover art renders through
+`next/image` (`next.config.ts` now allow-lists `images.igdb.com`), sort
+switching and pagination correctly preserve the other active criteria, and
+back/forward navigation restores the exact prior query and results.
+
+Live verification also surfaced a pre-existing backend characteristic worth
+noting here: switching away from popularity sort exposes IGDB's full,
+uncategorized `games` count (in the hundreds of thousands) rather than the
+curated popularity-primitives subset — the same base-game content-type gap
+already flagged as a follow-up after M1.10, now visibly affecting the
+frontend too. It is not fixed in this increment.
 
 ### M2.4 — Structured filters (desktop sidebar)
 

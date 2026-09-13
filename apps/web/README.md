@@ -59,6 +59,28 @@ crashed page; `getCatalogStatus()` treats both a classified API error and a
 rejected fetch (API process unreachable) as the same graceful "unreachable"
 state.
 
+## Unfiltered search (`/games`)
+
+`app/[locale]/games/page.tsx` is the search results route. Submitted state
+lives entirely in the URL — `features/search/browse-params.ts` parses `name`,
+`sort`, `direction`, and `page` from `searchParams` with Zod, clamping
+out-of-range values (page above 100, an unknown sort) to the nearest valid
+bound rather than forwarding a request the API would reject anyway. Sorting
+and pagination (`sort-links.tsx`, `pagination-links.tsx`) are plain
+server-rendered `Link`s that carry the rest of the active query forward; the
+name field (`name-search-form.tsx`) is a native GET `<form>` with hidden
+`sort`/`direction` inputs so a new search preserves them while intentionally
+resetting to page 1. None of this needs a Client Component.
+
+`getSearchResults()` follows `getCatalogStatus()`'s pattern from the home
+page: a classified API error and a rejected `fetch()` both become one
+`{ok: false}` result. `results-grid.tsx` renders that as a state visually and
+semantically distinct from a genuine zero-result page, which itself echoes
+the submitted name back to the visitor. `app/[locale]/games/loading.tsx`
+shows a skeleton grid via Next's route-level Suspense boundary while the
+server-rendered fetch resolves. Game cover art renders through `next/image`;
+`next.config.ts` allow-lists `images.igdb.com` for this.
+
 ## Checks
 
 ```bash

@@ -65,15 +65,24 @@ export function LandingPage({ catalogStatus }: LandingPageProps) {
             <span>What To Play Next</span>
           </Link>
 
-          <nav aria-label={t("languageNavLabel")}>
+          <div className="flex items-center gap-3">
             <Link
               className="rounded-full border border-[#17203a]/20 px-4 py-2 text-sm font-semibold transition-colors hover:border-[#3157d5] hover:bg-[#dce6fb]/50"
-              href="/"
-              locale={alternateLocale}
+              href="/games"
             >
-              {localeName(alternateLocale)}
+              {t("browseGamesLink")}
             </Link>
-          </nav>
+
+            <nav aria-label={t("languageNavLabel")}>
+              <Link
+                className="rounded-full border border-[#17203a]/20 px-4 py-2 text-sm font-semibold transition-colors hover:border-[#3157d5] hover:bg-[#dce6fb]/50"
+                href="/"
+                locale={alternateLocale}
+              >
+                {localeName(alternateLocale)}
+              </Link>
+            </nav>
+          </div>
         </header>
 
         <div className="grid flex-1 lg:grid-cols-[minmax(0,1.12fr)_minmax(24rem,0.88fr)]">

@@ -30,6 +30,37 @@
     "principleMissingTitle": "Dado ausente continua ausente",
     "principleMissingDescription": "Valores desconhecidos são mostrados, nunca inventados.",
     "principleZeroTitle": "Zero significa zero",
-    "principleZeroDescription": "Sugerimos o que flexibilizar sem inserir resultados aproximados."
+    "principleZeroDescription": "Sugerimos o que flexibilizar sem inserir resultados aproximados.",
+    "browseGamesLink": "Ver jogos"
+  },
+  "Search": {
+    "heading": "Ver jogos",
+    "nameInputLabel": "Nome do jogo",
+    "nameInputPlaceholder": "Buscar por título",
+    "searchButton": "Buscar",
+    "sortNavLabel": "Ordenar resultados",
+    "sortPopularity": "Popularidade",
+    "sortRating": "Nota",
+    "sortReleaseDate": "Lançamento",
+    "sortDuration": "Duração",
+    "sortTitle": "Título",
+    "resultsCount": "{count, plural, =0 {Nenhum jogo} one {# jogo} other {# jogos}}",
+    "coverAlt": "Capa de {title}",
+    "noCover": "Sem capa",
+    "ratingUnknown": "Ainda sem nota",
+    "ratingVotes": "{count, plural, one {# avaliação} other {# avaliações}}",
+    "durationUnknown": "Duração desconhecida",
+    "durationHours": "{hours}h",
+    "zeroResultsTitleWithName": "Nenhum jogo encontrado para “{name}”",
+    "zeroResultsTitle": "Nenhum jogo encontrado",
+    "zeroResultsDescription": "Tente um título diferente ou mais curto.",
+    "errorTitle": "Algo deu errado",
+    "errorDescription": "Não foi possível carregar os resultados agora.",
+    "retryLabel": "Tentar novamente",
+    "paginationNavLabel": "Paginação",
+    "paginationPrevious": "Anterior",
+    "paginationNext": "Próxima",
+    "paginationStatus": "Página {page} de {totalPages}",
+    "loadingLabel": "Carregando resultados"
   }
 }

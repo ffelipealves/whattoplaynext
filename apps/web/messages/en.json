@@ -30,6 +30,37 @@
     "principleMissingTitle": "Missing data stays missing",
     "principleMissingDescription": "Unknown values are shown honestly, never invented.",
     "principleZeroTitle": "Zero means zero",
-    "principleZeroDescription": "We suggest what to relax without sneaking in near matches."
+    "principleZeroDescription": "We suggest what to relax without sneaking in near matches.",
+    "browseGamesLink": "Browse games"
+  },
+  "Search": {
+    "heading": "Browse games",
+    "nameInputLabel": "Game name",
+    "nameInputPlaceholder": "Search by title",
+    "searchButton": "Search",
+    "sortNavLabel": "Sort results",
+    "sortPopularity": "Popularity",
+    "sortRating": "Rating",
+    "sortReleaseDate": "Release date",
+    "sortDuration": "Duration",
+    "sortTitle": "Title",
+    "resultsCount": "{count, plural, =0 {No games} one {# game} other {# games}}",
+    "coverAlt": "{title} cover art",
+    "noCover": "No cover",
+    "ratingUnknown": "Not yet rated",
+    "ratingVotes": "{count, plural, one {# vote} other {# votes}}",
+    "durationUnknown": "Duration unknown",
+    "durationHours": "{hours}h",
+    "zeroResultsTitleWithName": "No games matched “{name}”",
+    "zeroResultsTitle": "No games matched this search",
+    "zeroResultsDescription": "Try a different or shorter title.",
+    "errorTitle": "Something went wrong",
+    "errorDescription": "We couldn't load results right now.",
+    "retryLabel": "Try again",
+    "paginationNavLabel": "Pagination",
+    "paginationPrevious": "Previous",
+    "paginationNext": "Next",
+    "paginationStatus": "Page {page} of {totalPages}",
+    "loadingLabel": "Loading results"
   }
 }

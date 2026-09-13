@@ -1,0 +1,70 @@
+import { NextIntlClientProvider } from "next-intl";
+import { render, screen } from "@testing-library/react";
+import { expect, test } from "vitest";
+
+import enMessages from "../../../messages/en.json";
+
+import { ResultsGrid } from "./results-grid";
+import type { GamePage, SearchResult } from "./get-search-results";
+
+const samplePage: GamePage = {
+  items: [
+    {
+      id: 1942,
+      slug: "the-witcher-3-wild-hunt",
+      title: "The Witcher 3: Wild Hunt",
+      releaseYear: 2015,
+      cover: null,
+      platforms: [],
+      genres: [],
+      rating: null,
+      normalDurationSeconds: null,
+      gameModes: [],
+    },
+  ],
+  pagination: { page: 1, pageSize: 24, totalItems: 1, totalPages: 1 },
+  query: { sort: "popularity", direction: "desc" },
+  meta: {
+    servedFrom: "provider",
+    dataMayBeStale: false,
+    excludedUnknownDuration: false,
+  },
+};
+
+function renderGrid(result: SearchResult, name?: string) {
+  render(
+    <NextIntlClientProvider locale="en" messages={enMessages}>
+      <ResultsGrid name={name} result={result} />
+    </NextIntlClientProvider>,
+  );
+}
+
+test("renders a card for each item in a populated page", () => {
+  renderGrid({ ok: true, page: samplePage });
+
+  expect(screen.getByText("The Witcher 3: Wild Hunt")).toBeDefined();
+});
+
+test("renders a named zero-result message distinct from an empty search", () => {
+  renderGrid(
+    { ok: true, page: { ...samplePage, items: [] } },
+    "zzzznonexistent",
+  );
+
+  expect(screen.getByText("No games matched “zzzznonexistent”")).toBeDefined();
+  expect(screen.getByText("Try a different or shorter title.")).toBeDefined();
+});
+
+test("renders a generic zero-result message without a name filter", () => {
+  renderGrid({ ok: true, page: { ...samplePage, items: [] } });
+
+  expect(screen.getByText("No games matched this search")).toBeDefined();
+});
+
+test("renders an upstream-failure state distinct from zero-result", () => {
+  renderGrid({ ok: false });
+
+  expect(screen.getByText("Something went wrong")).toBeDefined();
+  expect(screen.getByRole("alert")).toBeDefined();
+  expect(screen.queryByText("No games matched this search")).toBeNull();
+});
