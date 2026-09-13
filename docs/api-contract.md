@@ -130,11 +130,18 @@ the release dates belonging to any selected platform. Without a platform
 criterion they fall back to `first_release_date`.
 
 Popularity without filters uses the IGDB Visits primitive directly. With
-filters, the adapter obtains the exact matching game IDs, batches their Visits
-values, orders them stably, and then selects the requested 24-item page. Rating,
-release-date, and title sorts use their explicit IGDB game fields when no join
-is required. Duration and platform-specific release evaluation resolve exact
-candidate sets before paging.
+filters, the adapter reads the Visits index in popularity order and joins each
+page against the filter until the requested page is full, falling back to
+listing every matching ID when the match set is small enough that reading it
+whole is cheaper. Rating, release-date, and title sorts use their explicit IGDB
+game fields when no join is required.
+
+Evaluations that IGDB cannot express in one query — duration bounds, and
+release dates belonging to a selected platform — read whichever side is
+smaller: the duration or release index when it is narrower than the match
+list, and the match list otherwise. Ordering by a selected platform's release
+date pages the release index in date order and stops once no unread release
+can change the requested page. Results and totals are exact in every case.
 
 Duration bounds accept 1–1,000 hours, are inclusive, and must convert exactly to
 whole seconds. The default duration kind is `normal`. Duration values come from

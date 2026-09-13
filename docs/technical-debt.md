@@ -40,27 +40,27 @@ Milestone 4 owns caching. Paying it off further would mean caching the duration
 index itself — it is small enough (~9,300 rows) to hold whole — rather than
 re-reading it per request.
 
-### 2b. Release-date sort with a platform filter is effectively unusable — **blocking for closed beta**
+### 2b. A platform release range still materializes its whole match set
 
-Selecting a platform _and_ sorting by release date sends the query down
-`_locally_evaluated_page`, because per-platform release dates live on a nested
-field the games endpoint cannot sort by. Unlike the duration path, nothing
-narrows the scan first: every matching game is read 500 at a time, so
-`platform=pc&sort=release-date` walks ~207,000 games. Measured against the
-local API with no cache: **over 75 s** (no response within the timeout), while
-the same sort without a platform filter answers in 1.8 s.
+**Resolved for the sort; partially resolved for the range.** Ordering by a
+platform's release date used to read every matching game; it now pages the
+`release_dates` index in date order and stops as soon as the requested page
+cannot change, taking `platform=pc&sort=release-date` from over 75 s (no
+response) to 3.2 s. A release _range_ on a platform now reads that index
+bounded by the dates instead of scanning the catalog, which took
+`platform=pc` + all of 2020 from over 180 s to 58 s.
 
-Found during Milestone 2.8's keyboard pass — pressing Enter on the "Release
-date" sort link with a platform applied simply never completes. The client
-navigation is correct; the destination is not.
+What remains is the count. That shape matches 12,265 games, and an exact
+`totalItems` — which pagination depends on — means resolving every one of them
+through the games endpoint to apply the rest of the filter: about fifty
+requests against a provider allowing four per second. Narrower ranges are
+proportionally better (a year of Switch indies answers in 18 s), and Redis
+hides all of it once warm.
 
-Paying it off means the same treatment the other two paths got: page the
-sortable side and intersect, rather than reading every match. Release dates
-have no small index to invert against the way play time does, so the likely
-shape is capping the candidate scan at the pages a visitor can actually reach
-(100 pages of 24) and accepting an approximate total, or dropping to
-`first_release_date` ordering when the platform-specific date is not what the
-sort promises.
+Paying off the rest means either giving up an exact total for this shape, or
+skipping the join when the platform is the only game-level criterion — the
+index walk alone already determines the result set then, since every candidate
+it returns has a release on the selected platform.
 
 ### 3. The popularity fallback still reads every match
 

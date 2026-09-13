@@ -557,13 +557,49 @@ outline on both a duration radio and a sort link). Radix already traps focus in
 the drawer and closes it on Escape; both now have tests so a primitive upgrade
 cannot quietly drop them.
 
-One finding came out of that pass and is **not** fixed here: pressing Enter on
-the "Release date" sort link with a platform applied never completes. The
-keyboard path is correct — the click fires, `next/link` starts the client
-navigation — but the destination takes over 75 s to render, because that
-combination is the one remaining full-catalog scan in the adapter. It is
-recorded in the [technical debt register](technical-debt.md) as entry 2b,
-blocking for closed beta.
+One finding came out of that pass: pressing Enter on the "Release date" sort
+link with a platform applied never completed. The keyboard path was correct —
+the click fires, `next/link` starts the client navigation — but the
+destination took over 75 s to render, because that combination was the last
+full-catalog scan left in the adapter. It was fixed immediately afterwards;
+see "M2.8 follow-up: the last full-catalog scan" below.
+
+### M2.8 follow-up: the last full-catalog scan
+
+Status: completed on 2026-09-13.
+
+A platform's release dates live on a nested field the games endpoint cannot
+sort by, so both "sort by release date with a platform selected" and "filter by
+a release range on a selected platform" were evaluated locally — and neither
+narrowed the candidate set first. Both read every matching game, 500 at a time:
+`platform=pc&sort=release-date` never answered within 75 s.
+
+The release index is itself ordered by date and filterable by platform, so both
+now read it instead of the catalog:
+
+- the **sort** pages the index in date order and stops as soon as the requested
+  page cannot change. What makes that exact is the frontier: every game the
+  walk has not reached holds only dates beyond the last one read, so once
+  enough games sit strictly on this side of it, nothing unread can displace
+  them. Ordering still uses each game's _first_ release on a selected platform,
+  the same date the range filter matches on — which is why a game released
+  twice on a platform cannot be ordered by the index row alone, and has a test
+  saying so;
+- the **range** bounds the index by the dates and reads only those games,
+  counting both sides first so the smaller one is scanned — the same rule the
+  duration path already used.
+
+Measured against live IGDB with no cache: `platform=pc&sort=release-date`
+went from **> 75 s (no response) to 3.2 s**, and `platform=pc` across all of
+2020 from **> 180 s to 58 s**. The remaining cost in that second shape is the
+exact total — 12,265 matching games have to be resolved to count them — and is
+recorded in the [technical debt register](technical-debt.md). Filters still
+apply throughout: a Switch + indie release-year search returns only Switch
+indies.
+
+The API contract's description of these strategies was stale for popularity
+too (it still described the approach M2.4's follow-up replaced) and now matches
+what the adapter does.
 
 ### M2.9 — Playwright critical path
 

@@ -1,7 +1,7 @@
 """IGDB implementation of the provider-neutral catalog interface."""
 
 from dataclasses import dataclass
-from datetime import UTC, datetime, time
+from datetime import UTC, date, datetime, time
 from json import dumps
 from math import ceil
 from typing import Protocol
@@ -120,9 +120,11 @@ AUTOCOMPLETE_SUGGESTION_LIMIT = 8
 PROVIDER_BATCH_SIZE = 500
 
 # Listing every match costs two requests per provider page, which is both
-# cheap and exact while the matches are few; paging the popularity index only
-# earns its place once that list grows past a handful of pages.
+# cheap and exact while the matches are few; paging an index only earns its
+# place once that list grows past a handful of pages. The release index is
+# paged the same way, for the same reason.
 POPULARITY_WALK_THRESHOLD = 4 * PROVIDER_BATCH_SIZE
+RELEASE_WALK_THRESHOLD = POPULARITY_WALK_THRESHOLD
 
 # Released base games plus their separately cataloged remakes and remasters;
 # DLC, expansions, bundles, mods, and other non-base `game_type` values are
@@ -312,13 +314,44 @@ class IgdbCatalog:
             else None
         )
 
-        if duration_total is not None and duration_total <= candidate_total:
+        release_total = (
+            await self._transport.count(
+                "release_dates",
+                _release_range_where(criteria),
+            )
+            if _has_platform_release_filter(criteria)
+            else None
+        )
+        total_items: int | None = None
+
+        if _reads_duration_index(duration_total, release_total, candidate_total):
             durations = await self._durations_in_range(criteria, duration_kinds)
             records = await self._games_by_ids(
                 list(durations),
                 where_query,
                 include_release_dates=include_release_dates,
             )
+        elif release_total is not None and release_total <= candidate_total:
+            # A release range on a selected platform narrows the release index
+            # far below the match list, so that is the side worth reading.
+            records = await self._games_by_ids(
+                await self._games_released_in_range(criteria),
+                where_query,
+                include_release_dates=True,
+            )
+            durations = await self._duration_values(
+                _record_ids(records),
+                duration_kinds,
+            )
+        elif _needs_release_index_walk(criteria, candidate_total):
+            records = await self._release_ordered_records(criteria, where_query)
+            durations = await self._duration_values(
+                _record_ids(records),
+                duration_kinds,
+            )
+            # The walk stops as soon as the requested page is settled, so the
+            # records it read are a page, not the whole result set.
+            total_items = candidate_total
         else:
             records = await self._candidate_records(
                 where_query,
@@ -350,7 +383,8 @@ class IgdbCatalog:
             else {}
         )
         records = _order_local_records(records, criteria, durations, popularity)
-        total_items = len(records)
+        if total_items is None:
+            total_items = len(records)
         offset = (criteria.page - 1) * criteria.page_size
         page_records = records[offset : offset + criteria.page_size]
         return total_items, _normalize_games_with_durations(page_records, durations)
@@ -376,6 +410,78 @@ class IgdbCatalog:
                 )
             )
         return records
+
+    async def _games_released_in_range(
+        self,
+        criteria: BrowseCriteria,
+    ) -> list[int]:
+        """Every game with a release inside the bounds on a selected platform."""
+        where = _release_range_where(criteria)
+        game_ids: dict[int, None] = {}
+        offset = 0
+        while True:
+            rows = await self._transport.query(
+                "release_dates",
+                (
+                    f"fields game,date; {where} sort date asc; "
+                    f"limit {PROVIDER_BATCH_SIZE}; offset {offset};"
+                ),
+            )
+            game_ids.update(dict.fromkeys(_release_index_game_ids(rows)))
+            if len(rows) < PROVIDER_BATCH_SIZE:
+                return list(game_ids)
+            offset += PROVIDER_BATCH_SIZE
+
+    async def _release_ordered_records(
+        self,
+        criteria: BrowseCriteria,
+        where_query: str,
+    ) -> list[dict[str, object]]:
+        """Page the release index until the requested page cannot change.
+
+        A platform's release dates live on a nested field the games endpoint
+        cannot sort by, which is why this sort is evaluated locally — but the
+        release index itself is ordered by date, so reading it in that order
+        and joining each page answers the request without reading every match.
+        """
+        platform_ids = _provider_ids(criteria.platform_ids, PLATFORMS)
+        descending = criteria.direction is SortDirection.DESCENDING
+        required = criteria.page * criteria.page_size
+        seen: set[int] = set()
+        records: list[dict[str, object]] = []
+        offset = 0
+
+        while True:
+            rows = await self._transport.query(
+                "release_dates",
+                (
+                    f"fields game,date; where platform = ({platform_ids}) & "
+                    f"date != null; sort date {'desc' if descending else 'asc'}; "
+                    f"limit {PROVIDER_BATCH_SIZE}; offset {offset};"
+                ),
+            )
+            if not rows:
+                return records
+
+            frontier = _required_int(rows[-1], "date")
+            fresh = [
+                game_id
+                for game_id in dict.fromkeys(_release_index_game_ids(rows))
+                if game_id not in seen
+            ]
+            seen.update(fresh)
+            if fresh:
+                records.extend(
+                    await self._games_by_ids(
+                        fresh,
+                        where_query,
+                        include_release_dates=True,
+                    )
+                )
+            offset += PROVIDER_BATCH_SIZE
+
+            if _release_page_is_settled(records, criteria, frontier, required):
+                return records
 
     async def _durations_in_range(
         self,
@@ -809,15 +915,9 @@ def _where_query(
     _append_option_clause(clauses, "platforms", criteria.platform_ids, PLATFORMS)
     _append_option_clause(clauses, "genres", criteria.genre_ids, GENRES)
     if include_release_bounds and criteria.release_from is not None:
-        clauses.append(
-            "first_release_date >= "
-            f"{int(datetime.combine(criteria.release_from, time.min, UTC).timestamp())}"
-        )
+        clauses.append(f"first_release_date >= {_day_start(criteria.release_from)}")
     if include_release_bounds and criteria.release_to is not None:
-        clauses.append(
-            "first_release_date <= "
-            f"{int(datetime.combine(criteria.release_to, time.max, UTC).timestamp())}"
-        )
+        clauses.append(f"first_release_date <= {_day_end(criteria.release_to)}")
     if criteria.minimum_rating is not None:
         clauses.append(f"total_rating >= {criteria.minimum_rating}")
     _append_option_clause(
@@ -829,6 +929,109 @@ def _where_query(
     return f"where {' & '.join(clauses)};" if clauses else ""
 
 
+def _day_start(day: date) -> int:
+    return int(datetime.combine(day, time.min, UTC).timestamp())
+
+
+def _day_end(day: date) -> int:
+    return int(datetime.combine(day, time.max, UTC).timestamp())
+
+
+def _provider_ids(
+    values: tuple[object, ...],
+    allowed: tuple[AllowedOption, ...],
+) -> str:
+    """The provider ids behind one category's public ids, as a query list."""
+    provider_ids_by_public_id = {
+        option.public_id: option.provider_id for option in allowed
+    }
+    return ",".join(str(provider_ids_by_public_id[str(value)]) for value in values)
+
+
+def _platform_release_value(
+    record: dict[str, object],
+    criteria: BrowseCriteria,
+) -> int | None:
+    """A game's first release on any selected platform, which is the date the
+    release filter matches on and the one this sort orders by."""
+    selected = {
+        option.provider_id
+        for option in PLATFORMS
+        if option.public_id in criteria.platform_ids
+    }
+    dates = [date for platform, date in _release_dates(record) if platform in selected]
+    return min(dates) if dates else None
+
+
+def _release_range_where(criteria: BrowseCriteria) -> str:
+    clauses = [
+        f"platform = ({_provider_ids(criteria.platform_ids, PLATFORMS)})",
+        "date != null",
+    ]
+    if criteria.release_from is not None:
+        clauses.append(f"date >= {_day_start(criteria.release_from)}")
+    if criteria.release_to is not None:
+        clauses.append(f"date <= {_day_end(criteria.release_to)}")
+    return f"where {' & '.join(clauses)};"
+
+
+def _reads_duration_index(
+    duration_total: int | None,
+    release_total: int | None,
+    candidate_total: int,
+) -> bool:
+    """Whether the duration index is the smallest side available to read."""
+    if duration_total is None or duration_total > candidate_total:
+        return False
+    return release_total is None or duration_total <= release_total
+
+
+def _release_index_game_ids(rows: list[dict[str, object]]) -> list[int]:
+    return [_required_int(row, "game") for row in rows]
+
+
+def _needs_release_index_walk(
+    criteria: BrowseCriteria,
+    candidate_total: int,
+) -> bool:
+    """Whether ordering by platform release date is worth paging the index for.
+
+    Only the pure sort qualifies: a release range already narrows the candidate
+    set, a duration filter narrows it further, and a small match list is
+    cheaper to read whole than to join page by page.
+    """
+    return (
+        criteria.sort is SortOption.RELEASE_DATE
+        and bool(criteria.platform_ids)
+        and not _has_platform_release_filter(criteria)
+        and not _has_duration_filter(criteria)
+        and candidate_total > RELEASE_WALK_THRESHOLD
+    )
+
+
+def _release_page_is_settled(
+    records: list[dict[str, object]],
+    criteria: BrowseCriteria,
+    frontier: int,
+    required: int,
+) -> bool:
+    """Whether the requested page can still change.
+
+    Every game the walk has not reached yet holds only dates beyond the
+    frontier, so once enough games sit strictly on this side of it, nothing
+    still unread can displace them.
+    """
+    descending = criteria.direction is SortDirection.DESCENDING
+    settled = 0
+    for record in records:
+        value = _platform_release_value(record, criteria)
+        if value is None:
+            continue
+        if value >= frontier if descending else value <= frontier:
+            settled += 1
+    return settled >= required
+
+
 def _append_option_clause(
     clauses: list[str],
     field: str,
@@ -837,13 +1040,7 @@ def _append_option_clause(
 ) -> None:
     if not values:
         return
-    provider_ids_by_public_id = {
-        option.public_id: option.provider_id for option in allowed
-    }
-    provider_ids = ",".join(
-        str(provider_ids_by_public_id[str(value)]) for value in values
-    )
-    clauses.append(f"{field} = ({provider_ids})")
+    clauses.append(f"{field} = ({_provider_ids(values, allowed)})")
 
 
 def _search_query(
@@ -1013,17 +1210,7 @@ def _local_sort_value(
         )
     if criteria.sort is SortOption.RELEASE_DATE:
         if criteria.platform_ids:
-            selected = {
-                option.provider_id
-                for option in PLATFORMS
-                if option.public_id in criteria.platform_ids
-            }
-            dates = [
-                date
-                for platform, date in _release_dates(record)
-                if platform in selected
-            ]
-            return min(dates) if dates else None
+            return _platform_release_value(record, criteria)
         release = record.get("first_release_date")
         return (
             release

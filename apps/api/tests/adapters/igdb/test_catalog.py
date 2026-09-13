@@ -1349,3 +1349,266 @@ async def test_reads_the_matching_games_when_they_outnumber_the_duration_index()
     assert "genres = (31)" in games_query
     assert "offset 0;" in games_query
     assert "id = (" not in games_query
+
+
+class ReleaseIndexTransport:
+    """Simulates the release-date index, the game filter, and their join."""
+
+    def __init__(
+        self,
+        *,
+        releases: list[tuple[int, int]],
+        matching: list[int],
+        candidate_total: int | None = None,
+        release_total: int | None = None,
+    ) -> None:
+        self.release_total = release_total
+        # (game_id, date) rows exactly as the provider stores them: one game
+        # can hold several, and a page of results is one row at a time.
+        self.releases = releases
+        self.matching = matching
+        self.candidate_total = (
+            len(matching) if candidate_total is None else candidate_total
+        )
+        self.requests: list[tuple[str, str]] = []
+        self.count_requests: list[tuple[str, str]] = []
+
+    @staticmethod
+    def _ids(query: str, field: str) -> list[int]:
+        inside = query.split(f"{field} = (", 1)[1].split(")", 1)[0]
+        return [int(value) for value in inside.split(",") if value]
+
+    @staticmethod
+    def _window(query: str) -> tuple[int, int]:
+        limit = int(query.split("limit ", 1)[1].split(";", 1)[0])
+        offset = (
+            int(query.split("offset ", 1)[1].split(";", 1)[0])
+            if "offset " in query
+            else 0
+        )
+        return limit, offset
+
+    def _min_date(self, game_id: int) -> int:
+        return min(date for game, date in self.releases if game == game_id)
+
+    async def query(
+        self,
+        endpoint: str,
+        query: str,
+    ) -> list[dict[str, object]]:
+        self.requests.append((endpoint, query))
+        if endpoint == "release_dates":
+            rows = sorted(
+                self.releases,
+                key=lambda row: row[1],
+                reverse="sort date desc" in query,
+            )
+            limit, offset = self._window(query)
+            return [
+                {"game": game, "date": date}
+                for game, date in rows[offset : offset + limit]
+            ]
+        if endpoint == "games":
+            if "id = (" in query:
+                selected = [
+                    game_id
+                    for game_id in self._ids(query, "id")
+                    if game_id in self.matching
+                ]
+            else:
+                limit, offset = self._window(query)
+                selected = sorted(self.matching)[offset : offset + limit]
+            return [
+                {
+                    "id": game_id,
+                    "slug": f"game-{game_id}",
+                    "name": f"Game {game_id}",
+                    "release_dates": [
+                        {"platform": 6, "date": date}
+                        for game, date in self.releases
+                        if game == game_id
+                    ],
+                }
+                for game_id in selected
+            ]
+        if endpoint in {"game_time_to_beats", "popularity_primitives"}:
+            return []
+        raise AssertionError(f"unexpected endpoint: {endpoint}")
+
+    async def count(self, endpoint: str, query: str) -> int:
+        self.count_requests.append((endpoint, query))
+        if endpoint == "release_dates" and self.release_total is not None:
+            return self.release_total
+        return self.candidate_total
+
+    def endpoints(self) -> list[str]:
+        return [endpoint for endpoint, _query in self.requests]
+
+
+def _release_transport(**kwargs: object) -> ReleaseIndexTransport:
+    return ReleaseIndexTransport(**kwargs)  # type: ignore[arg-type]
+
+
+@pytest.mark.anyio
+async def test_pages_the_release_index_instead_of_reading_every_match() -> None:
+    # Sorting by a platform's release date used to read every matching game
+    # just to order 24 of them.
+    transport = ReleaseIndexTransport(
+        releases=[(game_id, 1_000 + game_id) for game_id in range(1, 2001)],
+        matching=list(range(1, 2001)),
+        candidate_total=200_000,
+    )
+    catalog = IgdbCatalog(transport)
+
+    result = await catalog.browse_games(
+        BrowseCriteria(
+            platform_ids=(PlatformId.PC,),
+            sort=SortOption.RELEASE_DATE,
+            direction=SortDirection.DESCENDING,
+        )
+    )
+
+    assert [item.id for item in result.items] == list(range(2000, 1976, -1))
+    assert result.pagination.total_items == 200_000
+    index_query = next(
+        query for endpoint, query in transport.requests if endpoint == "release_dates"
+    )
+    assert "platform = (6)" in index_query
+    assert "sort date desc" in index_query
+    # One index page already covers the requested page.
+    assert transport.endpoints().count("release_dates") == 1
+
+
+@pytest.mark.anyio
+async def test_orders_by_the_earliest_release_on_a_selected_platform() -> None:
+    # A game released twice on the platform is placed by its first release,
+    # which is also what the release-range filter matches on.
+    transport = ReleaseIndexTransport(
+        releases=[(1, 500), (1, 9_000), (2, 1_000), (3, 2_000)],
+        matching=[1, 2, 3],
+        candidate_total=200_000,
+    )
+    catalog = IgdbCatalog(transport)
+
+    ascending = await catalog.browse_games(
+        BrowseCriteria(
+            platform_ids=(PlatformId.PC,),
+            sort=SortOption.RELEASE_DATE,
+            direction=SortDirection.ASCENDING,
+        )
+    )
+    descending = await catalog.browse_games(
+        BrowseCriteria(
+            platform_ids=(PlatformId.PC,),
+            sort=SortOption.RELEASE_DATE,
+            direction=SortDirection.DESCENDING,
+        )
+    )
+
+    assert [item.id for item in ascending.items] == [1, 2, 3]
+    # Game 1's latest release is the newest row in the index, but its earliest
+    # is the oldest: ordering on the row alone would put it first.
+    assert [item.id for item in descending.items] == [3, 2, 1]
+
+
+@pytest.mark.anyio
+async def test_keeps_walking_the_release_index_past_unmatched_games() -> None:
+    transport = ReleaseIndexTransport(
+        releases=[(game_id, 1_000 + game_id) for game_id in range(1, 2001)],
+        matching=[game_id for game_id in range(1, 2001) if game_id % 50 == 0],
+        candidate_total=200_000,
+    )
+    catalog = IgdbCatalog(transport)
+
+    result = await catalog.browse_games(
+        BrowseCriteria(
+            platform_ids=(PlatformId.PC,),
+            genre_ids=(GenreId.ADVENTURE,),
+            sort=SortOption.RELEASE_DATE,
+            direction=SortDirection.DESCENDING,
+        )
+    )
+
+    assert [item.id for item in result.items] == list(range(2000, 800, -50))
+    assert transport.endpoints().count("release_dates") >= 2
+
+
+@pytest.mark.anyio
+async def test_reads_the_matches_when_they_are_fewer_than_the_release_index() -> None:
+    transport = ReleaseIndexTransport(
+        releases=[(1, 500), (2, 1_000)],
+        matching=[1, 2],
+        candidate_total=2,
+    )
+    catalog = IgdbCatalog(transport)
+
+    await catalog.browse_games(
+        BrowseCriteria(
+            platform_ids=(PlatformId.PC,),
+            sort=SortOption.RELEASE_DATE,
+        )
+    )
+
+    assert "release_dates" not in transport.endpoints()
+    games_query = next(
+        query for endpoint, query in transport.requests if endpoint == "games"
+    )
+    assert "offset 0;" in games_query
+
+
+@pytest.mark.anyio
+async def test_bounds_the_release_index_before_reading_matching_games() -> None:
+    # A release range on a selected platform narrows the release index far
+    # below the match list, so that is the side worth reading.
+    transport = ReleaseIndexTransport(
+        releases=[(1, 1_577_836_800), (2, 1_600_000_000), (3, 900_000_000)],
+        matching=[1, 2, 3],
+        candidate_total=200_000,
+        release_total=2,
+    )
+    catalog = IgdbCatalog(transport)
+
+    result = await catalog.browse_games(
+        BrowseCriteria(
+            platform_ids=(PlatformId.PC,),
+            release_from=date(2020, 1, 1),
+            release_to=date(2020, 12, 31),
+        )
+    )
+
+    assert [item.id for item in result.items] == [1, 2]
+    assert result.pagination.total_items == 2
+    index_query = next(
+        query for endpoint, query in transport.requests if endpoint == "release_dates"
+    )
+    assert "platform = (6)" in index_query
+    assert "date >= 1577836800" in index_query
+    assert "date <= 1609459199" in index_query
+    games_query = next(
+        query for endpoint, query in transport.requests if endpoint == "games"
+    )
+    assert "id = (" in games_query
+    assert "offset" not in games_query
+
+
+@pytest.mark.anyio
+async def test_reads_the_matches_when_they_are_fewer_than_the_release_range() -> None:
+    transport = ReleaseIndexTransport(
+        releases=[(1, 1_577_836_800), (2, 1_600_000_000)],
+        matching=[1, 2],
+        candidate_total=2,
+        release_total=50_000,
+    )
+    catalog = IgdbCatalog(transport)
+
+    await catalog.browse_games(
+        BrowseCriteria(
+            platform_ids=(PlatformId.PC,),
+            release_from=date(2020, 1, 1),
+        )
+    )
+
+    games_query = next(
+        query for endpoint, query in transport.requests if endpoint == "games"
+    )
+    assert "offset 0;" in games_query
