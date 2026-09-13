@@ -19,6 +19,9 @@ export default defineConfig({
       },
     },
     environment: "jsdom",
+    // The Playwright suite lives in e2e/ and matches Vitest's default spec
+    // pattern; it is driven by its own runner, not this one.
+    exclude: ["e2e/**", "node_modules/**", ".next/**"],
     server: {
       // next-intl's navigation helpers import extensionless "next/..."
       // subpaths that only resolve when bundled (as Next.js itself does);

@@ -88,6 +88,8 @@ pnpm quality
 pnpm check
 ```
 
+The end-to-end suite needs the browser it drives; `pnpm setup` installs it, and `pnpm e2e:install` installs it on its own. The suite starts the API with a fixture catalog and a production web build on ports 8100 and 3100, so it needs no credentials and no running services of yours.
+
 `pnpm format` rewrites files. `pnpm quality` is the canonical, non-mutating
 quality gate; `pnpm check` is its compatibility alias. The gate runs formatting
 verification, linting, static typing, coverage-enforced tests, and production

@@ -2,7 +2,7 @@
   "name": "whattoplaynext",
   "private": true,
   "scripts": {
-    "setup": "pnpm install && poetry -C apps/api install",
+    "setup": "pnpm install && poetry -C apps/api install && pnpm e2e:install",
     "dev": "pnpm build:contracts && concurrently --kill-others-on-fail --names web,api \"pnpm dev:web\" \"pnpm dev:api\"",
     "dev:web": "pnpm build:contracts && pnpm --filter web dev",
     "dev:api": "poetry -C apps/api run fastapi dev src/whattoplaynext_api/main.py",
@@ -34,11 +34,13 @@
     "coverage:contracts": "pnpm --filter @whattoplaynext/contracts test:coverage",
     "coverage:web": "pnpm --filter web test:coverage",
     "coverage:api": "poetry -C apps/api run pytest --cov=whattoplaynext_api --cov-report=term-missing --cov-report=xml:coverage.xml",
+    "e2e": "pnpm --filter web e2e",
+    "e2e:install": "pnpm --filter web exec playwright install --with-deps chromium",
     "build": "pnpm build:contracts && pnpm build:web && pnpm build:api",
     "build:contracts": "pnpm --filter @whattoplaynext/contracts build",
     "build:web": "pnpm --filter web build",
     "build:api": "poetry -P apps/api build",
-    "quality": "pnpm contract:check && pnpm format:check && pnpm lint && pnpm typecheck && pnpm coverage && pnpm build",
+    "quality": "pnpm contract:check && pnpm format:check && pnpm lint && pnpm typecheck && pnpm coverage && pnpm e2e && pnpm build",
     "check": "pnpm quality",
     "smoke:api": "poetry -C apps/api run python scripts/smoke_igdb.py"
   },

@@ -1,6 +1,6 @@
 # Milestone 2 Plan
 
-Status: active execution baseline; M2.8 completed and M2.9 ready
+Status: active execution baseline; M2.9 completed and M2.10 ready
 
 Prepared: 2026-09-12
 
@@ -618,6 +618,41 @@ Acceptance:
   API boundary;
 - each journey in the deliverable list has at least one passing scenario;
 - `pnpm quality` remains green and credential-free with the suite included.
+
+Status: completed on 2026-09-13.
+
+Outcome: the suite drives a real browser against the real application, with
+one seam faked — the same one the pytest suite fakes. `create_app` already
+accepted an injected `Catalog`, so `apps/api/tests/e2e/fixture_server.py`
+composes the production routes, validation, and error envelope around a
+`FixtureCatalog` of 60 deterministic games. Nothing about it can reach IGDB
+or read a credential, and it is test scaffolding rather than a mode of the
+shipped application: `pyproject.toml` packages `src/` alone, so the fixture
+cannot ship. Searching for `trigger-upstream-failure` is how the outage
+journey is staged — a documented sentinel beats an unreachable service the
+test runner would also have to manage.
+
+Six scenarios cover the six journeys the increment names: name search
+narrowing the results, a shared URL restoring the same search with back and
+forward preserving it, pagination moving through the set, the locale switch
+carrying over, an upstream failure, and a genuine zero-result. The failure and
+zero-result scenarios assert the distinction the product requirements insist
+on from both sides — the failure is announced with no zero-result copy and no
+count, and the empty search is not announced as an error at all.
+
+Two things worth knowing for anyone extending it. Next renders an
+always-present, usually empty route announcer with `role="alert"`, so
+"nothing is being announced as an error" has to mean "no alert with text in
+it"; asserting no alert at all fails against the framework, not the app. And
+the suite runs a production build rather than `next dev`, because `next dev`
+refuses to run twice in one directory — a suite built on it would fail
+whenever a development server happened to be up.
+
+`pnpm quality` now runs `pnpm e2e` before `pnpm build`, so the canonical build
+output is the last one written (the suite builds with its own API base URL on
+its own ports, 3100 and 8100, to avoid colliding with anything local).
+`pnpm setup` and CI install the one browser it drives; Vitest excludes `e2e/`,
+whose files match its default spec pattern but belong to another runner.
 
 ### M2.10 — Milestone 2 closeout
 
