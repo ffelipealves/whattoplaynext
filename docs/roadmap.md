@@ -186,3 +186,7 @@ Post-MVP ideas are intentionally unscheduled. The authoritative exclusion list
 is [Explicitly out of scope](product-requirements.md#5-explicitly-out-of-scope);
 moving an item into delivery requires a new product decision and updated
 requirements.
+
+Deliberate compromises taken along the way are recorded in the
+[technical debt register](technical-debt.md), including the ones a release gate
+depends on.
