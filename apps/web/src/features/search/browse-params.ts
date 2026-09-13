@@ -63,6 +63,28 @@ export type BrowseParams = FilterCriteria & {
 
 export type RawSearchParams = Record<string, string | string[] | undefined>;
 
+/**
+ * A criterion the URL asked for that this parser could not honour. Surfacing
+ * these is what keeps a hand-edited or stale link from quietly returning a
+ * different search than it says.
+ */
+export type BrowseParamIssue =
+  | "name"
+  | "sort"
+  | "direction"
+  | "page"
+  | "platform"
+  | "genre"
+  | "gameMode"
+  | "release"
+  | "rating"
+  | "duration";
+
+export type BrowseParamsReading = {
+  params: BrowseParams;
+  issues: BrowseParamIssue[];
+};
+
 function firstValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
@@ -175,17 +197,24 @@ const idShapeSchema = z
 function parseIds(
   raw: string | string[] | undefined,
   allowed: readonly string[] | undefined,
-): string[] {
-  const selected = new Set(
+): { ids: string[]; ignoredAny: boolean } {
+  const requested = new Set(
     allValues(raw)
       .map((value) => value.trim())
-      .filter((value) => idShapeSchema.safeParse(value).success),
+      .filter((value) => value !== ""),
   );
+  const wellFormed = new Set(
+    Array.from(requested).filter(
+      (value) => idShapeSchema.safeParse(value).success,
+    ),
+  );
+  const ids = allowed
+    ? allowed.filter((id) => wellFormed.has(id))
+    : Array.from(wellFormed);
 
-  if (!allowed) {
-    return Array.from(selected);
-  }
-  return allowed.filter((id) => selected.has(id));
+  // Comparing sets, not counts, so a repeated valid id is not mistaken for a
+  // rejected one.
+  return { ids, ignoredAny: ids.length < requested.size };
 }
 
 const isoDateSchema = z
@@ -238,31 +267,64 @@ function parseDurationHours(
 }
 
 /**
- * Parses raw URL search params against the same bounds the API enforces.
+ * Parses raw URL search params against the same bounds the API enforces, and
+ * reports every criterion it had to ignore.
+ *
  * Invalid values fall back to a sensible default and out-of-range pages are
  * clamped to the nearest bound, rather than forwarding a guaranteed-invalid
- * request; full validation-error surfacing for a deliberately malformed
- * shared link is a later increment's concern.
+ * request — but the caller is told, so a deliberately malformed shared link
+ * explains itself instead of silently searching for something else.
  */
-export function parseBrowseParams(
+export function readBrowseParams(
   searchParams: RawSearchParams,
   bounds?: FilterBounds,
-): BrowseParams {
+): BrowseParamsReading {
+  const issues: BrowseParamIssue[] = [];
   const durationBounds = {
     minimumDurationHours: bounds?.minimumDurationHours ?? MIN_DURATION_HOURS,
     maximumDurationHours: bounds?.maximumDurationHours ?? MAX_DURATION_HOURS,
   };
 
+  const rawName = firstValue(searchParams.name)?.trim();
   const name = nameSchemaFor(
     bounds?.maximumNameLength ?? MAX_NAME_LENGTH,
   ).parse(firstValue(searchParams.name));
-  const sort = sortOptionSchema
-    .catch("popularity")
-    .parse(firstValue(searchParams.sort));
+  if (rawName && name === undefined) {
+    issues.push("name");
+  }
+
+  const rawSort = firstValue(searchParams.sort);
+  const sort = sortOptionSchema.catch("popularity").parse(rawSort);
+  if (rawSort !== undefined && rawSort !== sort) {
+    issues.push("sort");
+  }
+
+  const rawDirection = firstValue(searchParams.direction);
   const direction = sortDirectionSchema
     .catch(defaultDirectionFor(sort))
-    .parse(firstValue(searchParams.direction));
-  const page = clampPage(pageInputSchema.parse(firstValue(searchParams.page)));
+    .parse(rawDirection);
+  if (rawDirection !== undefined && rawDirection !== direction) {
+    issues.push("direction");
+  }
+
+  const rawPage = firstValue(searchParams.page);
+  const page = clampPage(pageInputSchema.parse(rawPage));
+  if (rawPage !== undefined && rawPage !== String(page)) {
+    issues.push("page");
+  }
+
+  const platforms = parseIds(searchParams.platform, bounds?.platformIds);
+  if (platforms.ignoredAny) {
+    issues.push("platform");
+  }
+  const genres = parseIds(searchParams.genre, bounds?.genreIds);
+  if (genres.ignoredAny) {
+    issues.push("genre");
+  }
+  const gameModes = parseIds(searchParams.gameMode, bounds?.gameModeIds);
+  if (gameModes.ignoredAny) {
+    issues.push("gameMode");
+  }
 
   let releaseFrom = parseIsoDate(searchParams.releaseFrom);
   let releaseTo = parseIsoDate(searchParams.releaseTo);
@@ -271,6 +333,23 @@ export function parseBrowseParams(
     // API rejects outright; drop it rather than guess which bound was meant.
     releaseFrom = undefined;
     releaseTo = undefined;
+  }
+  if (
+    (searchParams.releaseFrom !== undefined && releaseFrom === undefined) ||
+    (searchParams.releaseTo !== undefined && releaseTo === undefined)
+  ) {
+    issues.push("release");
+  }
+
+  const rawRating = firstValue(searchParams.minimumRating);
+  const minimumRating = parseRating(rawRating);
+  if (
+    rawRating !== undefined &&
+    minimumRating === undefined &&
+    Number(rawRating) !== MIN_RATING
+  ) {
+    // A zero minimum is an unset filter, not a rejected one.
+    issues.push("rating");
   }
 
   let minimumDurationHours = parseDurationHours(
@@ -289,24 +368,46 @@ export function parseBrowseParams(
     minimumDurationHours = undefined;
     maximumDurationHours = undefined;
   }
+  const rawDurationKind = firstValue(searchParams.durationKind);
+  const durationKind = durationKindSchema
+    .catch(DEFAULT_DURATION_KIND)
+    .parse(rawDurationKind);
+  if (
+    (searchParams.minimumDurationHours !== undefined &&
+      minimumDurationHours === undefined) ||
+    (searchParams.maximumDurationHours !== undefined &&
+      maximumDurationHours === undefined) ||
+    (rawDurationKind !== undefined && rawDurationKind !== durationKind)
+  ) {
+    issues.push("duration");
+  }
 
   return {
-    name,
-    platformIds: parseIds(searchParams.platform, bounds?.platformIds),
-    genreIds: parseIds(searchParams.genre, bounds?.genreIds),
-    gameModeIds: parseIds(searchParams.gameMode, bounds?.gameModeIds),
-    releaseFrom,
-    releaseTo,
-    minimumRating: parseRating(searchParams.minimumRating),
-    durationKind: durationKindSchema
-      .catch(DEFAULT_DURATION_KIND)
-      .parse(firstValue(searchParams.durationKind)),
-    minimumDurationHours,
-    maximumDurationHours,
-    sort,
-    direction,
-    page,
+    params: {
+      name,
+      platformIds: platforms.ids,
+      genreIds: genres.ids,
+      gameModeIds: gameModes.ids,
+      releaseFrom,
+      releaseTo,
+      minimumRating,
+      durationKind,
+      minimumDurationHours,
+      maximumDurationHours,
+      sort,
+      direction,
+      page,
+    },
+    issues,
   };
+}
+
+/** The criteria alone, for callers with nothing to say about what was ignored. */
+export function parseBrowseParams(
+  searchParams: RawSearchParams,
+  bounds?: FilterBounds,
+): BrowseParams {
+  return readBrowseParams(searchParams, bounds).params;
 }
 
 /**

@@ -40,12 +40,28 @@ test("returns the page on a successful response", async () => {
 
 test("reports failure when the API returns a classified error", async () => {
   mockedGetApiClient.mockReturnValue(
-    fakeClient({ error: { error: { code: "UPSTREAM_UNAVAILABLE" } } }),
+    fakeClient({
+      error: {
+        error: {
+          code: "RATE_LIMITED",
+          message: "Too many requests.",
+          requestId: "req-7",
+          retryAfterSeconds: 30,
+        },
+      },
+    }),
   );
 
   const result = await getSearchResults(baselineParams);
 
-  expect(result).toEqual({ ok: false });
+  expect(result).toEqual({
+    ok: false,
+    failure: {
+      code: "RATE_LIMITED",
+      requestId: "req-7",
+      retryAfterSeconds: 30,
+    },
+  });
 });
 
 test("reports failure when the request itself fails (API process down)", async () => {
@@ -55,7 +71,7 @@ test("reports failure when the request itself fails (API process down)", async (
 
   const result = await getSearchResults(baselineParams);
 
-  expect(result).toEqual({ ok: false });
+  expect(result).toEqual({ ok: false, failure: { code: "UNREACHABLE" } });
 });
 
 test("forwards name, sort, direction, and page as the query", async () => {

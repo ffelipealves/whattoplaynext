@@ -5,6 +5,7 @@ import { expect, test } from "vitest";
 import enMessages from "../../../messages/en.json";
 
 import { ResultsGrid } from "./results-grid";
+import { parseBrowseParams, type RawSearchParams } from "./browse-params";
 import type { GamePage, SearchResult } from "./get-search-results";
 
 const samplePage: GamePage = {
@@ -31,18 +32,10 @@ const samplePage: GamePage = {
   },
 };
 
-function renderGrid(
-  result: SearchResult,
-  name?: string,
-  hasActiveFilters?: boolean,
-) {
+function renderGrid(result: SearchResult, searchParams: RawSearchParams = {}) {
   render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
-      <ResultsGrid
-        hasActiveFilters={hasActiveFilters}
-        name={name}
-        result={result}
-      />
+      <ResultsGrid params={parseBrowseParams(searchParams)} result={result} />
     </NextIntlClientProvider>,
   );
 }
@@ -56,7 +49,7 @@ test("renders a card for each item in a populated page", () => {
 test("renders a named zero-result message distinct from an empty search", () => {
   renderGrid(
     { ok: true, page: { ...samplePage, items: [] } },
-    "zzzznonexistent",
+    { name: "zzzznonexistent" },
   );
 
   expect(screen.getByText("No games matched “zzzznonexistent”")).toBeDefined();
@@ -70,15 +63,20 @@ test("renders a generic zero-result message without a name filter", () => {
 });
 
 test("renders an upstream-failure state distinct from zero-result", () => {
-  renderGrid({ ok: false });
+  renderGrid({ ok: false, failure: { code: "UPSTREAM_UNAVAILABLE" } });
 
-  expect(screen.getByText("Something went wrong")).toBeDefined();
   expect(screen.getByRole("alert")).toBeDefined();
+  expect(screen.getByText("The game catalog is unavailable")).toBeDefined();
   expect(screen.queryByText("No games matched this search")).toBeNull();
 });
 
 test("suggests relaxing a filter when filters are what emptied the page", () => {
-  renderGrid({ ok: true, page: { ...samplePage, items: [] } }, undefined, true);
+  renderGrid(
+    { ok: true, page: { ...samplePage, items: [] } },
+    {
+      platform: ["pc"],
+    },
+  );
 
   expect(
     screen.getByText("Try removing a filter or widening one of its ranges."),

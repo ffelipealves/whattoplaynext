@@ -5,11 +5,12 @@ import { ActiveFilterChips } from "@/features/search/active-filter-chips";
 import { activeFilters } from "@/features/search/active-filters";
 import {
   filterBoundsFrom,
-  parseBrowseParams,
+  readBrowseParams,
 } from "@/features/search/browse-params";
 import { DurationNotice } from "@/features/search/duration-notice";
 import { FilterDrawer } from "@/features/search/filter-drawer";
 import { FilterSidebar } from "@/features/search/filter-sidebar";
+import { IgnoredCriteria } from "@/features/search/ignored-criteria";
 import { getSearchResults } from "@/features/search/get-search-results";
 import { NameSearchForm } from "@/features/search/name-search-form";
 import { PaginationLinks } from "@/features/search/pagination-links";
@@ -29,7 +30,7 @@ export default async function GamesPage({
     getFilterMetadata(),
   ]);
   const metadata = filters.ok ? filters.metadata : undefined;
-  const params = parseBrowseParams(
+  const { params, issues } = readBrowseParams(
     rawSearchParams,
     metadata && filterBoundsFrom(metadata),
   );
@@ -44,6 +45,12 @@ export default async function GamesPage({
       <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-[-0.02em]">
         {t("heading")}
       </h1>
+
+      {issues.length > 0 && (
+        <div className="mt-6">
+          <IgnoredCriteria issues={issues} />
+        </div>
+      )}
 
       <div className="mt-6">
         <NameSearchForm
@@ -78,11 +85,7 @@ export default async function GamesPage({
           )}
 
           <div className="mt-6">
-            <ResultsGrid
-              hasActiveFilters={hasActiveFilters}
-              name={params.name}
-              result={result}
-            />
+            <ResultsGrid params={params} result={result} />
           </div>
 
           {result.ok && (

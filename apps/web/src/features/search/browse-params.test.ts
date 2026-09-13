@@ -5,6 +5,7 @@ import {
   filterBoundsFrom,
   filterSignature,
   parseBrowseParams,
+  readBrowseParams,
   withBrowseParams,
 } from "./browse-params";
 
@@ -421,5 +422,99 @@ test("filterSignature changes with the applied filters but not with paging", () 
   );
   expect(filterSignature(withPlatform)).not.toBe(
     filterSignature(parseBrowseParams({ platform: ["pc"], genre: ["indie"] })),
+  );
+});
+
+test("reports nothing to ignore for criteria the API accepts", () => {
+  expect(
+    readBrowseParams(
+      {
+        name: "Hollow Knight",
+        sort: "title",
+        direction: "asc",
+        page: "3",
+        platform: ["pc", "pc"],
+        minimumRating: "0",
+        releaseFrom: "2020-01-01",
+      },
+      catalogBounds,
+    ).issues,
+  ).toEqual([]);
+});
+
+test("reports each criterion it had to ignore", () => {
+  const { issues } = readBrowseParams(
+    {
+      name: "x".repeat(101),
+      sort: "not-a-sort",
+      direction: "sideways",
+      page: "9999",
+      platform: ["dreamcast"],
+      genre: ["not-a-genre"],
+      gameMode: ["not-a-mode"],
+      releaseFrom: "2020-13-01",
+      minimumRating: "101",
+      minimumDurationHours: "0",
+    },
+    catalogBounds,
+  );
+
+  expect(issues).toEqual([
+    "name",
+    "sort",
+    "direction",
+    "page",
+    "platform",
+    "genre",
+    "gameMode",
+    "release",
+    "rating",
+    "duration",
+  ]);
+});
+
+test("reports an ignored criterion once, not once per bad value", () => {
+  expect(
+    readBrowseParams({ platform: ["dreamcast", "gamecube"] }, catalogBounds)
+      .issues,
+  ).toEqual(["platform"]);
+});
+
+test("does not mistake a repeated valid id for an ignored one", () => {
+  expect(
+    readBrowseParams({ platform: ["pc", "pc"] }, catalogBounds).issues,
+  ).toEqual([]);
+});
+
+test("reports an inverted range as one ignored criterion", () => {
+  expect(
+    readBrowseParams(
+      { releaseFrom: "2024-01-01", releaseTo: "2020-01-01" },
+      catalogBounds,
+    ).issues,
+  ).toEqual(["release"]);
+  expect(
+    readBrowseParams(
+      { minimumDurationHours: "40", maximumDurationHours: "5" },
+      catalogBounds,
+    ).issues,
+  ).toEqual(["duration"]);
+});
+
+test("reports an unknown duration kind alongside the duration bounds", () => {
+  expect(
+    readBrowseParams({ durationKind: "endless" }, catalogBounds).issues,
+  ).toEqual(["duration"]);
+});
+
+test("treats a blank name as nothing asked for rather than something ignored", () => {
+  expect(readBrowseParams({ name: "   " }, catalogBounds).issues).toEqual([]);
+});
+
+test("parseBrowseParams stays the issue-free view of the same parse", () => {
+  const searchParams = { sort: "not-a-sort", platform: ["pc"] };
+
+  expect(parseBrowseParams(searchParams, catalogBounds)).toEqual(
+    readBrowseParams(searchParams, catalogBounds).params,
   );
 });

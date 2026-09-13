@@ -1,6 +1,6 @@
 # Milestone 2 Plan
 
-Status: active execution baseline; M2.6 completed and M2.7 ready
+Status: active execution baseline; M2.7 completed and M2.8 ready
 
 Prepared: 2026-09-12
 
@@ -456,6 +456,54 @@ Acceptance:
   successful result set;
 - a rate-limited response surfaces any provided retry timing rather than a
   generic failure.
+
+Status: completed on 2026-09-13.
+
+Outcome: `lib/api-failure.ts` turns one error response into a state the UI can
+speak about, and the failure now travels with the result —
+`SearchResult` carries an `ApiFailure` instead of a bare `{ok: false}`,
+because a page that cannot say _why_ it is empty can only render an upstream
+failure as a zero-result search. Two states the API cannot express are named
+alongside its published codes: `UNREACHABLE` for a request that never arrived,
+and `UNKNOWN` for a response that did not carry the envelope at all (a proxy's
+own error page), so nothing is ever reported as more specific than it is. The
+retry timing is read from `retryAfterSeconds` and falls back to the
+`Retry-After` header, ignoring the HTTP-date form that carries no seconds to
+show.
+
+`SearchFailure` renders one distinct, localized explanation per state and
+offers a retry for everything except the two codes that mean the criteria
+themselves were rejected — repeating a query the API refused cannot change the
+answer, so those point at changing the search instead. Building that retry
+surfaced a real accessibility defect from M2.3: the old `<a href="">` is not
+exposed as a link at all (confirmed against the accessibility tree, where
+`href=""` yields no role while any real URL does), so the retry now spells out
+the current criteria through `withBrowseParams` — which also means it keeps
+every applied filter. `ResultsGrid` now takes the criteria rather than two
+props derived from them, and the generic `Search.errorTitle`/`errorDescription`
+/`retryLabel` keys were removed rather than left as a second parallel source of
+failure copy.
+
+The third deliverable moves the parser from silently correcting a URL to
+explaining it. `readBrowseParams` returns `{params, issues}` and
+`parseBrowseParams` is now the issue-free view of the same parse, so no call
+site had to change; `IgnoredCriteria` lists what a shared or hand-edited link
+asked for that could not be honoured. Issues are compared as sets rather than
+counts, so a repeated valid id is never mistaken for a rejected one, and a
+`minimumRating=0` stays an unset filter rather than a rejected one.
+
+Verified live: a link carrying `sort=sideways`, `platform=dreamcast`,
+`minimumRating=101`, `page=9999` and an inverted release range listed all five
+ignored criteria and still ran the search that was left, with no round trip
+spent on values the API would have refused. Stopping the API mid-session
+rendered "We could not reach the search service" as a `role="alert"` with no
+result count and no zero-result copy anywhere on the page, and the retry link
+carried `?sort=rating&direction=desc&page=1&platform=pc`; restarting the API
+and clicking it returned the same search with 206,929 results. `RATE_LIMITED`
+and the remaining upstream codes are covered by component tests asserting a
+distinct title each rather than live, since the API has no rate limiter of its
+own to trip — the code only surfaces when IGDB itself returns 429, which is
+not worth provoking against the provider.
 
 ### M2.8 — Accessibility and keyboard pass
 
