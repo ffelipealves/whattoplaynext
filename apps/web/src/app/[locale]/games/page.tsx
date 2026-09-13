@@ -46,7 +46,10 @@ export default async function GamesPage({
       </h1>
 
       <div className="mt-6">
-        <NameSearchForm params={params} />
+        <NameSearchForm
+          minimumQueryLength={metadata?.limits.minimumAutocompleteLength}
+          params={params}
+        />
       </div>
 
       <div className="mt-8 flex gap-8">

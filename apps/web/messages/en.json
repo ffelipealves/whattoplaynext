@@ -38,6 +38,8 @@
     "nameInputLabel": "Game name",
     "nameInputPlaceholder": "Search by title",
     "searchButton": "Search",
+    "suggestionsLabel": "Title suggestions",
+    "suggestionsAnnouncement": "{count, plural, =0 {No title suggestions} one {# title suggestion} other {# title suggestions}}",
     "sortNavLabel": "Sort results",
     "sortPopularity": "Popularity",
     "sortRating": "Rating",

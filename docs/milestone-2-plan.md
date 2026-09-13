@@ -1,6 +1,6 @@
 # Milestone 2 Plan
 
-Status: active execution baseline; M2.5 completed and M2.6 ready
+Status: active execution baseline; M2.6 completed and M2.7 ready
 
 Prepared: 2026-09-12
 
@@ -394,6 +394,49 @@ Acceptance:
 - a simulated autocomplete failure leaves the name field and full search
   usable;
 - a component test covers selection, debounce, and the failure fallback.
+
+Status: completed on 2026-09-13.
+
+Outcome: the browser reaches suggestions through this application rather than
+the API directly, matching the system view in `docs/architecture.md` — a
+`GET /api/autocomplete` Route Handler calls
+`features/search/get-autocomplete-suggestions.ts` with the same generated
+client every other call uses, so the API's base URL and paths stay on the
+server and no cross-origin allowance is needed. `src/proxy.ts` already
+excludes `/api` from locale routing, so the handler needs no exception of its
+own. The two-character floor is the published
+`limits.minimumAutocompleteLength` rather than a second copy of it, which also
+decides the degraded case: with the filter metadata call failed there is no
+published bound, and the field stays plain.
+
+`NameSearchForm` became a Client Component without losing what it already was
+— still a native GET form whose hidden fields carry every applied filter, so
+an unhydrated or JS-less visitor submits exactly the same URL. The
+enhancement sits on top as an ARIA 1.2 combobox: `role="combobox"` with
+`aria-expanded`/`aria-controls`/`aria-activedescendant` over a `listbox` of
+`option`s, arrow keys wrapping through the list, Enter selecting only when a
+suggestion is highlighted (otherwise the form submits the typed name as
+before), Escape closing it, and a polite live region announcing the count.
+Selecting fills the field and stops there, exactly as specified.
+
+`useAutocomplete` owns the fetching: nothing is requested below the published
+minimum or inside the 300 ms window, a superseded request is aborted so a slow
+answer cannot overwrite a newer one, and results are paired with the query
+they answer so a stale list never flashes under a half-typed new one. Any
+failure — a classified API error or an unreachable process — turns the
+enhancement off for the field's lifetime rather than retrying on every
+keystroke, which is what "degrades to a plain text field" has to mean for a
+provider that rate-limits. Suggestions also carry the applied platform
+context, which the autocomplete endpoint accepts for exactly this purpose.
+
+Verified live against the local API: typing "hollow" produced eight
+suggestions with covers and years (one showing "—" for a year IGDB does not
+record), selecting "Hollow Knight" filled the field without navigating, and
+submitting then landed on `?sort=popularity&direction=desc&name=Hollow+Knight`
+with Hollow Knight first. Stopping the API mid-session and typing again
+dropped `role="combobox"` and `aria-autocomplete` from the field, left it
+typeable, and showed no list — the documented degradation, observed rather
+than only asserted.
 
 ### M2.7 — Validation, rate-limit, and upstream-failure states
 
