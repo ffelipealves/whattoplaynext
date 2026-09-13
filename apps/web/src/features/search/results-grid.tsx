@@ -6,9 +6,18 @@ import type { SearchResult } from "./get-search-results";
 type ResultsGridProps = {
   result: SearchResult;
   name?: string;
+  /**
+   * Steers the zero-result advice: with filters applied, relaxing one of them
+   * is the useful suggestion, not retyping the title.
+   */
+  hasActiveFilters?: boolean;
 };
 
-export function ResultsGrid({ result, name }: ResultsGridProps) {
+export function ResultsGrid({
+  result,
+  name,
+  hasActiveFilters,
+}: ResultsGridProps) {
   const t = useTranslations("Search");
 
   if (!result.ok) {
@@ -40,7 +49,9 @@ export function ResultsGrid({ result, name }: ResultsGridProps) {
             : t("zeroResultsTitle")}
         </p>
         <p className="text-sm text-[#17203a]/65">
-          {t("zeroResultsDescription")}
+          {hasActiveFilters
+            ? t("zeroResultsFilterDescription")
+            : t("zeroResultsDescription")}
         </p>
       </div>
     );

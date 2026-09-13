@@ -5,7 +5,13 @@ import { expect, test } from "vitest";
 import enMessages from "../../../messages/en.json";
 
 import { PaginationLinks } from "./pagination-links";
-import type { BrowseParams } from "./browse-params";
+import { parseBrowseParams, type BrowseParams } from "./browse-params";
+
+const baseline = parseBrowseParams({});
+
+function browseParams(overrides: Partial<BrowseParams>): BrowseParams {
+  return { ...baseline, ...overrides };
+}
 
 function renderPagination(params: BrowseParams, totalPages: number) {
   return render(
@@ -20,23 +26,20 @@ function queryOf(href: string): URLSearchParams {
 }
 
 test("renders nothing for a single-page result set", () => {
-  const { container } = renderPagination(
-    { sort: "popularity", direction: "desc", page: 1 },
-    1,
-  );
+  const { container } = renderPagination(browseParams({ page: 1 }), 1);
 
   expect(container.firstChild).toBeNull();
 });
 
 test("disables Previous on the first page and Next on the last page", () => {
-  renderPagination({ sort: "popularity", direction: "desc", page: 1 }, 5);
+  renderPagination(browseParams({ page: 1 }), 5);
 
   expect(screen.getByText("Previous").tagName).toBe("SPAN");
   expect(screen.getByRole("link", { name: "Next" })).toBeDefined();
 });
 
 test("marks the current page and announces it for assistive technology", () => {
-  renderPagination({ sort: "popularity", direction: "desc", page: 3 }, 5);
+  renderPagination(browseParams({ page: 3 }), 5);
 
   const current = screen.getByRole("link", { name: "3" });
   expect(current.getAttribute("aria-current")).toBe("page");
@@ -44,7 +47,7 @@ test("marks the current page and announces it for assistive technology", () => {
 });
 
 test("caps displayed pages at the 100-page ceiling even with more total pages", () => {
-  renderPagination({ sort: "popularity", direction: "desc", page: 1 }, 5000);
+  renderPagination(browseParams({ page: 1 }), 5000);
 
   expect(screen.getByRole("link", { name: "100" })).toBeDefined();
   expect(screen.queryByRole("link", { name: "101" })).toBeNull();
@@ -52,7 +55,12 @@ test("caps displayed pages at the 100-page ceiling even with more total pages", 
 
 test("keeps the active name filter across a page link", () => {
   renderPagination(
-    { name: "Hollow Knight", sort: "title", direction: "asc", page: 1 },
+    browseParams({
+      name: "Hollow Knight",
+      sort: "title",
+      direction: "asc",
+      page: 1,
+    }),
     3,
   );
 

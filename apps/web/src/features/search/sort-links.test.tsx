@@ -5,14 +5,12 @@ import { expect, test } from "vitest";
 import enMessages from "../../../messages/en.json";
 
 import { SortLinks } from "./sort-links";
-import type { BrowseParams } from "./browse-params";
+import { parseBrowseParams, type BrowseParams } from "./browse-params";
 
-const baseParams: BrowseParams = {
+const baseParams: BrowseParams = parseBrowseParams({
   name: "Hollow Knight",
-  sort: "popularity",
-  direction: "desc",
-  page: 3,
-};
+  page: "3",
+});
 
 function renderSortLinks(params: BrowseParams) {
   render(

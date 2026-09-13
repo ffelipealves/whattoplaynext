@@ -31,10 +31,18 @@ const samplePage: GamePage = {
   },
 };
 
-function renderGrid(result: SearchResult, name?: string) {
+function renderGrid(
+  result: SearchResult,
+  name?: string,
+  hasActiveFilters?: boolean,
+) {
   render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
-      <ResultsGrid name={name} result={result} />
+      <ResultsGrid
+        hasActiveFilters={hasActiveFilters}
+        name={name}
+        result={result}
+      />
     </NextIntlClientProvider>,
   );
 }
@@ -67,4 +75,13 @@ test("renders an upstream-failure state distinct from zero-result", () => {
   expect(screen.getByText("Something went wrong")).toBeDefined();
   expect(screen.getByRole("alert")).toBeDefined();
   expect(screen.queryByText("No games matched this search")).toBeNull();
+});
+
+test("suggests relaxing a filter when filters are what emptied the page", () => {
+  renderGrid({ ok: true, page: { ...samplePage, items: [] } }, undefined, true);
+
+  expect(
+    screen.getByText("Try removing a filter or widening one of its ranges."),
+  ).toBeDefined();
+  expect(screen.queryByText("Try a different or shorter title.")).toBeNull();
 });

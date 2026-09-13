@@ -1,6 +1,6 @@
 # Milestone 2 Plan
 
-Status: active execution baseline; M2.3 completed and M2.4 ready
+Status: active execution baseline; M2.5 completed and M2.6 ready
 
 Prepared: 2026-09-12
 
@@ -232,6 +232,76 @@ Acceptance:
 - a component test drives Apply, Clear-all, and single-chip removal without
   a network call before Apply.
 
+Status: completed on 2026-09-12.
+
+Outcome: `features/search/browse-params.ts` now parses and re-emits the full
+criteria set, and `parseBrowseParams` takes an optional second argument built
+from `GET /api/v1/filters` by `filterBoundsFrom()` — the allow-listed ids and
+the published `limits` — so the frontend validates against the API's own
+enums instead of keeping a second copy of them. The games route therefore
+reads filter metadata before parsing the URL (concurrently with awaiting
+`searchParams`) and only then queries results; when that call fails the parser
+falls back to shape-only id validation, the sidebar renders an explicit
+"filters unavailable" state, and chips fall back to raw ids rather than
+hiding an applied criterion. `getCatalogStatus()` and the search page now
+share one `features/catalog/get-filter-metadata.ts` helper instead of
+repeating the same call.
+
+`react-hook-form` (newly installed, per the architecture's stated stack) owns
+the draft: nothing reaches the URL or the network until Apply, which builds
+the query through the same `withBrowseParams` helper the sort, pagination and
+chip links use, and navigates with `useRouter().push` inside a `useTransition`
+so Apply reports its own pending state. Multi-value categories become repeated
+params (`platform=pc&platform=nintendo-switch`), which is how the API reads OR
+within a category and AND across categories; a selection is normalized to the
+catalog's own order so the same choices always produce the same URL. Cross-field
+rules the API rejects outright (inverted release or duration ranges, bounds
+outside the published limits) are caught in the form with localized messages —
+the form is `noValidate` precisely so those messages, not the browser's own
+locale-independent bubbles, are what a visitor sees, since native constraint
+validation otherwise blocks submit before react-hook-form ever runs.
+
+Everything except the form itself stayed zero-JS: each chip's remove
+affordance and Clear-all are plain `Link`s to the criteria-minus-one URL, and
+`NameSearchForm` now carries every applied filter forward as hidden fields
+(one per selected id) so a name search narrows the filters instead of silently
+dropping them. The filter form degrades the same way: its controls carry the
+API's own param names, so an Apply that lands before hydration still submits a
+valid filtered URL. The form is keyed on `filterSignature(params)` so it
+remounts when the applied selection changes underneath it (chip removal,
+Clear-all, back/forward) while a half-built draft survives paging and sorting.
+
+The mobile drawer specified as M2.5 shipped in the same increment rather than
+separately, since both layouts render the identical `FilterForm`; see that
+entry for its own outcome. Live verification against the local API confirmed
+OR/AND semantics (PC or Nintendo Switch, and Shooter → 19,430 games), chip
+removal keeping every other criterion, the Clear-all URL returning to the M2.3
+baseline, both locales rendering with provider labels left untranslated, and
+the `excludedUnknownDuration` notice appearing only for a duration-bounded
+search. Apply itself was exercised live only as far as its pending state:
+IGDB throttled the local API partway through the pass, so the click-through
+to a filtered URL rests on the component tests, which assert the exact query
+string both layouts push.
+
+Worth knowing before verifying this route again: because `loading.tsx` puts
+the page inside a Suspense boundary, React leaves that boundary dehydrated
+until the first real interaction, then hydrates it and replays the event. A
+genuine click works; a scripted `element.click()` does not reach React and
+falls through to the browser's own form submission, which is misleading
+enough to look like broken hydration. It is also the reason the form's
+controls carry the API's own param names — that fall-through now produces a
+valid filtered URL rather than a broken one.
+
+Two backend characteristics surfaced during that pass and are **not** fixed
+here. `GET /api/v1/games?minimumRating=<any value>` always fails with
+`UPSTREAM_INVALID_RESPONSE`, which is also the code the API maps IGDB's
+invalid-request reason onto; the only rating-specific thing it sends is the
+generated `total_rating >= 80.0` clause, and the API's own suite asserts that
+string against a fake transport only, so no test exercises it against the real
+provider. The rating control is therefore wired end to end but unusable until
+that is fixed. Separately, cold filtered queries can take 30–60 s, long enough
+to surface as an upstream failure until the API's cache is warm.
+
 ### M2.5 — Mobile filter drawer
 
 Deliver:
@@ -246,6 +316,18 @@ Acceptance:
 - the drawer and the desktop sidebar submit identical URLs for the same
   selections, verified by a shared test against both layouts;
 - the trigger button's active-filter count matches the applied chips exactly.
+
+Status: completed on 2026-09-12, together with M2.4.
+
+Outcome: `FilterDrawer` is a thin client wrapper around the same `FilterForm`
+the desktop `FilterSidebar` renders, so "identical URLs for the same
+selections" is structural rather than a duplicated implementation kept in
+sync; one test drives both layouts and compares the pushed query strings. The
+trigger's count and the chip row are both `activeFilters(params).length`, so
+they cannot drift. Only the drawer's open/closed state lives in the component
+(the criteria stay in the URL), Apply closes it, and the actions row is pinned
+to the bottom of the scrolling sheet so Apply and Clear all stay reachable
+without scrolling past every group.
 
 ### M2.6 — Name autocomplete
 

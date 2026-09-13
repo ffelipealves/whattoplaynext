@@ -1,4 +1,4 @@
-import { getApiClient } from "@/lib/api-client";
+import { getFilterMetadata } from "@/features/catalog/get-filter-metadata";
 
 export type CatalogStatus =
   | {
@@ -10,22 +10,16 @@ export type CatalogStatus =
   | { reachable: false };
 
 export async function getCatalogStatus(): Promise<CatalogStatus> {
-  try {
-    const { data, error } = await getApiClient().GET("/api/v1/filters");
+  const result = await getFilterMetadata();
 
-    if (error || !data) {
-      return { reachable: false };
-    }
-
-    return {
-      reachable: true,
-      platformCount: data.platforms.length,
-      genreCount: data.genres.length,
-      gameModeCount: data.gameModes.length,
-    };
-  } catch {
-    // The API process itself is unreachable (connection refused, DNS
-    // failure, timeout): fetch() rejects instead of resolving with `error`.
+  if (!result.ok) {
     return { reachable: false };
   }
+
+  return {
+    reachable: true,
+    platformCount: result.metadata.platforms.length,
+    genreCount: result.metadata.genres.length,
+    gameModeCount: result.metadata.gameModes.length,
+  };
 }
