@@ -145,13 +145,13 @@ filtered URL, and the Playwright suite uses trusted input throughout.
 The Playwright suite ran against a production build and the fixture-backed API
 in five configurations:
 
-| Configuration    | Engine                           | Viewport   | Result             |
-| ---------------- | -------------------------------- | ---------- | ------------------ |
-| desktop-chromium | Chromium 153.0.8010.12           | 1280 × 720 | Pass — 9 of 9      |
-| desktop-firefox  | Firefox 155.0                    | 1280 × 720 | Pass — 9 of 9      |
-| desktop-webkit   | WebKit 26.6                      | 1280 × 720 | Pass — 9 of 9 (CI) |
-| mobile-chromium  | Chromium 153.0.8010.12 (Pixel 7) | 412 × 839  | Pass — 9 of 9      |
-| mobile-webkit    | WebKit 26.6 (iPhone 14)          | 390 × 664  | Pass — 9 of 9 (CI) |
+| Configuration   | Engine                           | Viewport   | Result             |
+| --------------- | -------------------------------- | ---------- | ------------------ |
+| chromium        | Chromium 153.0.8010.12           | 1280 × 720 | Pass — 9 of 9      |
+| desktop-firefox | Firefox 155.0                    | 1280 × 720 | Pass — 9 of 9      |
+| desktop-webkit  | WebKit 26.6                      | 1280 × 720 | Pass — 9 of 9 (CI) |
+| mobile-chromium | Chromium 153.0.8010.12 (Pixel 7) | 412 × 839  | Pass — 9 of 9      |
+| mobile-webkit   | WebKit 26.6 (iPhone 14)          | 390 × 664  | Pass — 9 of 9 (CI) |
 
 Every scenario passed in every configuration: 45 of 45, none of them flaky.
 The run happened in two places. On the Ubuntu 24.04 machine the closeout was
@@ -182,8 +182,9 @@ closed-beta gate, and is recorded as such in the technical debt register.
 ## Core Web Vitals spot check
 
 `pnpm e2e:vitals` measures the search page in Chromium on a desktop viewport and
-on a Pixel 7 viewport with 4× CPU throttling, with one real interaction for
-INP. These are lab numbers from one machine against NFR-003's 75th-percentile
+on a Pixel 7 viewport with 4× CPU throttling, with real interactions for INP —
+two filter checkboxes on desktop; opening the drawer, closing it, and reopening
+it on mobile. These are lab numbers from one machine against NFR-003's 75th-percentile
 field targets — a spot check, as the plan asks, not formal performance testing.
 
 | Backend          | Layout                  | LCP        | INP      | CLS   |
@@ -196,8 +197,9 @@ field targets — a spot check, as the plan asks, not formal performance testing
 
 Two targets are met everywhere and two findings are recorded.
 
-**CLS is 0 in every run.** Covers reserve their dimensions and the skeleton
-occupies the space results arrive in, so nothing moves.
+**CLS is 0 in every run**, including the two against live IGDB, where cover art
+loads after the first paint. Covers render into a fixed-aspect box, which is
+consistent with nothing moving when they arrive.
 
 **INP is a client-side cost, and it misses on mobile.** Desktop interactions
 took 24–32 ms. On the throttled mobile viewport the first tap on "Filters" took
