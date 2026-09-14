@@ -96,7 +96,8 @@ guardrails are defined in [Milestone 2 plan](milestone-2-plan.md).
 
 ## Milestone 3 — Game pages, localization, and SEO
 
-Status: planned; the division is proposed and awaiting owner decisions.
+Status: in progress; delivery starts with M3.1, and the owner decisions that
+affect later increments remain open in the plan.
 
 Deliverables:
 

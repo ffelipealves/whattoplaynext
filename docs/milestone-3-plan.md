@@ -1,6 +1,7 @@
 # Milestone 3 Plan
 
-Status: proposed; owner decisions in section 7 are pending
+Status: in progress — delivery starts with M3.1; owner decisions 2–5 in
+section 7 are pending
 
 Prepared: 2026-09-13
 
@@ -297,12 +298,15 @@ lands:
 ## 7. Decisions for the owner
 
 These change what gets built, so they are the owner's to make. Each has a
-recommendation; the plan above assumes it.
+recommendation; the plan above assumes it. None of the open ones blocks M3.1:
+decisions 2 and 5 are needed before M3.2, decision 4 before M3.6, and decision
+3 before M3.7.
 
 1. **Pay browse content eligibility first (M3.1).** Recommended. Once result
    cards link to game pages, every ineligible browse result becomes a link to a
    not-found page. The alternative is deferring it to its public-beta gate and
    accepting those dead links during closed beta.
+   **Accepted on 2026-09-14:** the owner chose to start Milestone 3 with M3.1.
 2. **Game URL shape.** Recommended: `/[locale]/games/[id]/[slug]`, with
    `/[locale]/games/[id]` redirecting. The alternative is `/[locale]/games/[id]-[slug]`.
    Both satisfy FR-032, but whichever ships first is expensive to change once
@@ -316,3 +320,100 @@ recommendation; the plan above assumes it.
 5. **Game pages during an upstream outage.** Recommended: a recoverable failure
    state with a 5xx status and `noindex`. The alternative, serving the last
    known page, needs the Milestone 4 cache and would pull that work forward.
+
+## 8. M3.1 next-session handoff
+
+Start from `main` with a clean tree. M3.1 is API-only: no web, contract-shape,
+or Playwright fixture change is expected — only totals and which games appear
+change.
+
+### Where eligibility has to reach
+
+Everything lives in `apps/api/src/whattoplaynext_api/adapters/igdb/catalog.py`.
+Build the clause from `ELIGIBLE_GAME_TYPES` — `game_type = (0,8,9)`, sorted —
+so detail and browse share one definition.
+
+- `_where_query` is the seam almost every browse path shares. Adding the
+  clause there reaches the count and page of the rating, release-date, and
+  title sorts (`_search_query`); `_candidate_records`; `_games_by_ids` and
+  `_matching_ids` through `_where_with_ids`; `_every_matching_id_by_popularity`;
+  `_release_ordered_records`; and both index-first local paths
+  (`_durations_in_range`, `_games_released_in_range`), which join through
+  `_games_by_ids`.
+- With the clause always present, `_where_query` never returns an empty
+  string, so the empty-where branches in `_candidate_games_query`,
+  `_search_query`, and `_where_with_ids` become dead. Remove them rather than
+  keep untested branches.
+- Two paths bypass `_where_query` and need their own change:
+  - **Unfiltered popularity** in `browse_games` counts `popularity_primitives`
+    and pages that index directly, then reads the page with `_games_query`,
+    which applies no filter. This is where debt entry 1's stray non-games come
+    from. With eligibility as an always-on filter, `_has_game_filters` stops
+    being the right switch: route this case through `_filtered_popularity_ids`,
+    whose `_ranked_matching_ids` walk already intersects each index page with a
+    where clause. `page` is capped at 100 and `pageSize` fixed at 24, so the
+    deepest request needs 2,400 ranked matches, far inside the ~73,000-game
+    index — the exhaustive fallback (debt entry 3) should never trigger for
+    this shape; add a test that pins that. `_games_query` will likely lose its
+    last caller.
+  - **Autocomplete** builds its own clause list in `_autocomplete_query`; add
+    the eligibility clause there (IGDB accepts `search` together with `where`).
+- Enrichment reads (`_duration_values`, `_popularity_for_ids`) only receive IDs
+  that already passed the filter and need no change.
+- Expect index walks to read somewhat more pages, since fewer rows per index
+  page survive the join; `_release_page_is_settled` and `_ranked_matching_ids`
+  already keep reading until the page is full.
+
+### Tests
+
+- `tests/adapters/igdb/test_catalog.py` pins exact provider requests in several
+  places — the unfiltered popularity test (its `count_requests` expects
+  `popularity_primitives`), the filtered clause-set assertion, and the
+  autocomplete request. Change those expectations in the red step; do not
+  loosen them into substring checks.
+- Add one guard that drives every browse strategy (plain sort, popularity walk,
+  exhaustive popularity, duration index, release range, release-order walk)
+  plus autocomplete, and asserts that every `games` query and count carries the
+  eligibility clause — the same shape as the existing
+  `assert all("*" not in query ...)` guard — so no future path can skip it.
+- `tests/test_games.py`, `tests/test_autocomplete.py`, and the Playwright
+  `tests/e2e/fixture_catalog.py` sit behind the `Catalog` port and should not
+  change. If they have to, eligibility has leaked out of the adapter.
+
+### Documentation in the same commit
+
+- `docs/api-contract.md` section 2: "Popularity without filters uses the IGDB
+  Visits primitive directly" stops being true. State that browse and
+  autocomplete apply the same eligibility as detail and that `totalItems`
+  counts only eligible games. Regenerate `packages/contracts/openapi.json` only
+  if an OpenAPI description string changes; `pnpm contract:check` catches drift.
+- The contract says the MVP includes _released_ base games, but neither detail
+  nor browse checks release status. Record that for the owner rather than
+  widening M3.1 to fix it.
+- `docs/technical-debt.md`: mark entry 1 resolved with the measured totals, and
+  revisit entry 3 if the popularity fallback's reach changes.
+- This plan: the M3.1 Status/Outcome, following the Milestone 2 pattern.
+
+### Live verification
+
+It needs `WTPN_TWITCH_CLIENT_ID` and `WTPN_TWITCH_CLIENT_SECRET` in
+`apps/api/.env`; run the API on its own, with no cache in front of IGDB.
+
+- `pnpm smoke:api` still passes.
+- Record `totalItems` before and after for an unfiltered popularity sort and an
+  unfiltered rating sort (debt entry 1 recorded ~73,000 and ~375,000).
+- Confirm by hand that an expansion or DLC which used to appear in
+  autocomplete or on a browse page no longer does, and that every result on a
+  sampled page opens through `GET /api/v1/games/{gameId}`.
+- Re-time the queries recorded in the M2.4 and M2.8 follow-ups:
+  `minimumRating=80` (2.9 s), `platform=pc` (1.9 s),
+  `platform=pc&platform=nintendo-switch` (2.4 s),
+  `platform=nintendo-switch&genre=indie` with 2–10 h (10 s),
+  `genre=shooter&minimumRating=80` with ≤ 20 h on page 3 (6 s),
+  `genre=pinball` (5.6 s), `platform=pc&sort=release-date` (3.2 s), and
+  `platform=pc` across 2020 (58 s) — plus unfiltered popularity on pages 1
+  and 100, which now gain a join.
+
+Finish with `pnpm quality`, one commit following CONTRIBUTING.md (bullet-point
+body, final `Milestone: M3.1` trailer, no AI co-author), a push to `main`, and
+a green CI run.

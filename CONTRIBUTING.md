@@ -1,7 +1,8 @@
 # Contributing
 
-What To Play Next has completed its technical foundation and provider/API
-milestones and is implementing the search-experience milestone. The
+What To Play Next has completed its technical foundation, provider/API, and
+search-experience milestones and is implementing the game-pages, localization,
+and SEO milestone. The
 repository contains a Next.js web application, a FastAPI application, and a
 generated TypeScript client.
 

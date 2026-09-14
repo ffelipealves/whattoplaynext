@@ -27,6 +27,12 @@ approximate matching.
   quality evidence, and the live smoke-test findings.
 - [Milestone 2 plan](docs/milestone-2-plan.md) — search-experience increments,
   acceptance checks, and scope guardrails.
+- [Milestone 2 review](docs/milestone-2-review.md) — search-experience closeout,
+  cross-browser and Core Web Vitals evidence, and the Milestone 3 handoff.
+- [Milestone 3 plan](docs/milestone-3-plan.md) — game-page, localization, and
+  SEO increments, open owner decisions, and the M3.1 handoff.
+- [Technical debt](docs/technical-debt.md) — deliberate compromises, what each
+  costs, and the release gates that depend on them.
 - [MVP roadmap](docs/roadmap.md) — delivery sequence and milestone exit checks.
 
 ## Planned stack
@@ -72,6 +78,12 @@ query shapes that read the whole catalog to page it. All three are fixed;
 [Milestone 2 plan](docs/milestone-2-plan.md) has the full increment breakdown,
 and [Technical debt](docs/technical-debt.md) records what was deliberately
 left behind.
+
+Milestone 3 (game pages, localization, and SEO) is planned as ten increments in
+the [Milestone 3 plan](docs/milestone-3-plan.md), starting with M3.1: making
+browse and autocomplete apply the same content eligibility the game-detail
+endpoint already enforces, so that no search result can lead to a missing game
+page once results link to one.
 
 ## Local development
 
