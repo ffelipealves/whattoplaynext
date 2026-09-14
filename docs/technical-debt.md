@@ -144,23 +144,29 @@ Removing it means either giving up URL validation against the published
 allow-list, or caching the metadata in the web application — the latter is a
 Milestone 4 concern.
 
+Milestone 2.10 put a number on it. Against live IGDB with no cache, the search
+page's LCP was 3,828 ms on desktop and 4,608 ms on a throttled mobile viewport,
+against 616 ms and 1,024 ms for the identical build on the fixture catalog. Two
+sequential cold API calls stand between the request and the first result text,
+and `GET /api/v1/filters` alone measured 2.1 s cold. Caching the metadata —
+here or in Redis — is the cheapest lever on that gap.
+
 ## End-to-end suite
 
-### 10. The browser suite stops at the Milestone 2.3 journeys
+### 10. Part of the search page has no browser-level test
 
-The six scenarios cover exactly the six journeys Milestone 2.9 named: name
-search, URL restoration with back and forward, pagination, the locale switch,
-an upstream failure, and a zero-result. Everything built after that — the
-filter sidebar and drawer, the chips, autocomplete, the ignored-criteria
-notice — has component tests and was verified by hand in a browser, but no
-browser-level regression test.
+**Partly paid in Milestone 2.10.** The gap that mattered most — Apply, the one
+interaction whose correctness depends on hydration — is now covered:
+`e2e/layouts.spec.ts` checks the boxes, asserts the URL and count stay untouched,
+applies, and asserts platform AND genre and the resulting chip, in the sidebar
+on desktop and the drawer on mobile, across every engine in the matrix.
+Removing a single chip is covered the same way.
 
-The gap that matters most is Apply, because it is the one interaction whose
-correctness depends on hydration: a draft that reaches the URL only on submit,
-through a client navigation. Component tests assert the query string it
-pushes; nothing asserts that a real click in a real browser gets there. Adding
-a filters scenario to the existing suite is cheap now that the fixture catalog
-honours platform and genre criteria.
+Still covered only by component tests and hand verification: autocomplete
+(debounce, selection, degradation), Clear all, the filter form's validation
+messages, the ignored-criteria notice, and the duration notice. Autocomplete is
+the one worth adding next, since its debounce and abort behave on real timers in
+a browser and on fake ones in Vitest.
 
 ### 11. `pnpm e2e` leaves the build pointing at the fixture API
 
@@ -184,10 +190,61 @@ always starts its own, so this never produces a false green there — but it can
 locally, and the failure mode (passing tests, stale code) is the kind that
 costs an afternoon.
 
-### 13. Only Chromium
+### 13. The gate drives one browser
 
-One browser project is configured. Milestone 2.10 owns the cross-browser pass
-(the two latest stable releases of Chrome, Edge, Firefox, and Safari), and
-whether that becomes a permanent matrix in the gate or a periodic manual pass
-is a decision for that increment: a four-browser matrix on every push buys
-less than it costs when the suite is six scenarios long.
+**Decided in Milestone 2.10.** Every push runs the suite in desktop Chromium
+only. The full matrix — Chromium, Firefox, and WebKit, at desktop and mobile
+viewports — is named in `playwright.config.ts` and runs on demand, locally with
+`pnpm e2e:browsers` and in CI through the manual "Browser matrix" job.
+
+The reasoning: nine scenarios times five configurations on every push would
+cost more than the regressions they could plausibly catch, and WebKit needs
+system libraries a developer machine often lacks (it could not launch on the
+Ubuntu machine the closeout ran on) but a hosted runner can install. The cost
+is that an engine-specific regression surfaces only when someone runs the
+matrix — which should at least be every release candidate.
+
+### 14. No retail browser has been checked — **blocking for closed beta**
+
+NFR-013 promises the two latest stable releases of Chrome, Edge, Firefox, and
+Safari. Milestone 2.10's matrix drives the engines Playwright ships — one build
+each of Chromium, Firefox, and WebKit — at desktop and mobile viewports. That
+catches engine-level breakage, but it is not the requirement: no branded
+release was run, none of the second-latest releases was, Edge was covered only
+through the Chromium engine it shares with Chrome, and WebKit is Safari's
+engine rather than Safari, which runs only on Apple platforms.
+
+Paying it off is a manual pass at release time on real installs of all four
+browsers at both versions, recorded against the same journeys the suite
+covers. A hosted cross-browser service could automate it; that is a cost
+decision for the beta milestones, not an engineering blocker now.
+
+### 15. Opening the mobile filter drawer is slow to respond
+
+Milestone 2.10's Core Web Vitals spot check measured the search page on a Pixel
+7 viewport with 4× CPU throttling. LCP and CLS were comfortably inside NFR-003's
+targets; INP was not. Recorded interaction by interaction against the fixture
+build:
+
+| Interaction                       | Latency |
+| --------------------------------- | ------- |
+| First tap on "Filters" (opens it) | 464 ms  |
+| Escape (closes it)                | 112 ms  |
+| Second tap on "Filters" (reopens) | 248 ms  |
+
+The first tap pays for two things: the route sits inside a Suspense boundary
+React hydrates on the first real input, and the drawer mounts the whole filter
+form — 35 checkboxes, a slider, and a react-hook-form instance — the moment it
+opens. The second tap is already hydrated and still takes 248 ms, so mounting
+the form is over the 200 ms target on its own; hydration adds roughly another
+200 ms the first time.
+
+On desktop the sidebar is mounted with the page, and its interactions measured
+24–32 ms.
+
+These are lab numbers from one throttled machine, not the 75th-percentile field
+data NFR-003 is written in, so they say where to look rather than what visitors
+see. Candidate fixes, none evaluated yet: mount the genre list lazily or only
+when its group is expanded; keep the form mounted but hidden once first opened,
+so only the first open pays; or let the boundary hydrate at idle rather than on
+the first tap. Confirm with field measurements before public beta.

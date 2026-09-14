@@ -55,15 +55,16 @@ actions tracked separately in
 [External prerequisites](docs/external-prerequisites.md); they do not block
 Milestone 2 frontend work.
 
-Milestone 2 (search experience) is nearly complete. `GET /[locale]/games` is
-a working faceted search: name search with debounced autocomplete, structured
+Milestone 2 (search experience) is complete. `GET /[locale]/games` is a
+working faceted search: name search with debounced autocomplete, structured
 filters in a desktop sidebar and a mobile drawer, removable active-filter
 chips, sorting, pagination, and distinct states for validation, rate limits,
 and upstream failures — all driven by the URL rather than client-side state,
 so a copied link restores the same search. An axe pass and a keyboard pass
-cover both layouts, and a Playwright suite drives the critical journeys
-against a fixture-backed API. Only the closeout increment (cross-browser and
-responsive verification, plus the evidence report) remains.
+cover both layouts, a Playwright suite drives the critical journeys against a
+fixture-backed API on every push, and the closeout ran those journeys across
+Chromium, Firefox, and WebKit at desktop and mobile sizes. The
+[Milestone 2 review](docs/milestone-2-review.md) records the evidence.
 
 Driving the new UI against live IGDB also surfaced three API defects that
 fixtures alone could not: a rating filter that could never be served, and two
@@ -189,7 +190,11 @@ pnpm build
 ```
 
 `pnpm e2e` drives a real browser and needs it installed once — `pnpm setup`
-does that, and `pnpm e2e:install` does it on its own.
+does that, and `pnpm e2e:install` does it on its own. Two further runs are
+on demand rather than part of the gate: `pnpm e2e:browsers` repeats the suite
+in Chromium, Firefox, and WebKit at desktop and mobile viewports (install those
+engines with `pnpm e2e:install:browsers`), and `pnpm e2e:vitals` takes Core Web
+Vitals spot measurements of the search page.
 
 `pnpm check` remains an alias for `pnpm quality`. See
 [CONTRIBUTING.md](CONTRIBUTING.md#root-commands) for every package-specific

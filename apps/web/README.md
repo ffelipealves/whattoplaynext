@@ -119,6 +119,15 @@ root. It starts the real API composed with a fixture catalog
 running. A production build rather than `next dev`, which refuses to run twice
 in one directory.
 
+Every configuration is a named project in `playwright.config.ts`, selected with
+`--project` so no script depends on shell-specific environment syntax: the gate
+runs `chromium`; `pnpm e2e:browsers` runs the desktop and mobile matrix; and
+`pnpm e2e:vitals` runs the `vitals-*` projects, which measure LCP, INP, and CLS
+on the search page and report them against NFR-003's targets. Set
+`E2E_BASE_URL` to point any of them at an application you are already serving
+— a build against the live API, say — and the suite starts no servers of its
+own.
+
 ## Checks
 
 ```bash

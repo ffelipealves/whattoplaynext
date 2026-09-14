@@ -88,7 +88,7 @@ pnpm quality
 pnpm check
 ```
 
-The end-to-end suite needs the browser it drives; `pnpm setup` installs it, and `pnpm e2e:install` installs it on its own. The suite starts the API with a fixture catalog and a production web build on ports 8100 and 3100, so it needs no credentials and no running services of yours.
+The end-to-end suite needs the browser it drives; `pnpm setup` installs it, and `pnpm e2e:install` installs it on its own. The suite starts the API with a fixture catalog and a production web build on ports 8100 and 3100, so it needs no credentials and no running services of yours. `pnpm e2e:browsers` runs the same suite across Chromium, Firefox, and WebKit at desktop and mobile viewports (after `pnpm e2e:install:browsers`), and the manual "Browser matrix" CI job runs it where WebKit's system libraries can be installed; run it for every release candidate.
 
 `pnpm format` rewrites files. `pnpm quality` is the canonical, non-mutating
 quality gate; `pnpm check` is its compatibility alias. The gate runs formatting

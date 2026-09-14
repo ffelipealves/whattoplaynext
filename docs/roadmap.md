@@ -72,7 +72,7 @@ closeout evidence is recorded in [Milestone 1 review](milestone-1-review.md).
 
 ## Milestone 2 — Search experience
 
-Status: active; M2.1 through M2.9 completed and M2.10 (closeout) is next.
+Status: completed on 2026-09-13; see the [Milestone 2 review](milestone-2-review.md).
 
 Deliverables:
 

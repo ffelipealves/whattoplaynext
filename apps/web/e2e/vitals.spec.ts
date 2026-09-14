@@ -10,13 +10,17 @@ import { expect, test, type Page } from "@playwright/test";
 const TARGETS = { lcpMs: 2_500, inpMs: 200, cls: 0.1 };
 const DESKTOP_MIN_WIDTH = 1024;
 
-type Vitals = { lcpMs: number; cls: number };
+type Store = {
+  lcp: number;
+  cls: number;
+  interactions: Record<number, { start: number; duration: number }>;
+};
 
 /** Starts collecting before any paint, so nothing is missed. */
 async function observeVitals(page: Page) {
   await page.addInitScript(() => {
-    const store = { lcp: 0, cls: 0, inp: 0 };
-    (window as unknown as { __vitals: typeof store }).__vitals = store;
+    const store: Store = { lcp: 0, cls: 0, interactions: {} };
+    (window as unknown as { __vitals: Store }).__vitals = store;
 
     new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
@@ -41,9 +45,16 @@ async function observeVitals(page: Page) {
         interactionId?: number;
         duration: number;
       })[]) {
-        if (entry.interactionId) {
-          store.inp = Math.max(store.inp, entry.duration);
+        if (!entry.interactionId) {
+          continue;
         }
+        // One interaction dispatches several events; its latency is the
+        // slowest of them.
+        const known = store.interactions[entry.interactionId];
+        store.interactions[entry.interactionId] = {
+          start: Math.min(known?.start ?? entry.startTime, entry.startTime),
+          duration: Math.max(known?.duration ?? 0, entry.duration),
+        };
       }
     }).observe({
       type: "event",
@@ -53,21 +64,24 @@ async function observeVitals(page: Page) {
   });
 }
 
-async function readVitals(
-  page: Page,
-): Promise<{ lcpMs: number; cls: number; inpMs: number }> {
+async function readVitals(page: Page) {
   return page.evaluate(() => {
-    const store = (
-      window as unknown as {
-        __vitals: { lcp: number; cls: number; inp: number };
-      }
-    ).__vitals;
+    const store = (window as unknown as { __vitals: Store }).__vitals;
+    const durations = Object.values(store.interactions)
+      .sort((a, b) => a.start - b.start)
+      .map((interaction) => Math.round(interaction.duration));
     return {
       lcpMs: Math.round(store.lcp),
       cls: Number(store.cls.toFixed(3)),
-      inpMs: Math.round(store.inp),
+      inpMs: Math.max(0, ...durations),
+      interactionsMs: durations,
     };
   });
+}
+
+/** Event timing entries arrive on the frame after the interaction. */
+async function settle(page: Page) {
+  await page.waitForTimeout(400);
 }
 
 test("the search page meets its Core Web Vitals targets @vitals", async ({
@@ -87,24 +101,32 @@ test("the search page meets its Core Web Vitals targets @vitals", async ({
     page.getByRole("status").filter({ hasText: /games$/ }),
   ).not.toHaveText("");
 
-  // LCP is only final once the visitor interacts, which is also what INP needs:
-  // one real interaction that updates React state without navigating.
+  // Two interactions of the same kind. The route sits in a Suspense boundary
+  // React hydrates on the first real input, so the first interaction also
+  // pays for hydration and the second shows the interaction on its own.
   if (isDesktop) {
-    await page
+    const checkboxes = page
       .getByRole("complementary", { name: "Filters" })
-      .getByRole("checkbox")
-      .first()
-      .click();
+      .getByRole("checkbox");
+    await checkboxes.nth(0).click();
+    await settle(page);
+    await checkboxes.nth(1).click();
+    await settle(page);
   } else {
-    await page.getByRole("button", { name: /^Filters/ }).click();
+    const trigger = page.getByRole("button", { name: /^Filters/ });
+    await trigger.click();
     await expect(page.getByRole("dialog")).toBeVisible();
+    await settle(page);
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toBeHidden();
+    await settle(page);
+    await trigger.click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await settle(page);
   }
-  // Event timing entries are delivered on the next frame.
-  await page.waitForTimeout(500);
 
-  const vitals = await readVitals(page);
-  const record: Vitals & { inpMs: number; layout: string } = {
-    ...vitals,
+  const record = {
+    ...(await readVitals(page)),
     layout: isDesktop ? "desktop" : "mobile (4x CPU throttle)",
   };
   testInfo.annotations.push({

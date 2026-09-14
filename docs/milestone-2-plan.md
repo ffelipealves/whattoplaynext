@@ -1,6 +1,6 @@
 # Milestone 2 Plan
 
-Status: active execution baseline; M2.9 completed and M2.10 ready
+Status: completed on 2026-09-13; see [Milestone 2 review](milestone-2-review.md)
 
 Prepared: 2026-09-12
 
@@ -672,6 +672,42 @@ Acceptance:
 - Core Web Vitals targets (LCP, INP, CLS) are spot-checked on the search
   page and recorded, even if formal performance testing remains a later
   milestone concern.
+
+Status: completed on 2026-09-13.
+
+Outcome: the [Milestone 2 review](milestone-2-review.md) holds the evidence;
+this entry records the decisions behind it.
+
+Every Playwright configuration is now a named project, selected with
+`--project` so no script depends on shell-specific environment syntax (the
+README documents Windows support). The gate keeps driving desktop Chromium on
+every push; `pnpm e2e:browsers` runs the on-demand matrix of Chromium, Firefox,
+and WebKit at desktop and mobile viewports, and a manual "Browser matrix" CI job
+runs the same thing where WebKit's system libraries can be installed — which
+turned out to matter immediately, because WebKit could not launch on the
+closeout machine. Locally 27 of 27 runs passed in the three engines that could
+start; in CI all 45 passed, none flaky. New layout scenarios make the pass
+responsive rather than repeated: sidebar on desktop, drawer below `lg`, and in
+both a checked box that changes nothing until Apply. They also pay off the most
+important part of the browser-coverage debt.
+
+The pass is honest about its limits. NFR-013 names the two latest releases of
+four retail browsers; Playwright ships one build of three engines, so Chrome
+and Edge were covered through Chromium and Safari through WebKit. A manual
+retail pass is recorded as debt, blocking for closed beta.
+
+`pnpm e2e:vitals` measured the search page against NFR-003. CLS was 0
+everywhere. INP met the target on desktop but not on a throttled mobile
+viewport, where opening the filter drawer took 464–472 ms the first time and
+248 ms once hydrated — identical against the fixture and against live IGDB, so
+a client cost. LCP met the target on the fixture build (616 ms desktop, 1,024 ms
+mobile) and missed it against live, uncached IGDB (3,828 ms and 4,608 ms),
+consistent with two sequential cold API calls ahead of the first result text.
+Both findings are in the technical debt register with the numbers behind them.
+
+`pnpm contract:check` found the committed OpenAPI and TypeScript artifacts
+current, and a search of the web application found no call to the API outside
+the generated client and no hand-written contract types.
 
 ## 5. Scope guardrails
 
