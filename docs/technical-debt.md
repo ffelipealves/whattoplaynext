@@ -8,7 +8,7 @@ This is not a bug list: everything here works as designed. Defects go to the
 milestone plans and their outcome notes. Items marked **blocking** must be
 resolved before the release gate that names them.
 
-Last reviewed: 2026-09-13, after Milestone 2.9.
+Last reviewed: 2026-09-13, at the Milestone 2 closeout and Milestone 3 planning.
 
 ## Provider and API
 
@@ -26,6 +26,11 @@ Milestone 2.3 then observed it from the frontend. Paying it off means adding
 the eligibility clause to the browse `where` and to the candidate queries, and
 accepting that every total and page count changes. The fixture-backed API
 tests will need their expected counts revisited.
+
+Milestone 3 raises the stakes. Once result cards link to game pages, every
+ineligible browse result becomes a link to a page the detail endpoint answers
+with `GAME_NOT_FOUND`. The [Milestone 3 plan](milestone-3-plan.md) proposes
+paying this off as its first increment, before anything links anywhere.
 
 ### 2. A duration filter still costs seconds on a cold cache
 
@@ -119,6 +124,10 @@ what remains outside the floor is four thin files and one route handler. It is
 worth either extending the floor to `src/app/**` or writing down why those
 files are exempt, rather than leaving the boundary where it landed by
 accident.
+
+Milestone 3 makes the decision due: it adds real logic under `src/app/` — the
+game route's redirect-or-not-found decision, `robots.ts`, and `sitemap.ts` —
+which would all land outside the floor unless the boundary moves first.
 
 ### 8. Selected ids are cast to the contract's unions
 
@@ -248,3 +257,21 @@ see. Candidate fixes, none evaluated yet: mount the genre list lazily or only
 when its group is expanded; keep the form mounted but hidden once first opened,
 so only the first open pays; or let the boundary hydrate at idle rather than on
 the first tap. Confirm with field measurements before public beta.
+
+## Continuous integration
+
+### 16. The browser matrix and pushes to `main` cancel each other
+
+The CI workflow shares one concurrency group per branch —
+`ci-${{ github.workflow }}-${{ github.ref }}` with `cancel-in-progress` — so a
+manual "Browser matrix" dispatch and a push to `main` compete for the same
+slot. At the Milestone 2 closeout, dispatching the matrix moments after pushing
+`ceab3ea` cancelled that push's run. Nothing went unverified, because a
+dispatched run executes the quality gate too and it passed on the same commit,
+but the commit's own check reads as cancelled. The reverse costs more: a push
+while the matrix is running cancels the matrix, and the five-engine run has to
+be dispatched again from the start.
+
+Paying it off is a one-line change: add `${{ github.event_name }}` to the
+concurrency group, or move the matrix into a workflow of its own, so a manual
+run never competes with a push for the same slot.

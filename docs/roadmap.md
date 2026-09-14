@@ -96,6 +96,8 @@ guardrails are defined in [Milestone 2 plan](milestone-2-plan.md).
 
 ## Milestone 3 — Game pages, localization, and SEO
 
+Status: planned; the division is proposed and awaiting owner decisions.
+
 Deliverables:
 
 - English and Brazilian Portuguese route trees;
@@ -114,6 +116,10 @@ Exit criteria:
 - search pages are `noindex` and game pages expose correct canonical metadata;
 - the sitemap contains static pages and the cached popular-game selection;
 - keyboard and screen-reader smoke tests pass for the core journey.
+
+The proposed vertical slices, module seams, test expectations, scope
+guardrails, and the decisions still open are defined in
+[Milestone 3 plan](milestone-3-plan.md).
 
 ## Milestone 4 — Cache, resilience, security, and operations
 
