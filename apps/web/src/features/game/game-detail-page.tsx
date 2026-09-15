@@ -1,10 +1,11 @@
-import Image from "next/image";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { type ReactNode, useId } from "react";
 
 import { Badge } from "@/components/ui/badge";
 
+import { GameCover } from "./game-cover";
 import type { GameDetail } from "./get-game-detail";
+import { ScreenshotGallery } from "./screenshot-gallery";
 
 type GameDetailPageProps = {
   detail: GameDetail;
@@ -147,22 +148,7 @@ export function GameDetailPage({ detail }: GameDetailPageProps) {
   return (
     <main className="mx-auto max-w-7xl px-5 py-10 text-[#17203a] sm:px-8 lg:px-12">
       <div className="grid items-center gap-8 sm:grid-cols-[minmax(0,18rem)_1fr] lg:gap-12">
-        <div className="relative aspect-[264/374] overflow-hidden rounded-2xl bg-[#dce6fb] shadow-sm">
-          {detail.cover ? (
-            <Image
-              alt={t("coverAlt", { title: detail.title })}
-              className="object-cover"
-              fill
-              priority
-              sizes="(min-width: 640px) 18rem, calc(100vw - 2.5rem)"
-              src={detail.cover.url}
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center px-4 text-center text-sm font-semibold text-[#17203a]/45">
-              {t("noCover")}
-            </div>
-          )}
-        </div>
+        <GameCover cover={detail.cover} title={detail.title} />
 
         <div>
           <h1 className="font-[family-name:var(--font-display)] text-4xl font-semibold tracking-[-0.03em] sm:text-5xl lg:text-6xl">
@@ -329,30 +315,10 @@ export function GameDetailPage({ detail }: GameDetailPageProps) {
 
       <div className="mt-5 grid gap-5">
         <DetailSection title={t("screenshotsHeading")}>
-          {detail.screenshots.length > 0 ? (
-            <ul className="grid gap-4 md:grid-cols-2">
-              {detail.screenshots.map((screenshot, index) => (
-                <li
-                  className="overflow-hidden rounded-xl bg-[#dce6fb]"
-                  key={screenshot.url}
-                >
-                  <Image
-                    alt={t("screenshotAlt", {
-                      number: index + 1,
-                      title: detail.title,
-                    })}
-                    className="h-auto w-full"
-                    height={screenshot.height}
-                    sizes="(min-width: 768px) 50vw, 100vw"
-                    src={screenshot.url}
-                    width={screenshot.width}
-                  />
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <EmptyState>{t("noScreenshots")}</EmptyState>
-          )}
+          <ScreenshotGallery
+            screenshots={detail.screenshots}
+            title={detail.title}
+          />
         </DetailSection>
 
         <DetailSection title={t("externalLinksHeading")}>

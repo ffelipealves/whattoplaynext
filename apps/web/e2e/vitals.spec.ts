@@ -84,6 +84,19 @@ async function settle(page: Page) {
   await page.waitForTimeout(400);
 }
 
+async function serveControlledImages(page: Page) {
+  const transparentPng = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+X2NDWQAAAABJRU5ErkJggg==",
+    "base64",
+  );
+  await page.route("**/_next/image?**", async (route) => {
+    // Keep enough latency for the reserved boxes to be observed before the
+    // image paints, without making the metric depend on IGDB's CDN.
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    await route.fulfill({ body: transparentPng, contentType: "image/png" });
+  });
+}
+
 test("the search page meets its Core Web Vitals targets @vitals", async ({
   page,
 }, testInfo) => {
@@ -138,4 +151,44 @@ test("the search page meets its Core Web Vitals targets @vitals", async ({
   expect.soft(record.lcpMs, "LCP").toBeLessThanOrEqual(TARGETS.lcpMs);
   expect.soft(record.inpMs, "INP").toBeLessThanOrEqual(TARGETS.inpMs);
   expect.soft(record.cls, "CLS").toBeLessThanOrEqual(TARGETS.cls);
+});
+
+test("the game page keeps zero CLS while cover and screenshots load @vitals", async ({
+  page,
+}, testInfo) => {
+  await observeVitals(page);
+  await serveControlledImages(page);
+
+  await page.goto("/en/games/1942/the-witcher-3-wild-hunt", {
+    waitUntil: "load",
+  });
+  await expect(
+    page.getByRole("heading", { name: "The Witcher 3: Wild Hunt" }),
+  ).toBeVisible();
+
+  const screenshots = page.getByRole("region", { name: "Screenshots" });
+  await screenshots.scrollIntoViewIfNeeded();
+  await expect(
+    screenshots.getByRole("img", {
+      name: "Screenshot 1 of The Witcher 3: Wild Hunt",
+    }),
+  ).toBeVisible();
+  await settle(page);
+
+  const record = {
+    ...(await readVitals(page)),
+    layout:
+      (page.viewportSize()?.width ?? 0) >= DESKTOP_MIN_WIDTH
+        ? "desktop"
+        : "mobile",
+  };
+  testInfo.annotations.push({
+    type: "vitals-game",
+    description: JSON.stringify(record),
+  });
+  console.log(
+    `game vitals ${testInfo.project.name}: ${JSON.stringify(record)}`,
+  );
+
+  expect(record.cls, "CLS").toBe(0);
 });

@@ -1,6 +1,6 @@
 # Milestone 3 Plan
 
-Status: in progress — M3.1 through M3.3 completed; owner decisions 3 and 4 in
+Status: in progress — M3.1 through M3.4 completed; owner decisions 3 and 4 in
 section 7 are pending
 
 Prepared: 2026-09-13
@@ -226,6 +226,8 @@ debt were needed.
 
 ### M3.4 — Responsive images and first-party placeholders
 
+Status: completed on 2026-09-15.
+
 Deliver:
 
 - cover and screenshot images served through `next/image` with responsive
@@ -239,6 +241,28 @@ Acceptance:
   measured by extending `pnpm e2e:vitals` to the game page;
 - no image above the fold is lazy, and none below it is eager;
 - placeholders reserve the same dimensions as the image they stand in for.
+
+Outcome: the game cover and screenshot gallery now use `next/image` with
+provider dimensions, responsive `sizes`, and reserved aspect ratios. The
+above-the-fold cover uses Next.js 16's `preload` API, while initial screenshot
+thumbnails below the fold are explicitly lazy. Opening a screenshot mounts an
+eager full-size viewer image only after the visitor requests it.
+
+Missing covers and empty screenshot collections render localized first-party
+vector placeholders in the same 264:374 and 889:500 aspect ratios as their
+image slots. Screenshot thumbnails are named buttons; Enter opens a dialog,
+Left and Right Arrow move through the gallery, Escape closes it, and focus
+returns to the exact thumbnail that opened it. Component coverage asserts the
+loading policy, intrinsic dimensions, placeholder ratios, navigation, and
+focus restoration. Axe reports no critical or serious violations with the
+viewer open, and the production-build journey exercises the keyboard flow.
+
+The game-page vitals check delays controlled image responses so layout is
+observed before and after loading. It recorded CLS 0 in both profiles, with LCP
+224 ms on desktop and 216 ms on mobile. The complete vitals run also reproduced
+the existing mobile-search INP debt in entry 15; the focused game-page check
+passed independently. No API or contract change and no new technical debt were
+introduced.
 
 ### M3.5 — Localized system states
 

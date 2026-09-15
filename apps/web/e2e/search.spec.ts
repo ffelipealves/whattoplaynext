@@ -152,6 +152,26 @@ test("a result opens its canonical game page and back restores the localized sea
     page.getByRole("link", { name: "Official Website — link externo" }),
   ).toHaveAttribute("target", "_blank");
 
+  const firstScreenshot = page.getByRole("button", {
+    name: "Abrir captura de tela 1 de The Witcher 3: Wild Hunt",
+  });
+  await firstScreenshot.focus();
+  await page.keyboard.press("Enter");
+  await expect(
+    page.getByRole("dialog", {
+      name: "Captura de tela 1 de The Witcher 3: Wild Hunt",
+    }),
+  ).toBeVisible();
+  await page.keyboard.press("ArrowRight");
+  await expect(
+    page.getByRole("dialog", {
+      name: "Captura de tela 2 de The Witcher 3: Wild Hunt",
+    }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(firstScreenshot).toBeFocused();
+
   await page.goBack();
   await expect(page).toHaveURL(searchUrl);
   await expect(page.getByLabel("Nome do jogo")).toHaveValue("The Witcher 3");

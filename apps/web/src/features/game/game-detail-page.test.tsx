@@ -108,7 +108,14 @@ test("renders an explicit localized absence for every sparse detail field", () =
 
   expect(screen.getAllByText("Nota indisponível")).toHaveLength(3);
   expect(screen.getAllByText("Duração indisponível")).toHaveLength(3);
-  expect(screen.queryByRole("img")).toBeNull();
+  expect(
+    screen.getByRole("img", { name: "Capa indisponível para Minimal Game" }),
+  ).toBeDefined();
+  expect(
+    screen.getByRole("img", {
+      name: "Capturas de tela indisponíveis para Minimal Game",
+    }),
+  ).toBeDefined();
   expect(screen.queryByRole("link", { name: /externo/i })).toBeNull();
 });
 

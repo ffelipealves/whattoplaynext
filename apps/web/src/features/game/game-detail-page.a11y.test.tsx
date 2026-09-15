@@ -1,5 +1,5 @@
 import { NextIntlClientProvider } from "next-intl";
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import axe, { type Result } from "axe-core";
 import { expect, test, vi } from "vitest";
 
@@ -63,4 +63,18 @@ test("the recoverable game-detail failure has no critical or serious axe violati
   );
 
   expect(describeViolations(await criticalViolations(container))).toBe("");
+});
+
+test("the open screenshot viewer has no critical or serious axe violations", async () => {
+  render(withMessages(<GameDetailPage detail={completeGameDetail} />));
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "Open screenshot 1 of The Witcher 3: Wild Hunt",
+    }),
+  );
+  await screen.findByRole("dialog", {
+    name: "Screenshot 1 of The Witcher 3: Wild Hunt",
+  });
+
+  expect(describeViolations(await criticalViolations(document.body))).toBe("");
 });

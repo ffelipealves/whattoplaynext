@@ -8,7 +8,7 @@ This is not a bug list: everything here works as designed. Defects go to the
 milestone plans and their outcome notes. Items marked **blocking** must be
 resolved before the release gate that names them.
 
-Last reviewed: 2026-09-15, after Milestone 3.3. No new debt was introduced by
+Last reviewed: 2026-09-15, after Milestone 3.4. No new debt was introduced by
 the increment.
 
 ## Provider and API
@@ -282,6 +282,11 @@ see. Candidate fixes, none evaluated yet: mount the genre list lazily or only
 when its group is expanded; keep the form mounted but hidden once first opened,
 so only the first open pays; or let the boundary hydrate at idle rather than on
 the first tap. Confirm with field measurements before public beta.
+
+Milestone 3.4's full vitals run reproduced the same issue at 512 ms for the
+mobile search interaction. Its new game-page measurement remained independent:
+controlled delayed cover and screenshot loads produced CLS 0 on desktop and
+mobile.
 
 ## Continuous integration
 
