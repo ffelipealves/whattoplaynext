@@ -1,6 +1,6 @@
 # Milestone 3 Plan
 
-Status: in progress — M3.1 and M3.2 completed; owner decisions 3 and 4 in
+Status: in progress — M3.1 through M3.3 completed; owner decisions 3 and 4 in
 section 7 are pending
 
 Prepared: 2026-09-13
@@ -176,6 +176,8 @@ technical debt was introduced.
 
 ### M3.3 — Complete game-detail presentation
 
+Status: completed on 2026-09-15.
+
 Deliver:
 
 - everything FR-034 lists: summary with its source-language indicator, release
@@ -196,6 +198,31 @@ Acceptance:
   indicator appearing only when the summary's language differs from the UI's;
 - an axe check over the complete, sparse, and failure states reports no
   critical or serious violations.
+
+Outcome: the game page now presents the full existing `GameDetail` contract in
+localized, semantic sections: source summary and alternative names, releases
+per platform, genres, themes, platforms, modes, multiplayer capabilities,
+three distinct rating sources, all three duration measures with submission
+counts, age ratings, screenshots, and allow-listed external links. External
+links open separately, identify themselves visibly and accessibly as external,
+and make no price or availability claim. User, critic, and combined ratings
+remain separate rather than collapsing provider meanings.
+
+Every empty array and nullable display value has explicit English and Brazilian
+Portuguese copy, including a release whose platform is known but date is not.
+IGDB titles, summaries, option labels, rating sources, and age-rating text stay
+unchanged in both locales; an English-summary indicator appears in Portuguese
+and stays absent in English. Component tests exercise the normalized complete
+and sparse sanitized-fixture shapes, and axe reports no critical or serious
+violations for complete, sparse, or recoverable-failure states. The existing
+production-build journey now also proves the untranslated summary, language
+indicator, separate ratings, and external-link behavior.
+
+Manual verification against the locally running live IGDB adapter rendered the
+complete Witcher 3 page in both locales, including 12 screenshots, localized
+dates and numeric formats, all three duration measures, and the provider's
+allow-listed external links. No API or contract change and no new technical
+debt were needed.
 
 ### M3.4 — Responsive images and first-party placeholders
 

@@ -8,7 +8,7 @@ This is not a bug list: everything here works as designed. Defects go to the
 milestone plans and their outcome notes. Items marked **blocking** must be
 resolved before the release gate that names them.
 
-Last reviewed: 2026-09-15, after Milestone 3.2. No new debt was introduced by
+Last reviewed: 2026-09-15, after Milestone 3.3. No new debt was introduced by
 the increment.
 
 ## Provider and API

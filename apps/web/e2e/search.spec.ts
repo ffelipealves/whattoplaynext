@@ -140,6 +140,17 @@ test("a result opens its canonical game page and back restores the localized sea
   await expect(
     page.getByRole("img", { name: "Capa de The Witcher 3: Wild Hunt" }),
   ).toBeVisible();
+  await expect(
+    page.getByText(
+      "A story-driven, next-generation open world role-playing game.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByText("Conteúdo fornecido em inglês")).toBeVisible();
+  await expect(page.getByText("IGDB user")).toBeVisible();
+  await expect(page.getByText("IGDB critic")).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Official Website — link externo" }),
+  ).toHaveAttribute("target", "_blank");
 
   await page.goBack();
   await expect(page).toHaveURL(searchUrl);
