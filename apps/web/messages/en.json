@@ -51,6 +51,21 @@
     "termsReviewLiability": "warranties, disclaimers, and limits of liability;",
     "termsReviewContact": "applicable jurisdiction, notices, and a contact channel."
   },
+  "Metadata": {
+    "homeTitle": "Discover games",
+    "homeDescription": "Find games by the constraints that matter right now.",
+    "aboutTitle": "About & data sources",
+    "aboutDescription": "Learn how What To Play Next works and where its game data comes from.",
+    "privacyTitle": "Privacy",
+    "privacyDescription": "Read the current privacy planning draft for What To Play Next.",
+    "termsTitle": "Terms",
+    "termsDescription": "Read the current terms planning draft for What To Play Next.",
+    "searchTitle": "Browse games",
+    "searchDescription": "Search and filter the game catalog.",
+    "gameTitle": "{title} game details",
+    "gameDescription": "Explore platforms, release dates, ratings, play time, and more for {title}.",
+    "gameCoverAlt": "{title} cover art"
+  },
   "Landing": {
     "languageNavLabel": "Language",
     "eyebrow": "Structured game discovery",

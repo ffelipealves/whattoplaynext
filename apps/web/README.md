@@ -22,6 +22,12 @@ Copy `.env.example` to `.env.local` when overriding local configuration. Every
 `NEXT_PUBLIC_API_BASE_URL` is the API origin; generated endpoint paths already
 contain the `/api/v1` prefix.
 
+`WTPN_SITE_ORIGIN` is the server-only public origin used for canonical,
+alternate, Open Graph, and robots URLs. It is required even though the final
+domain is not selected: use `http://localhost:3000` locally and configure the
+actual origin independently in each deployed environment. Values with a path,
+query, hash, credentials, or a non-HTTP protocol are rejected.
+
 ## Internationalization
 
 `next-intl` owns locale routing and every first-party UI string; provider

@@ -20,6 +20,7 @@ env:
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
   POETRY_NO_INTERACTION: "1"
   POETRY_VIRTUALENVS_IN_PROJECT: "true"
+  WTPN_SITE_ORIGIN: "https://example.test"
 
 jobs:
   quality:

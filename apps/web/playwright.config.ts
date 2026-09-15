@@ -94,7 +94,10 @@ export default defineConfig({
           // server is up.
           command: `pnpm build && pnpm start --port ${WEB_PORT}`,
           url: WEB_BASE_URL,
-          env: { NEXT_PUBLIC_API_BASE_URL: API_BASE_URL },
+          env: {
+            NEXT_PUBLIC_API_BASE_URL: API_BASE_URL,
+            WTPN_SITE_ORIGIN: WEB_BASE_URL,
+          },
           reuseExistingServer: !process.env.CI,
           timeout: 180_000,
         },

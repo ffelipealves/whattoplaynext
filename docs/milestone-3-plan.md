@@ -1,7 +1,6 @@
 # Milestone 3 Plan
 
-Status: in progress — M3.1 through M3.6 completed; owner decision 3 in section
-7 is pending
+Status: in progress — M3.1 through M3.7 completed
 
 Prepared: 2026-09-13
 
@@ -351,6 +350,8 @@ change and no new technical debt were introduced.
 
 ### M3.7 — Metadata, canonical URLs, and robots
 
+Status: completed on 2026-09-15.
+
 Deliver:
 
 - a required site-origin setting feeding `metadataBase`, so canonical,
@@ -370,6 +371,28 @@ Acceptance:
   shipping relative or guessed canonical URLs;
 - the metadata is asserted by tests against rendered output, not only by
   inspection.
+
+Outcome: `WTPN_SITE_ORIGIN` is now a required server-only web setting and the
+locale layout uses it as `metadataBase`. The parser accepts only an absolute
+HTTP(S) origin without credentials, path, query, or hash. The example local
+environment, Playwright server, and CI each supply an explicit value; a manual
+production build with the setting forced empty failed during prerendering with
+the intended configuration error.
+
+Home, About/Data Sources, Privacy, Terms, and game pages now publish localized
+titles and descriptions with absolute canonical URLs and English/Brazilian
+Portuguese `hreflang` alternates. Game metadata always derives its URL from the
+returned ID and canonical slug, uses the provider cover for Open Graph and
+Twitter when present, and otherwise uses a static first-party 1200×630 PNG
+endpoint. Provider titles remain untranslated.
+
+Every browse/search URL now emits `noindex, follow`, independent of its query
+parameters, and `robots.txt` explicitly allows the public site and records its
+configured host. Unit coverage guards origin validation, alternate generation,
+canonical slugs, and both social-image branches. Production-build Playwright
+coverage asserts the rendered metadata in both locales, search `noindex`, the
+cover, the fallback image response, and `robots.txt`. No API or contract change
+and no new technical debt were introduced.
 
 ### M3.8 — Popular-game selection and sitemap
 
@@ -472,6 +495,9 @@ decisions 2 and 5 are needed before M3.2, decision 4 before M3.6, and decision
 3. **Site origin before a domain exists.** Recommended: a required setting,
    with builds failing when it is missing. The alternative, a temporary
    placeholder domain, risks indexing canonical URLs that will later be wrong.
+   **Accepted on 2026-09-15:** the owner chose to proceed with M3.7; the
+   required `WTPN_SITE_ORIGIN` setting now fails builds that cannot produce
+   trustworthy absolute metadata URLs.
 4. **Implement the planned attribution now.** Recommended, since changing one
    footer string later is cheap and the public-beta gate requires visible
    attribution regardless.

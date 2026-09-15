@@ -50,6 +50,12 @@ must never contain credentials. Twitch credentials are backend-only and must be
 configured as a pair. They may remain blank until work requiring live IGDB
 access begins.
 
+`WTPN_SITE_ORIGIN` is server-only but required for every web build. Set it to
+the public HTTP(S) origin for the environment, without a path, query, or hash;
+the safe local example is `http://localhost:3000`. Canonical, alternate, Open
+Graph, and robots URLs derive from this value, so a missing or malformed value
+fails the build instead of publishing guessed URLs.
+
 Start the local Redis service before developing cache-dependent behavior:
 
 ```bash

@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+
 import { getFilterMetadata } from "@/features/catalog/get-filter-metadata";
 import {
   filterBoundsFrom,
@@ -7,6 +10,19 @@ import { getSearchResults } from "@/features/search/get-search-results";
 import { SearchPage } from "@/features/search/search-page";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: PageProps<"/[locale]/games">): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "Metadata" });
+
+  return {
+    description: t("searchDescription"),
+    robots: { follow: true, index: false },
+    title: t("searchTitle"),
+  };
+}
 
 export default async function GamesPage({
   searchParams,
