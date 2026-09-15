@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Bricolage_Grotesque, Instrument_Sans } from "next/font/google";
 
 import { routing } from "@/i18n/routing";
+import { SiteFooter } from "@/features/information/site-footer";
 
 import "../globals.css";
 
@@ -49,7 +50,10 @@ export default async function LocaleLayout({
   return (
     <html className="font-sans" lang={locale}>
       <body className={`${displayFont.variable} ${bodyFont.variable}`}>
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider>
+          {children}
+          <SiteFooter />
+        </NextIntlClientProvider>
       </body>
     </html>
   );

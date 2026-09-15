@@ -1,7 +1,7 @@
 # External Prerequisites
 
 Status: active — owner actions and public-beta blockers remain  
-Last reviewed: 2026-09-10
+Last reviewed: 2026-09-15
 
 This document records operational due diligence for the working product name,
 domain, Twitch application, and IGDB partnership. It is not a legal opinion or
@@ -11,13 +11,13 @@ time of action.
 
 ## 1. Gate status
 
-| Area                        | Status                               | Evidence                                                                                                                                                                                                                     | Required next action                                                                                         |
-| --------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Product name                | Deferred until public-beta planning  | The phrase is descriptive and several active game-discovery products use materially similar names. Preliminary indexed searches did not surface a conclusive exact-match registration, but they are not trademark clearance. | Before public beta, choose whether to rename and run official searches in the intended launch jurisdictions. |
-| Primary domain              | Deferred; current `.com` unavailable | Registry RDAP reported `whattoplaynext.com` as registered on 2024-08-27 and currently held through NameCheap.                                                                                                                | After choosing the public name, recheck and register the selected domain immediately before launch work.     |
-| Twitch application          | Complete                             | The owner registered a Twitch application and configured its credentials locally; the M1.10 live smoke test (`pnpm smoke:api`) observed real IGDB data through it on 2026-09-12.                                             | None; credentials must remain in `apps/api/.env`, outside Git.                                               |
-| IGDB commercial partnership | Provider response required           | IGDB directs commercial projects to `partner@igdb.com`. No request has been sent or response received.                                                                                                                       | Send the prepared inquiry and retain the written response.                                                   |
-| IGDB attribution            | Planned, not approved                | IGDB expects visible, user-facing attribution in a static location for commercial integrations.                                                                                                                              | Confirm the proposed wording and placement in the partnership reply, then implement it before public beta.   |
+| Area                        | Status                                 | Evidence                                                                                                                                                                                                                      | Required next action                                                                                         |
+| --------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Product name                | Deferred until public-beta planning    | The phrase is descriptive and several active game-discovery products use materially similar names. Preliminary indexed searches did not surface a conclusive exact-match registration, but they are not trademark clearance.  | Before public beta, choose whether to rename and run official searches in the intended launch jurisdictions. |
+| Primary domain              | Deferred; current `.com` unavailable   | Registry RDAP reported `whattoplaynext.com` as registered on 2024-08-27 and currently held through NameCheap.                                                                                                                 | After choosing the public name, recheck and register the selected domain immediately before launch work.     |
+| Twitch application          | Complete                               | The owner registered a Twitch application and configured its credentials locally; the M1.10 live smoke test (`pnpm smoke:api`) observed real IGDB data through it on 2026-09-12.                                              | None; credentials must remain in `apps/api/.env`, outside Git.                                               |
+| IGDB commercial partnership | Provider response required             | IGDB directs commercial projects to `partner@igdb.com`. No request has been sent or response received.                                                                                                                        | Send the prepared inquiry and retain the written response.                                                   |
+| IGDB attribution            | Implemented; provider approval pending | M3.6 added the planned text-only attribution to the persistent footer and About/Data Sources in both locales, without a logo. IGDB expects visible, user-facing attribution in a static location for commercial integrations. | Confirm the implemented wording and placement in the partnership reply before public beta.                   |
 
 The public beta remains blocked until the product name/domain decision and the
 written IGDB usage confirmation are complete. Milestone 1 engineering may
@@ -145,10 +145,14 @@ Pending provider confirmation, the implementation target is:
 
 > Game data and images provided by [IGDB](https://www.igdb.com/).
 
-The attribution will appear in the persistent footer of catalog-backed pages
-and on the About/Data Sources page. It must remain visible without opening a
+The attribution appears in the persistent footer of catalog-backed pages and
+on the About/Data Sources page. It remains visible without opening a
 changelog or developer-only screen. No IGDB logo will be used until any brand
 guidelines and logo permissions are confirmed.
+
+M3.6 implemented this target on 2026-09-15 in both locales. The wording remains
+centralized and text-only so a provider-approved revision can be applied
+without changing page structure.
 
 ## 6. Evidence to close this increment
 
@@ -158,6 +162,8 @@ guidelines and logo permissions are confirmed.
 - [x] Commercial contact path and attribution expectation confirmed in current
       IGDB documentation.
 - [x] Partnership inquiry prepared without sending it.
+- [x] Planned text-only attribution implemented in the persistent footer and
+      About/Data Sources page.
 - [ ] Public product name approved after appropriate mark review.
 - [ ] Final domain registered in the owner's account.
 - [x] Twitch application created and credentials stored privately.

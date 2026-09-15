@@ -1,7 +1,7 @@
 # Milestone 3 Plan
 
-Status: in progress — M3.1 through M3.5 completed; owner decisions 3 and 4 in
-section 7 are pending
+Status: in progress — M3.1 through M3.6 completed; owner decision 3 in section
+7 is pending
 
 Prepared: 2026-09-13
 
@@ -311,6 +311,8 @@ new technical debt were introduced.
 
 ### M3.6 — Informational pages and IGDB attribution
 
+Status: completed on 2026-09-15.
+
 Deliver:
 
 - About/Data Sources, Privacy, and Terms drafts in both locales, marked as
@@ -327,6 +329,25 @@ Acceptance:
   catalog-backed page;
 - the drafts say plainly that they are not yet reviewed, and nothing on them
   claims a legal position the owner has not approved.
+
+Outcome: localized About/Data Sources, Privacy, and Terms pages now ship as
+plainly marked planning drafts. Their copy separates the factual description
+of the product and provider data from the legal and privacy topics that still
+need owner and professional review, without presenting unresolved terms as
+approved policy.
+
+A shared persistent footer links all three pages in the current locale and
+shows the planned text-only IGDB attribution on the home, browse, game-detail,
+and information pages. About/Data Sources repeats the attribution and explains
+that provider titles, summaries, metadata, and images may remain in their
+source language. No IGDB logo or unapproved brand asset was introduced.
+
+Component coverage exercises both locales and reports no critical or serious
+axe violations. Production-build Playwright coverage proves that every draft
+returns 200 without `noindex`, every footer link is locale-preserving, and the
+attribution is present on each catalog-backed page shape. Provider approval of
+the planned wording remains an external public-beta gate. No API or contract
+change and no new technical debt were introduced.
 
 ### M3.7 — Metadata, canonical URLs, and robots
 
@@ -454,6 +475,9 @@ decisions 2 and 5 are needed before M3.2, decision 4 before M3.6, and decision
 4. **Implement the planned attribution now.** Recommended, since changing one
    footer string later is cheap and the public-beta gate requires visible
    attribution regardless.
+   **Accepted on 2026-09-15:** the owner chose to proceed with M3.6; the
+   recommended text-only attribution is implemented while provider approval
+   remains pending.
 5. **Game pages during an upstream outage.** Recommended: a recoverable failure
    state with a 5xx status and `noindex`. The alternative, serving the last
    known page, needs the Milestone 4 cache and would pull that work forward.
