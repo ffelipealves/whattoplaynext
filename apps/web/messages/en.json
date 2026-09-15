@@ -63,6 +63,13 @@
     "paginationStatus": "Page {page} of {totalPages}",
     "loadingLabel": "Loading results"
   },
+  "Game": {
+    "coverAlt": "{title} cover art",
+    "noCover": "No cover available",
+    "notFoundTitle": "Game not found",
+    "notFoundDescription": "This game does not exist or is not available in the catalog.",
+    "backToGames": "Browse games"
+  },
   "Failure": {
     "validationTitle": "This search could not be run",
     "validationDescription": "Some of the criteria in this link are not accepted. Adjust the filters and search again.",

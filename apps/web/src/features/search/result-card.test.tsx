@@ -50,6 +50,11 @@ function renderCard(game: GameSummary) {
 test("renders every field for a complete game", () => {
   renderCard(fullGame);
 
+  expect(
+    screen
+      .getByRole("link", { name: /The Witcher 3: Wild Hunt/ })
+      .getAttribute("href"),
+  ).toBe("/en/games/1942/the-witcher-3-wild-hunt");
   expect(screen.getByText("The Witcher 3: Wild Hunt")).toBeDefined();
   expect(screen.getByText("2015")).toBeDefined();
   expect(screen.getByText("PC")).toBeDefined();

@@ -145,8 +145,8 @@ clear actions remain easy to reach in either layout.
 Canonical route examples:
 
 ```text
-/en/games/1942-hollow-knight
-/pt-br/games/1942-hollow-knight
+/en/games/1942/the-witcher-3-wild-hunt
+/pt-br/games/1942/the-witcher-3-wild-hunt
 ```
 
 ### 3.6 Languages

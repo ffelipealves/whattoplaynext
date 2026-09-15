@@ -63,6 +63,13 @@
     "paginationStatus": "Página {page} de {totalPages}",
     "loadingLabel": "Carregando resultados"
   },
+  "Game": {
+    "coverAlt": "Capa de {title}",
+    "noCover": "Sem capa disponível",
+    "notFoundTitle": "Jogo não encontrado",
+    "notFoundDescription": "Este jogo não existe ou não está disponível no catálogo.",
+    "backToGames": "Ver jogos"
+  },
   "Failure": {
     "validationTitle": "Não foi possível executar esta busca",
     "validationDescription": "Alguns critérios deste link não são aceitos. Ajuste os filtros e busque novamente.",

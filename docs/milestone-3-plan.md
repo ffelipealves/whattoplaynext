@@ -1,6 +1,6 @@
 # Milestone 3 Plan
 
-Status: in progress — delivery starts with M3.1; owner decisions 2–5 in
+Status: in progress — M3.1 and M3.2 completed; owner decisions 3 and 4 in
 section 7 are pending
 
 Prepared: 2026-09-13
@@ -132,6 +132,8 @@ owner policy was intentionally not folded into content-type eligibility.
 
 ### M3.2 — Game route and canonical slug redirect
 
+Status: completed on 2026-09-15.
+
 Deliver:
 
 - `/[locale]/games/[id]/[slug]` rendering a minimal game page (title and
@@ -151,6 +153,26 @@ Acceptance:
 - an upstream failure renders the Milestone 2.7 failure state, not a 404;
 - a Playwright scenario goes from a search result to its game page and back,
   with criteria and locale intact.
+
+Outcome: the localized route now fetches by positive numeric ID through the
+generated client and renders the title and cover at
+`/[locale]/games/[id]/[slug]`. Both an omitted slug and a stale slug return a
+permanent 308 redirect to the provider's canonical slug without changing the
+locale. Invalid IDs and `GAME_NOT_FOUND` return the localized 404; other
+provider failures cross the segment error boundary as a recoverable 5xx with
+`noindex`. The search loading boundary moved into a route group so it cannot
+stream detail responses and erase those HTTP statuses.
+
+Every result card is now a localized link to its game while autocomplete keeps
+its fill-only behavior. The Playwright catalog serves the sanitized complete
+detail and duration fixtures through the real IGDB adapter, retaining its
+existing 60-game filter distributions, plus deterministic missing-game and
+upstream-failure paths. The production-build suite now has 13 passing Chromium
+journeys covering the canonical redirects, all three 404 inputs, the 5xx
+failure state, and search → game → back with the Portuguese locale and complete
+query intact. Component and client tests cover complete/sparse presentation
+and detail failure classification. No production API, contract shape, or new
+technical debt was introduced.
 
 ### M3.3 — Complete game-detail presentation
 
@@ -347,6 +369,8 @@ decisions 2 and 5 are needed before M3.2, decision 4 before M3.6, and decision
    `/[locale]/games/[id]` redirecting. The alternative is `/[locale]/games/[id]-[slug]`.
    Both satisfy FR-032, but whichever ships first is expensive to change once
    pages are indexed.
+   **Accepted on 2026-09-15:** the owner chose the recommended segmented URL
+   and ID-only redirect.
 3. **Site origin before a domain exists.** Recommended: a required setting,
    with builds failing when it is missing. The alternative, a temporary
    placeholder domain, risks indexing canonical URLs that will later be wrong.
@@ -356,6 +380,8 @@ decisions 2 and 5 are needed before M3.2, decision 4 before M3.6, and decision
 5. **Game pages during an upstream outage.** Recommended: a recoverable failure
    state with a 5xx status and `noindex`. The alternative, serving the last
    known page, needs the Milestone 4 cache and would pull that work forward.
+   **Accepted on 2026-09-15:** the owner chose the recoverable 5xx plus
+   `noindex`; stale serving remains deferred with the Milestone 4 cache.
 
 ## 8. M3.1 next-session handoff
 

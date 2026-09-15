@@ -2,12 +2,21 @@
 
 Test scaffolding, never packaged: `pyproject.toml` ships `src/` alone. It plays
 the same role the fake transports play in the pytest suite — the real HTTP
-adapter, the real validation, the real normalization, and no provider — so the
-browser journeys assert this application's behavior rather than IGDB's
-availability on the day.
+routes and validation plus sanitized provider detail fixtures — so the browser
+journeys assert this application's behavior rather than IGDB's availability on
+the day.
 """
 
-from whattoplaynext_api.adapters.igdb.catalog import GAME_MODES, GENRES, PLATFORMS
+import json
+from pathlib import Path
+from typing import cast
+
+from whattoplaynext_api.adapters.igdb.catalog import (
+    GAME_MODES,
+    GENRES,
+    PLATFORMS,
+    IgdbCatalog,
+)
 from whattoplaynext_api.catalog.models import (
     AutocompleteCriteria,
     AutocompleteResult,
@@ -18,6 +27,7 @@ from whattoplaynext_api.catalog.models import (
     DurationKind,
     FilterLimits,
     FilterMetadata,
+    GameCover,
     GameDetail,
     GamePage,
     GameRating,
@@ -31,6 +41,41 @@ from whattoplaynext_api.core.errors import ApplicationError, ErrorCode
 # Searching for this name makes the fixture fail the way a provider outage
 # does, so the upstream-failure journey needs no unreachable service.
 UPSTREAM_FAILURE_NAME = "trigger-upstream-failure"
+UPSTREAM_FAILURE_GAME_ID = 999_998
+
+FIXTURE_DIRECTORY = Path(__file__).resolve().parents[1] / "fixtures" / "igdb"
+
+
+def _read_fixture(name: str) -> list[dict[str, object]]:
+    return cast(
+        list[dict[str, object]],
+        json.loads((FIXTURE_DIRECTORY / name).read_text(encoding="utf-8")),
+    )
+
+
+DETAIL_RECORDS = _read_fixture("game_detail_complete.json")
+DETAIL_DURATION_RECORDS = _read_fixture("game_time_to_beats_detail.json")
+DETAIL_GAME_ID = 1942
+
+
+class _DetailFixtureTransport:
+    """Serve the sanitized provider records through the real IGDB adapter."""
+
+    async def query(self, endpoint: str, query: str) -> list[dict[str, object]]:
+        if endpoint == "games" and f"where id = {DETAIL_GAME_ID};" in query:
+            return DETAIL_RECORDS
+        if (
+            endpoint == "game_time_to_beats"
+            and f"where game_id = {DETAIL_GAME_ID};" in query
+        ):
+            return DETAIL_DURATION_RECORDS
+        return []
+
+    async def count(self, endpoint: str, query: str) -> int:
+        return 0
+
+
+DETAIL_CATALOG = IgdbCatalog(_DetailFixtureTransport())
 
 # Enough titles to page through, with a handful of recognizable ones the
 # journeys can search for by name.
@@ -74,11 +119,37 @@ def _summary(index: int, title: str) -> GameSummary:
     )
 
 
-ALL_GAMES: tuple[GameSummary, ...] = tuple(
-    _summary(index, title)
-    for index, title in enumerate(
-        [*NAMED_GAMES, *(f"Fixture Game {number:02d}" for number in range(1, 56))]
-    )
+DETAIL_SUMMARY = GameSummary(
+    id=DETAIL_GAME_ID,
+    slug="the-witcher-3-wild-hunt",
+    title="The Witcher 3: Wild Hunt",
+    release_year=2015,
+    cover=GameCover(
+        url="https://images.igdb.com/igdb/image/upload/t_cover_big/co1wyy.jpg",
+        width=264,
+        height=374,
+    ),
+    platforms=[CatalogOption(id="pc", label="PC")],
+    genres=[CatalogOption(id="role-playing-rpg", label="Role-playing (RPG)")],
+    rating=GameRating(value=92.25, count=2745, source="IGDB combined"),
+    normal_duration_seconds=39600,
+    game_modes=[CatalogOption(id="single-player", label="Single player")],
+)
+
+ALL_GAMES: tuple[GameSummary, ...] = (
+    DETAIL_SUMMARY,
+    *tuple(
+        _summary(index, title)
+        for index, title in enumerate(
+            [
+                *NAMED_GAMES,
+                *(f"Fixture Game {number:02d}" for number in range(1, 56)),
+            ]
+        )
+        # Replace one PC/non-Shooter record so the established deterministic
+        # filter distributions remain unchanged at 60 total games.
+        if index != 6
+    ),
 )
 
 
@@ -165,8 +236,10 @@ class FixtureCatalog:
         )
 
     async def get_game_detail(self, game_id: int) -> GameDetail:
-        """Detail pages are a Milestone 3 surface; nothing here serves them."""
-        raise ApplicationError(ErrorCode.GAME_NOT_FOUND)
+        """Serve one real normalized fixture, a failure sentinel, or not found."""
+        if game_id == UPSTREAM_FAILURE_GAME_ID:
+            raise ApplicationError(ErrorCode.UPSTREAM_UNAVAILABLE)
+        return await DETAIL_CATALOG.get_game_detail(game_id)
 
 
 def _matches_name(game: GameSummary, name: str | None) -> bool:

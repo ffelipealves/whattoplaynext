@@ -8,7 +8,8 @@ This is not a bug list: everything here works as designed. Defects go to the
 milestone plans and their outcome notes. Items marked **blocking** must be
 resolved before the release gate that names them.
 
-Last reviewed: 2026-09-15, after Milestone 3.1.
+Last reviewed: 2026-09-15, after Milestone 3.2. No new debt was introduced by
+the increment.
 
 ## Provider and API
 
@@ -145,6 +146,13 @@ accident.
 Milestone 3 makes the decision due: it adds real logic under `src/app/` — the
 game route's redirect-or-not-found decision, `robots.ts`, and `sitemap.ts` —
 which would all land outside the floor unless the boundary moves first.
+
+Milestone 3.2 kept the detail fetch, failure classification, ID parsing, and
+canonical-path construction under `features/game/`, but the thin route's
+redirect/not-found dispatch and segment error boundaries remain outside the
+unit-coverage floor. Their observable 308, 404, and 500 behavior is covered by
+Playwright against a production build; the coverage-boundary decision remains
+open for the later `robots.ts` and `sitemap.ts` work.
 
 ### 8. Selected ids are cast to the contract's unions
 

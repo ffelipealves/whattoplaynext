@@ -6,6 +6,9 @@ import { expect, test } from "@playwright/test";
  */
 
 const UPSTREAM_FAILURE_NAME = "trigger-upstream-failure";
+const UPSTREAM_FAILURE_GAME_ID = 999_998;
+const DETAIL_GAME_ID = 1942;
+const DETAIL_GAME_SLUG = "the-witcher-3-wild-hunt";
 
 /**
  * Next renders an always-present, usually empty route announcer with
@@ -117,4 +120,84 @@ test("switching language carries over to the search page", async ({ page }) => {
   await expect(
     page.getByRole("status").filter({ hasText: "jogos" }),
   ).toHaveText("60 jogos");
+});
+
+test("a result opens its canonical game page and back restores the localized search", async ({
+  page,
+}) => {
+  const searchUrl =
+    "/pt-br/games?name=The%20Witcher%203&sort=title&direction=asc&page=1";
+  await page.goto(searchUrl);
+
+  await page.getByRole("link", { name: /The Witcher 3: Wild Hunt/ }).click();
+
+  await expect(page).toHaveURL(
+    `/pt-br/games/${DETAIL_GAME_ID}/${DETAIL_GAME_SLUG}`,
+  );
+  await expect(
+    page.getByRole("heading", { name: "The Witcher 3: Wild Hunt" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("img", { name: "Capa de The Witcher 3: Wild Hunt" }),
+  ).toBeVisible();
+
+  await page.goBack();
+  await expect(page).toHaveURL(searchUrl);
+  await expect(page.getByLabel("Nome do jogo")).toHaveValue("The Witcher 3");
+  await expect(page.getByRole("link", { name: "Título" })).toHaveAttribute(
+    "aria-current",
+    "true",
+  );
+});
+
+test("game URLs permanently redirect to the canonical slug in the same locale", async ({
+  request,
+}) => {
+  for (const path of [
+    `/pt-br/games/${DETAIL_GAME_ID}`,
+    `/pt-br/games/${DETAIL_GAME_ID}/slug-antigo`,
+  ]) {
+    const response = await request.get(path, { maxRedirects: 0 });
+
+    expect(response.status()).toBe(308);
+    expect(response.headers().location).toBe(
+      `/pt-br/games/${DETAIL_GAME_ID}/${DETAIL_GAME_SLUG}`,
+    );
+  }
+});
+
+test("invalid and missing game IDs render the localized 404", async ({
+  request,
+}) => {
+  for (const path of [
+    "/pt-br/games/not-a-number/qualquer-slug",
+    "/pt-br/games/0/qualquer-slug",
+    "/pt-br/games/999999/qualquer-slug",
+  ]) {
+    const response = await request.get(path);
+
+    expect(response.status()).toBe(404);
+    expect(await response.text()).toContain("Jogo não encontrado");
+  }
+});
+
+test("a game-detail provider failure is recoverable, noindex, and not a 404", async ({
+  page,
+}) => {
+  const response = await page.goto(
+    `/en/games/${UPSTREAM_FAILURE_GAME_ID}/provider-failure`,
+  );
+
+  expect(response?.status()).toBe(500);
+  await expect(
+    page.getByRole("alert").filter({
+      hasText: "The game catalog is unavailable",
+    }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+    "content",
+    "noindex",
+  );
+  await expect(page.getByText("Game not found")).toHaveCount(0);
 });
