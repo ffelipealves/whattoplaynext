@@ -76,6 +76,8 @@ control ships, `pnpm quality` before completing — plus these:
 
 Pays off technical debt entry 1 before anything links to a game page.
 
+Status: completed on 2026-09-15.
+
 Deliver:
 
 - browse, filtered browse, and autocomplete exclude the game types
@@ -93,6 +95,40 @@ Acceptance:
   tests say so explicitly;
 - the Milestone 2.4 follow-up timings are re-measured and have not regressed
   materially.
+
+Outcome: the IGDB adapter now derives `game_type = (0,8,9)` from the existing
+`ELIGIBLE_GAME_TYPES` allow-list and carries it through every `games` query and
+count, including autocomplete and the popularity, duration, and release index
+joins. Unfiltered popularity now uses the ranked intersection path as well;
+page 100 is covered by a regression test that proves it does not reach the
+exhaustive fallback. The always-present clause removed the three empty-`where`
+branches plus the old direct popularity game query. No web, contract shape, or
+Playwright fixture changed.
+
+Live IGDB verification ran cold on 2026-09-15. The old totals were 81,543 for
+the direct Visits page and 375,653 for rating; both browse sorts now report
+316,258 eligible games. `pnpm smoke:api` passed, all 24 IDs on a sampled popular
+page returned 200 from detail, and “The Witcher 3: Wild Hunt - Blood and Wine”
+(ID 13166, `game_type=2`) appeared in the old autocomplete query but not the
+eligible one. Follow-up timings remained in the same operational range:
+
+| Query                                             | M2 follow-up | M3.1 cold   |
+| ------------------------------------------------- | ------------ | ----------- |
+| `minimumRating=80`                                | 2.9 s        | 3.2 s       |
+| `platform=pc`                                     | 1.9 s        | 3.5–3.6 s   |
+| `platform=pc&platform=nintendo-switch`            | 2.4 s        | 2.3 s       |
+| `platform=nintendo-switch&genre=indie` + 2–10 h   | 10 s         | 10.3 s      |
+| `genre=shooter&minimumRating=80` + ≤ 20 h, page 3 | 6 s          | 6.0 s       |
+| `genre=pinball`                                   | 5.6 s        | 3.2 s       |
+| `platform=pc&sort=release-date`                   | 3.2 s        | 2.4–2.7 s   |
+| `platform=pc` across 2020                         | 58 s         | 63.7–71.8 s |
+| unfiltered popularity, page 1                     | direct index | 2.8 s       |
+| unfiltered popularity, page 100                   | direct index | 9.8 s       |
+
+The release-range case remains dominated by its known exact-total debt and
+showed normal live-provider variance without a query-plan regression. M3.1 also
+recorded separately that the product word “released” is not yet enforced; that
+owner policy was intentionally not folded into content-type eligibility.
 
 ### M3.2 — Game route and canonical slug redirect
 

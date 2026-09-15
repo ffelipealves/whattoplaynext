@@ -8,29 +8,42 @@ This is not a bug list: everything here works as designed. Defects go to the
 milestone plans and their outcome notes. Items marked **blocking** must be
 resolved before the release gate that names them.
 
-Last reviewed: 2026-09-13, at the Milestone 2 closeout and Milestone 3 planning.
+Last reviewed: 2026-09-15, after Milestone 3.1.
 
 ## Provider and API
 
-### 1. Browse does not enforce content eligibility — **blocking for public beta**
+### 1. Browse does not enforce content eligibility — **resolved in M3.1**
 
-`GET /api/v1/games/{gameId}` rejects anything outside `ELIGIBLE_GAME_TYPES`
-(base games plus remakes and remasters), but browse does not: `_where_query`
-never constrains `game_type`, so DLC, expansions, bundles, and mods count as
-results. It shows as a jarring total — a rating sort reports ~375,000 games
-against the ~73,000 the popularity index covers — and as occasional non-game
-entries in a page.
+Milestone 3.1 made browse, every games-side index join, counts, and autocomplete
+use the same `ELIGIBLE_GAME_TYPES` allow-list as detail. DLC, expansions,
+bundles, mods, and other rejected types can no longer become results that link
+to `GAME_NOT_FOUND`; one adapter-level guard drives every query strategy and
+requires the eligibility clause on every `games` query and count.
 
-First flagged in the [Milestone 1 review](milestone-1-review.md#deferred-external-actions);
-Milestone 2.3 then observed it from the frontend. Paying it off means adding
-the eligibility clause to the browse `where` and to the candidate queries, and
-accepting that every total and page count changes. The fixture-backed API
-tests will need their expected counts revisited.
+Live IGDB counts on 2026-09-15 put the change in concrete terms: the old direct
+popularity total was 81,543 and the old rating total was 375,653; both now
+report 316,258 eligible games. The popularity total grows because it now counts
+all eligible games, including unranked ones, while its first 100 pages remain
+settled from the Visits index. All 24 games on a sampled page returned 200 from
+detail. An unfiltered autocomplete for “Blood and Wine” returned the type-2
+expansion `13166`; the eligible query returned no suggestion.
 
-Milestone 3 raises the stakes. Once result cards link to game pages, every
-ineligible browse result becomes a link to a page the detail endpoint answers
-with `GAME_NOT_FOUND`. The [Milestone 3 plan](milestone-3-plan.md) proposes
-paying this off as its first increment, before anything links anywhere.
+First flagged in the [Milestone 1 review](milestone-1-review.md#deferred-external-actions)
+and observed from the frontend in Milestone 2.3; closed before Milestone 3 adds
+links from result cards.
+
+### 1b. “Released games” is not enforced as a catalog condition
+
+The MVP scope says released base games, remakes, and remasters, but eligibility
+currently constrains only `game_type`. Detail, browse, and autocomplete do not
+require a past release date or otherwise distinguish announced and unreleased
+records, so they agree with one another but are broader than that word in the
+product requirements.
+
+This was made explicit while closing M3.1 instead of silently expanding an
+increment about content type into a release-state policy. Resolving it requires
+an owner decision about games with missing or platform-specific dates, then one
+shared rule across detail and every discovery path.
 
 ### 2. A duration filter still costs seconds on a cold cache
 
@@ -55,12 +68,12 @@ response) to 3.2 s. A release _range_ on a platform now reads that index
 bounded by the dates instead of scanning the catalog, which took
 `platform=pc` + all of 2020 from over 180 s to 58 s.
 
-What remains is the count. That shape matches 12,265 games, and an exact
-`totalItems` — which pagination depends on — means resolving every one of them
-through the games endpoint to apply the rest of the filter: about fifty
-requests against a provider allowing four per second. Narrower ranges are
-proportionally better (a year of Switch indies answers in 18 s), and Redis
-hides all of it once warm.
+What remains is the count. After M3.1 eligibility, that shape matches 10,597
+games and took 63.7–71.8 s in two cold live runs; an exact `totalItems` — which
+pagination depends on — means resolving every one of them through the games
+endpoint to apply the rest of the filter: about fifty requests against a
+provider allowing four per second. Narrower ranges are proportionally better,
+and Redis hides all of it once warm.
 
 Paying off the rest means either giving up an exact total for this shape, or
 skipping the join when the platform is the only game-level criterion — the
@@ -75,7 +88,11 @@ broad filters, and the `POPULARITY_WALK_THRESHOLD` gate keeps it to small match
 sets where it costs a handful of requests — but it is still an O(matches) path
 that a pathological filter (many matches, none of them ranked) can reach.
 
-It is bounded in practice and correct in all cases, which is why it stays.
+M3.1 routed unfiltered popularity through the same walk. Its deepest public
+request needs only 2,400 ranked matches (page 100 × 24), well within the 81,543
+rows in the live Visits index; a regression test pins that page without the
+fallback. The fallback remains bounded in practice and correct for small or
+pathological filtered sets, which is why it stays.
 
 ### 4. The API has no rate limiter of its own
 

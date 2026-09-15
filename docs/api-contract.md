@@ -131,12 +131,13 @@ rather than accepted and then failed upstream. Release bounds are inclusive and 
 the release dates belonging to any selected platform. Without a platform
 criterion they fall back to `first_release_date`.
 
-Popularity without filters uses the IGDB Visits primitive directly. With
-filters, the adapter reads the Visits index in popularity order and joins each
-page against the filter until the requested page is full, falling back to
-listing every matching ID when the match set is small enough that reading it
-whole is cheaper. Rating, release-date, and title sorts use their explicit IGDB
-game fields when no join is required.
+Browse always restricts `game_type` to the same base-game, remake, and remaster
+allow-list that detail accepts. Popularity reads the IGDB Visits index in
+popularity order for both filtered and unfiltered requests and joins each page
+against that eligibility constraint plus any caller filters until the requested
+page is full. It falls back to listing every matching ID when the match set is
+small enough that reading it whole is cheaper. Rating, release-date, and title
+sorts use their explicit IGDB game fields when no other join is required.
 
 Evaluations that IGDB cannot express in one query — duration bounds, and
 release dates belonging to a selected platform — read whichever side is
@@ -153,8 +154,9 @@ normal, and completionist. Cards expose `normally` as
 sorts last and is excluded only when a duration bound is active. Unknown rating
 is likewise excluded only by an active minimum-rating filter.
 
-`totalItems` is exact for the active criteria. Joins happen before the requested
-24-item page is selected and preserve the chosen order.
+`totalItems` is exact for the active criteria and counts eligible games only.
+Joins happen before the requested 24-item page is selected and preserve the
+chosen order.
 
 An empty provider page is a successful response with an empty `items` list.
 Provider failures retain their classified error responses. Metadata remains
@@ -199,7 +201,8 @@ Response shape:
 Results use the provider's relevance ordering rather than a sort field. When
 platform identifiers are given, values within the category use OR and narrow
 the candidate set with AND against the query text. The response never exceeds
-eight items, and missing release year or cover values remain `null`.
+eight items, applies the same base-game/remake/remaster eligibility allow-list
+as browse and detail, and leaves missing release year or cover values as `null`.
 
 This endpoint is independently rate-limited and cached. Failure does not block
 normal name-filter submission.

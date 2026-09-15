@@ -179,6 +179,7 @@ class M17FixtureTransport:
 class AutocompleteFixtureTransport:
     def __init__(self, records: list[dict[str, object]] | None = None) -> None:
         self.requests: list[tuple[str, str]] = []
+        self.count_requests: list[tuple[str, str]] = []
         self.records = (
             records if records is not None else load_records("games_complete.json")
         )
@@ -394,15 +395,17 @@ async def test_browses_complete_game_summaries_with_an_explicit_projection() -> 
             "excludedUnknownDuration": False,
         },
     }
-    assert transport.count_requests == [
-        ("popularity_primitives", "where popularity_type = 1;")
-    ]
+    assert transport.count_requests == [("games", "where game_type = (0,8,9);")]
     assert transport.requests == [
+        (
+            "games",
+            ("fields id; where game_type = (0,8,9); sort id asc; limit 500; offset 0;"),
+        ),
         (
             "popularity_primitives",
             (
-                "fields game_id,value; where popularity_type = 1; "
-                "sort value desc; limit 24; offset 0;"
+                "fields game_id,value; where popularity_type = 1 & "
+                "game_id = (1942); limit 500;"
             ),
         ),
         (
@@ -410,7 +413,8 @@ async def test_browses_complete_game_summaries_with_an_explicit_projection() -> 
             (
                 "fields id,slug,name,first_release_date,cover.image_id,"
                 "platforms.id,genres.id,total_rating,total_rating_count,"
-                "game_modes.id; where id = (1942); limit 24;"
+                "game_modes.id; where game_type = (0,8,9) & id = (1942); "
+                "limit 1;"
             ),
         ),
         (
@@ -447,7 +451,7 @@ async def test_returns_a_successful_empty_page_from_a_valid_count_object() -> No
 
     async def handler(request: httpx.Request) -> httpx.Response:
         requests.append((request.url.path, request.content))
-        if request.url.path == "/v4/popularity_primitives/count":
+        if request.url.path == "/v4/games/count":
             return httpx.Response(200, json={"count": 0})
         return httpx.Response(200, json=[])
 
@@ -467,15 +471,8 @@ async def test_returns_a_successful_empty_page_from_a_valid_count_object() -> No
     assert result.pagination.total_pages == 0
     assert requests == [
         (
-            "/v4/popularity_primitives/count",
-            b"where popularity_type = 1;",
-        ),
-        (
-            "/v4/popularity_primitives",
-            (
-                b"fields game_id,value; where popularity_type = 1; "
-                b"sort value desc; limit 24; offset 0;"
-            ),
+            "/v4/games/count",
+            b"where game_type = (0,8,9);",
         ),
     ]
 
@@ -520,8 +517,12 @@ async def test_classifies_an_out_of_range_release_timestamp() -> None:
 
 
 @pytest.mark.anyio
-async def test_translates_the_second_page_to_a_24_item_provider_offset() -> None:
-    transport = BrowseFixtureTransport()
+async def test_returns_the_second_popularity_page_from_the_ranked_index() -> None:
+    transport = PopularityIndexTransport(
+        ranked=[(game_id, 1.0 - game_id / 10_000) for game_id in range(1, 501)],
+        matching=list(range(1, 501)),
+        total=50_000,
+    )
     catalog = IgdbCatalog(transport)
 
     result = await catalog.browse_games(BrowseCriteria(page=2))
@@ -529,16 +530,17 @@ async def test_translates_the_second_page_to_a_24_item_provider_offset() -> None
     assert result.pagination.model_dump() == {
         "page": 2,
         "page_size": 24,
-        "total_items": 49,
-        "total_pages": 3,
+        "total_items": 50_000,
+        "total_pages": 2_084,
     }
     assert transport.requests[0] == (
         "popularity_primitives",
         (
             "fields game_id,value; where popularity_type = 1; "
-            "sort value desc; limit 24; offset 24;"
+            "sort value desc; limit 500; offset 0;"
         ),
     )
+    assert [item.id for item in result.items] == list(range(25, 49))
 
 
 @pytest.mark.anyio
@@ -572,6 +574,7 @@ async def test_translates_strict_and_or_criteria_to_the_games_endpoint() -> None
     assert transport.count_requests[0][0] == "games"
     count_query = transport.count_requests[0][1]
     expected_filters = {
+        "game_type = (0,8,9)",
         'name ~ *"Hollow Knight"*',
         "platforms = (6,167)",
         "genres = (8,31)",
@@ -614,7 +617,14 @@ async def test_keeps_strict_filters_when_sorting_by_popularity() -> None:
         for endpoint, query in transport.requests
         if endpoint == "games" and "fields id;" in query
     )
-    assert "where id = (3000,1942)" in transport.requests[-2][1]
+    assert transport.requests[-2] == (
+        "games",
+        (
+            "fields id,slug,name,first_release_date,cover.image_id,platforms.id,"
+            "genres.id,total_rating,total_rating_count,game_modes.id; where "
+            "game_type = (0,8,9) & genres = (31) & id = (3000,1942); limit 2;"
+        ),
+    )
 
 
 @pytest.mark.anyio
@@ -656,7 +666,9 @@ async def test_escapes_name_text_inside_the_apicalypse_string_literal() -> None:
     )
 
     count_query = transport.count_requests[0][1]
-    assert count_query == 'where name ~ *"He said \\"hi\\";\\nfields *"*;'
+    assert count_query == (
+        'where game_type = (0,8,9) & name ~ *"He said \\"hi\\";\\nfields *"*;'
+    )
     assert "\n" not in count_query
 
 
@@ -796,7 +808,7 @@ async def test_autocompletes_with_a_normalized_relevance_ordered_projection() ->
             "games",
             (
                 'search "witcher"; fields id,slug,name,first_release_date,'
-                "cover.image_id; limit 8;"
+                "cover.image_id; where game_type = (0,8,9); limit 8;"
             ),
         )
     ]
@@ -836,7 +848,8 @@ async def test_narrows_autocomplete_results_by_platform_context() -> None:
             "games",
             (
                 'search "witcher"; fields id,slug,name,first_release_date,'
-                "cover.image_id; where platforms = (6,167); limit 8;"
+                "cover.image_id; where game_type = (0,8,9) & "
+                "platforms = (6,167); limit 8;"
             ),
         )
     ]
@@ -1612,3 +1625,88 @@ async def test_reads_the_matches_when_they_are_fewer_than_the_release_range() ->
         query for endpoint, query in transport.requests if endpoint == "games"
     )
     assert "offset 0;" in games_query
+
+
+@pytest.mark.anyio
+async def test_applies_content_eligibility_to_every_game_lookup_strategy() -> None:
+    plain_sort = SearchFixtureTransport()
+    await IgdbCatalog(plain_sort).browse_games(BrowseCriteria(sort=SortOption.RATING))
+
+    popularity_walk = PopularityIndexTransport(
+        ranked=[(game_id, 1.0 - game_id / 10_000) for game_id in range(1, 2_501)],
+        matching=list(range(1, 2_501)),
+        total=250_000,
+    )
+    await IgdbCatalog(popularity_walk).browse_games(BrowseCriteria(page=100))
+
+    exhaustive_popularity = PopularityIndexTransport(
+        ranked=[(30, 0.9)],
+        matching=[10, 20, 30],
+    )
+    await IgdbCatalog(exhaustive_popularity).browse_games(BrowseCriteria())
+
+    duration_index = M17FixtureTransport({"games": 200_000, "game_time_to_beats": 4})
+    await IgdbCatalog(duration_index).browse_games(
+        BrowseCriteria(
+            minimum_duration_seconds=7_200,
+            maximum_duration_seconds=36_000,
+        )
+    )
+
+    release_range = ReleaseIndexTransport(
+        releases=[(1, 1_577_836_800), (2, 1_600_000_000)],
+        matching=[1, 2],
+        candidate_total=200_000,
+        release_total=2,
+    )
+    await IgdbCatalog(release_range).browse_games(
+        BrowseCriteria(
+            platform_ids=(PlatformId.PC,),
+            release_from=date(2020, 1, 1),
+            release_to=date(2020, 12, 31),
+        )
+    )
+
+    release_walk = ReleaseIndexTransport(
+        releases=[(game_id, 1_000 + game_id) for game_id in range(1, 501)],
+        matching=list(range(1, 501)),
+        candidate_total=200_000,
+    )
+    await IgdbCatalog(release_walk).browse_games(
+        BrowseCriteria(
+            platform_ids=(PlatformId.PC,),
+            sort=SortOption.RELEASE_DATE,
+        )
+    )
+
+    autocomplete = AutocompleteFixtureTransport([])
+    await IgdbCatalog(autocomplete).autocomplete(AutocompleteCriteria(query="witcher"))
+
+    transports = (
+        plain_sort,
+        popularity_walk,
+        exhaustive_popularity,
+        duration_index,
+        release_range,
+        release_walk,
+        autocomplete,
+    )
+    game_queries = [
+        query
+        for transport in transports
+        for endpoint, query in (
+            *transport.count_requests,
+            *transport.requests,
+        )
+        if endpoint == "games"
+    ]
+
+    assert game_queries
+    assert all("game_type = (0,8,9)" in query for query in game_queries)
+    assert not any(
+        query.startswith("fields id;")
+        and "sort id asc" in query
+        and "id = (" not in query
+        for endpoint, query in popularity_walk.requests
+        if endpoint == "games"
+    )

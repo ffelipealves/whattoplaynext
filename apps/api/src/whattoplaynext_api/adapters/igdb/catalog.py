@@ -196,32 +196,11 @@ class IgdbCatalog:
             if needs_local_evaluation:
                 total_items, items = await self._locally_evaluated_page(criteria)
             elif criteria.sort is SortOption.POPULARITY:
-                if _has_game_filters(criteria):
-                    total_items, game_ids = await self._filtered_popularity_ids(
-                        criteria
-                    )
-                else:
-                    popularity_filter = "where popularity_type = 1;"
-                    total_items = await self._transport.count(
-                        "popularity_primitives",
-                        popularity_filter,
-                    )
-                    popularity_records = await self._transport.query(
-                        "popularity_primitives",
-                        (
-                            "fields game_id,value; where popularity_type = 1; "
-                            f"sort value {criteria.direction.value}; "
-                            f"limit {criteria.page_size}; offset {offset};"
-                        ),
-                    )
-                    game_ids = _popularity_game_ids(popularity_records)
-                game_records = (
-                    await self._transport.query(
-                        "games",
-                        _games_query(game_ids, criteria.page_size),
-                    )
-                    if game_ids
-                    else []
+                total_items, game_ids = await self._filtered_popularity_ids(criteria)
+                game_records = await self._games_by_ids(
+                    game_ids,
+                    _where_query(criteria),
+                    include_release_dates=False,
                 )
                 items = _normalize_games(game_records, game_ids)
             else:
@@ -724,16 +703,6 @@ def _normalize_options(
     ]
 
 
-def _popularity_game_ids(records: list[dict[str, object]]) -> list[int]:
-    game_ids: list[int] = []
-    for record in records:
-        game_id = record.get("game_id")
-        if not isinstance(game_id, int) or isinstance(game_id, bool):
-            raise ValueError("invalid popularity record")
-        game_ids.append(game_id)
-    return game_ids
-
-
 def _popularity_values(records: list[dict[str, object]]) -> dict[int, float]:
     values: dict[int, float] = {}
     for record in records:
@@ -772,8 +741,6 @@ def _where_with_ids(where_query: str, game_ids: list[int]) -> str:
     """Narrow an existing where clause to one batch of candidate ids."""
     ids = ",".join(str(game_id) for game_id in game_ids)
     id_clause = f"id = ({ids})"
-    if not where_query:
-        return f"where {id_clause};"
     return f"{where_query.removesuffix(';')} & {id_clause};"
 
 
@@ -804,15 +771,6 @@ def _normalize_duration_records(
 
 def _chunks(values: list[int], size: int) -> list[list[int]]:
     return [values[index : index + size] for index in range(0, len(values), size)]
-
-
-def _games_query(game_ids: list[int], page_size: int) -> str:
-    ids = ",".join(str(game_id) for game_id in game_ids)
-    return (
-        "fields id,slug,name,first_release_date,cover.image_id,platforms.id,"
-        "genres.id,total_rating,total_rating_count,game_modes.id; "
-        f"where id = ({ids}); limit {page_size};"
-    )
 
 
 def _duration_range_where(criteria: BrowseCriteria) -> str:
@@ -855,24 +813,9 @@ def _candidate_games_query(
     *,
     include_release_dates: bool,
 ) -> str:
-    where = f" {where_query}" if where_query else ""
     return (
         f"{_candidate_games_fields(include_release_dates)};"
-        f"{where} sort id asc; limit {PROVIDER_BATCH_SIZE}; offset {offset};"
-    )
-
-
-def _has_game_filters(criteria: BrowseCriteria) -> bool:
-    return any(
-        (
-            criteria.name is not None,
-            criteria.platform_ids,
-            criteria.genre_ids,
-            criteria.release_from is not None,
-            criteria.release_to is not None,
-            criteria.minimum_rating is not None,
-            criteria.game_mode_ids,
-        )
+        f" {where_query} sort id asc; limit {PROVIDER_BATCH_SIZE}; offset {offset};"
     )
 
 
@@ -909,7 +852,7 @@ def _where_query(
     *,
     include_release_bounds: bool = True,
 ) -> str:
-    clauses: list[str] = []
+    clauses = [_eligible_game_types_clause()]
     if criteria.name is not None:
         clauses.append(f"name ~ *{dumps(criteria.name, ensure_ascii=False)}*")
     _append_option_clause(clauses, "platforms", criteria.platform_ids, PLATFORMS)
@@ -926,7 +869,12 @@ def _where_query(
         criteria.game_mode_ids,
         GAME_MODES,
     )
-    return f"where {' & '.join(clauses)};" if clauses else ""
+    return f"where {' & '.join(clauses)};"
+
+
+def _eligible_game_types_clause() -> str:
+    game_types = ",".join(str(game_type) for game_type in sorted(ELIGIBLE_GAME_TYPES))
+    return f"game_type = ({game_types})"
 
 
 def _day_start(day: date) -> int:
@@ -1057,19 +1005,18 @@ def _search_query(
         sort_field = sort_fields[criteria.sort]
     except KeyError:
         raise ApplicationError(ErrorCode.INVALID_QUERY) from None
-    where = f" {where_query}" if where_query else ""
     return (
         "fields id,slug,name,first_release_date,cover.image_id,platforms.id,"
         "genres.id,total_rating,total_rating_count,game_modes.id;"
-        f"{where} sort {sort_field} {criteria.direction.value}; "
+        f" {where_query} sort {sort_field} {criteria.direction.value}; "
         f"limit {criteria.page_size}; offset {offset};"
     )
 
 
 def _autocomplete_query(criteria: AutocompleteCriteria) -> str:
-    clauses: list[str] = []
+    clauses = [_eligible_game_types_clause()]
     _append_option_clause(clauses, "platforms", criteria.platform_ids, PLATFORMS)
-    where = f" where {' & '.join(clauses)};" if clauses else ""
+    where = f" where {' & '.join(clauses)};"
     escaped_query = dumps(criteria.query, ensure_ascii=False)
     return (
         f"search {escaped_query}; "
