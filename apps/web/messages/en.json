@@ -3,6 +3,14 @@
     "en": "English",
     "pt-br": "Português"
   },
+  "System": {
+    "notFoundTitle": "Page not found",
+    "notFoundDescription": "The page you requested does not exist.",
+    "backHome": "Return home",
+    "unexpectedTitle": "Something went wrong",
+    "unexpectedDescription": "We couldn't load this page right now.",
+    "retryLabel": "Try again"
+  },
   "Landing": {
     "languageNavLabel": "Language",
     "eyebrow": "Structured game discovery",
@@ -126,21 +134,21 @@
     "backToGames": "Browse games"
   },
   "Failure": {
-    "validationTitle": "This search could not be run",
-    "validationDescription": "Some of the criteria in this link are not accepted. Adjust the filters and search again.",
-    "rateLimitedTitle": "Too many searches just now",
+    "validationTitle": "This request could not be run",
+    "validationDescription": "Some values in this link are not accepted. Check the address or adjust the filters.",
+    "rateLimitedTitle": "Too many requests just now",
     "rateLimitedDescription": "The catalog is limiting how often it answers. Give it a moment and try again.",
     "rateLimitedRetryIn": "You can try again in {seconds, plural, one {# second} other {# seconds}}.",
     "unavailableTitle": "The game catalog is unavailable",
-    "unavailableDescription": "The provider we read from is not answering right now. Your criteria are kept in this link.",
+    "unavailableDescription": "The provider we read from is not answering right now. Try again in a moment.",
     "timeoutTitle": "The game catalog took too long",
-    "timeoutDescription": "The provider did not answer in time. A narrower search often comes back faster.",
+    "timeoutDescription": "The provider did not answer in time. Try again in a moment.",
     "invalidResponseTitle": "The game catalog sent something we could not read",
     "invalidResponseDescription": "We would rather show nothing than guess at the result. Trying again usually works.",
-    "unreachableTitle": "We could not reach the search service",
+    "unreachableTitle": "We could not reach the game service",
     "unreachableDescription": "Check your connection, or try again in a moment.",
     "genericTitle": "Something went wrong",
-    "genericDescription": "We couldn't load results right now.",
+    "genericDescription": "We couldn't load this page right now.",
     "retryLabel": "Try again",
     "requestIdLabel": "Reference: {requestId}",
     "ignoredTitle": "Some criteria in this link were ignored",

@@ -26,8 +26,8 @@ export default async function GamesPage({
 
   return (
     <SearchPage
+      filters={filters}
       issues={issues}
-      metadata={metadata}
       params={params}
       result={await getSearchResults(params)}
     />

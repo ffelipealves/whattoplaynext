@@ -1,6 +1,6 @@
 # Milestone 3 Plan
 
-Status: in progress — M3.1 through M3.4 completed; owner decisions 3 and 4 in
+Status: in progress — M3.1 through M3.5 completed; owner decisions 3 and 4 in
 section 7 are pending
 
 Prepared: 2026-09-13
@@ -266,6 +266,8 @@ introduced.
 
 ### M3.5 — Localized system states
 
+Status: completed on 2026-09-15.
+
 Deliver:
 
 - a localized not-found page for unknown routes and missing games, and a
@@ -282,6 +284,30 @@ Acceptance:
 - no system state is indexable;
 - a component test covers every state, and an axe check reports no critical or
   serious violations.
+
+Outcome: valid-locale URLs that match no page now reach a minimal catch-all
+route and call Next.js `notFound()` before streaming. They return a real 404,
+render distinct English or Brazilian Portuguese page-not-found copy, and carry
+`noindex`; missing and ineligible games keep their separate localized game 404.
+The locale-level error boundary renders a localized recoverable fallback for
+unexpected rendering failures, also with `noindex`.
+
+Game-detail failures preserve their allow-listed API category across Next.js's
+production Server Component boundary through a safe digest containing only the
+public code, retry delay, and correlation ID. Validation renders without a
+retry that cannot help; rate-limit and upstream failures remain recoverable,
+with distinct localized copy. A production-build Playwright journey proves all
+three categories render as non-indexable 500 responses, while another proves
+localized unknown-route 404 responses in both locales.
+
+Filter metadata now returns the same classified `ApiFailure` shape as search
+results. Both sidebar and drawer reuse the shared failure-copy map, retaining
+retry timing and correlation IDs, so one outage can no longer receive two
+different explanations. This resolves technical-debt entry 5. The work also
+fixed a discovered edge case where an absent `Retry-After` header was parsed as
+zero seconds. Component tests cover and localize every state; axe reports no
+critical or serious violations. No production API or contract change and no
+new technical debt were introduced.
 
 ### M3.6 — Informational pages and IGDB attribution
 

@@ -4,7 +4,10 @@ import axe, { type Result } from "axe-core";
 import { expect, test, vi } from "vitest";
 
 import enMessages from "../../../messages/en.json";
-import type { FilterMetadata } from "@/features/catalog/get-filter-metadata";
+import type {
+  FilterMetadata,
+  FilterMetadataResult,
+} from "@/features/catalog/get-filter-metadata";
 
 import { SearchPage } from "./search-page";
 import { readBrowseParams, type RawSearchParams } from "./browse-params";
@@ -63,15 +66,15 @@ function renderPage(
   searchParams: RawSearchParams,
   {
     result = { ok: true, page } as SearchResult,
-    filters = metadata as FilterMetadata | undefined,
+    filters = { ok: true, metadata } as FilterMetadataResult,
   } = {},
 ) {
   const { params, issues } = readBrowseParams(searchParams);
   return render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
       <SearchPage
+        filters={filters}
         issues={issues}
-        metadata={filters}
         params={params}
         result={result}
       />
@@ -139,7 +142,10 @@ test("a failed search reports no critical or serious violations", async () => {
         ok: false,
         failure: { code: "RATE_LIMITED", retryAfterSeconds: 30 },
       },
-      filters: undefined,
+      filters: {
+        ok: false,
+        failure: { code: "RATE_LIMITED", retryAfterSeconds: 30 },
+      },
     },
   );
 

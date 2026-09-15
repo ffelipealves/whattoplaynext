@@ -59,7 +59,12 @@ test("the sparse game detail has no critical or serious axe violations", async (
 
 test("the recoverable game-detail failure has no critical or serious axe violations", async () => {
   const { container } = render(
-    withMessages(<GameDetailFailure retry={vi.fn()} />),
+    withMessages(
+      <GameDetailFailure
+        failure={{ code: "UPSTREAM_UNAVAILABLE" }}
+        retry={vi.fn()}
+      />,
+    ),
   );
 
   expect(describeViolations(await criticalViolations(container))).toBe("");

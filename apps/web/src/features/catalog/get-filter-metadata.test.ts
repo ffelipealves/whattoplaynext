@@ -47,7 +47,10 @@ test("reports failure when the API returns a classified error", async () => {
     fakeClient({ error: { error: { code: "UPSTREAM_UNAVAILABLE" } } }),
   );
 
-  await expect(getFilterMetadata()).resolves.toEqual({ ok: false });
+  await expect(getFilterMetadata()).resolves.toEqual({
+    ok: false,
+    failure: { code: "UPSTREAM_UNAVAILABLE" },
+  });
 });
 
 test("reports failure when the request itself fails (API process down)", async () => {
@@ -55,5 +58,31 @@ test("reports failure when the request itself fails (API process down)", async (
     GET: vi.fn().mockRejectedValue(new TypeError("fetch failed")),
   } as unknown as ApiClient);
 
-  await expect(getFilterMetadata()).resolves.toEqual({ ok: false });
+  await expect(getFilterMetadata()).resolves.toEqual({
+    ok: false,
+    failure: { code: "UNREACHABLE" },
+  });
+});
+
+test("keeps rate-limit retry timing and the request id", async () => {
+  mockedGetApiClient.mockReturnValue(
+    fakeClient({
+      error: {
+        error: {
+          code: "RATE_LIMITED",
+          retryAfterSeconds: 30,
+          requestId: "filters-429",
+        },
+      },
+    }),
+  );
+
+  await expect(getFilterMetadata()).resolves.toEqual({
+    ok: false,
+    failure: {
+      code: "RATE_LIMITED",
+      retryAfterSeconds: 30,
+      requestId: "filters-429",
+    },
+  });
 });

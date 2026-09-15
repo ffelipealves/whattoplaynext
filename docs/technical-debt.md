@@ -8,7 +8,7 @@ This is not a bug list: everything here works as designed. Defects go to the
 milestone plans and their outcome notes. Items marked **blocking** must be
 resolved before the release gate that names them.
 
-Last reviewed: 2026-09-15, after Milestone 3.4. No new debt was introduced by
+Last reviewed: 2026-09-15, after Milestone 3.5. No new debt was introduced by
 the increment.
 
 ## Provider and API
@@ -106,18 +106,16 @@ component tests alone.
 
 ## Web application
 
-### 5. Filter metadata failures are still generic
+### 5. Filter metadata failures are still generic — **resolved in M3.5**
 
-Since Milestone 2.7, a failed search carries a classified `ApiFailure` and
-explains itself. `getFilterMetadata` still collapses every failure to
-`{ok: false}`, so the sidebar says "Filters unavailable" whether the API was
-rate-limited, timed out, or was never reached — and the page can end up
-explaining the same outage two different ways at once.
-
-Paying it off is small and mechanical: return the failure from
-`getFilterMetadata` the way `getSearchResults` does, and give
-`FiltersUnavailable` the same per-code copy. It was left out of 2.7 to keep
-that increment to the surface its acceptance criteria named.
+Milestone 3.5 made `getFilterMetadata` retain the classified `ApiFailure`,
+including a published retry delay and request ID. The desktop sidebar and
+mobile drawer now use the same per-code copy map as search and game failures,
+so rate limits, provider failures, timeouts, invalid responses, and an
+unreachable API remain distinct instead of collapsing to "Filters
+unavailable." Their failure markup is non-indexable and covered in both
+locales. The increment also fixed an adjacent classifier bug that interpreted
+a missing `Retry-After` header as zero seconds.
 
 ### 6. Autocomplete never recovers without a reload
 

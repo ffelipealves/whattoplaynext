@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, test, vi } from "vitest";
 
 import enMessages from "../../../messages/en.json";
+import ptMessages from "../../../messages/pt-br.json";
 import type { FilterMetadata } from "@/features/catalog/get-filter-metadata";
 
 import { FilterDrawer } from "./filter-drawer";
@@ -40,9 +41,15 @@ beforeEach(() => {
   pushMock.mockReset();
 });
 
-function withIntl(children: React.ReactNode) {
+function withIntl(
+  children: React.ReactNode,
+  messages: typeof enMessages | typeof ptMessages = enMessages,
+) {
   return (
-    <NextIntlClientProvider locale="en" messages={enMessages}>
+    <NextIntlClientProvider
+      locale={messages === ptMessages ? "pt-br" : "en"}
+      messages={messages}
+    >
       {children}
     </NextIntlClientProvider>
   );
@@ -52,13 +59,21 @@ function params(searchParams: RawSearchParams = {}) {
   return parseBrowseParams(searchParams);
 }
 
+const availableFilters = { ok: true, metadata } as const;
+const unavailableFilters = {
+  ok: false,
+  failure: { code: "UPSTREAM_UNAVAILABLE" },
+} as const;
+
 function lastPushedQuery(): URLSearchParams {
   const href = pushMock.mock.calls.at(-1)![0] as string;
   return new URL(href, "http://localhost").searchParams;
 }
 
 test("the sidebar labels itself and renders the filter controls", () => {
-  render(withIntl(<FilterSidebar metadata={metadata} params={params()} />));
+  render(
+    withIntl(<FilterSidebar filters={availableFilters} params={params()} />),
+  );
 
   expect(screen.getByRole("complementary", { name: "Filters" })).toBeDefined();
   expect(screen.getByRole("checkbox", { name: "PC" })).toBeDefined();
@@ -66,18 +81,48 @@ test("the sidebar labels itself and renders the filter controls", () => {
 });
 
 test("the sidebar explains itself instead of rendering controls it cannot source", () => {
-  render(withIntl(<FilterSidebar params={params()} />));
+  render(
+    withIntl(<FilterSidebar filters={unavailableFilters} params={params()} />),
+  );
 
-  expect(screen.getByText("Filters unavailable")).toBeDefined();
+  expect(screen.getByText("The game catalog is unavailable")).toBeDefined();
   expect(screen.queryByRole("checkbox")).toBeNull();
   expect(screen.queryByRole("button", { name: "Apply filters" })).toBeNull();
+});
+
+test("the sidebar preserves and localizes classified metadata failures", () => {
+  render(
+    withIntl(
+      <FilterSidebar
+        filters={{
+          ok: false,
+          failure: {
+            code: "RATE_LIMITED",
+            retryAfterSeconds: 30,
+            requestId: "filters-429",
+          },
+        }}
+        params={params()}
+      />,
+      ptMessages,
+    ),
+  );
+
+  expect(screen.getByText("Solicitações demais agora há pouco")).toBeDefined();
+  expect(
+    screen.getByText("Você pode tentar de novo em 30 segundos."),
+  ).toBeDefined();
+  expect(screen.getByText("Referência: filters-429")).toBeDefined();
+  expect(
+    document.querySelector('meta[name="robots"]')?.getAttribute("content"),
+  ).toBe("noindex");
 });
 
 test("the drawer trigger counts the applied filters, matching the chips", () => {
   render(
     withIntl(
       <FilterDrawer
-        metadata={metadata}
+        filters={availableFilters}
         params={params({
           platform: ["pc", "nintendo-switch"],
           genre: ["shooter"],
@@ -92,13 +137,17 @@ test("the drawer trigger counts the applied filters, matching the chips", () => 
 });
 
 test("the drawer trigger carries no count when nothing is applied", () => {
-  render(withIntl(<FilterDrawer metadata={metadata} params={params()} />));
+  render(
+    withIntl(<FilterDrawer filters={availableFilters} params={params()} />),
+  );
 
   expect(screen.getByRole("button", { name: "Filters" })).toBeDefined();
 });
 
 test("the drawer reveals the same controls once opened", async () => {
-  render(withIntl(<FilterDrawer metadata={metadata} params={params()} />));
+  render(
+    withIntl(<FilterDrawer filters={availableFilters} params={params()} />),
+  );
 
   fireEvent.click(screen.getByRole("button", { name: "Filters" }));
 
@@ -107,18 +156,22 @@ test("the drawer reveals the same controls once opened", async () => {
 });
 
 test("the drawer explains unavailable filters too", async () => {
-  render(withIntl(<FilterDrawer params={params()} />));
+  render(
+    withIntl(<FilterDrawer filters={unavailableFilters} params={params()} />),
+  );
 
   fireEvent.click(screen.getByRole("button", { name: "Filters" }));
 
-  expect(await screen.findByText("Filters unavailable")).toBeDefined();
+  expect(
+    await screen.findByText("The game catalog is unavailable"),
+  ).toBeDefined();
 });
 
 test("both layouts submit the identical URL for the same selection", async () => {
   const applied = params({ name: "Hollow Knight", sort: "rating" });
 
   const sidebar = render(
-    withIntl(<FilterSidebar metadata={metadata} params={applied} />),
+    withIntl(<FilterSidebar filters={availableFilters} params={applied} />),
   );
   fireEvent.click(screen.getByRole("checkbox", { name: "PC" }));
   fireEvent.click(screen.getByRole("checkbox", { name: "Shooter" }));
@@ -127,7 +180,9 @@ test("both layouts submit the identical URL for the same selection", async () =>
   const fromSidebar = lastPushedQuery().toString();
   sidebar.unmount();
 
-  render(withIntl(<FilterDrawer metadata={metadata} params={applied} />));
+  render(
+    withIntl(<FilterDrawer filters={availableFilters} params={applied} />),
+  );
   fireEvent.click(screen.getByRole("button", { name: "Filters" }));
   fireEvent.click(await screen.findByRole("checkbox", { name: "PC" }));
   fireEvent.click(screen.getByRole("checkbox", { name: "Shooter" }));
@@ -138,7 +193,9 @@ test("both layouts submit the identical URL for the same selection", async () =>
 });
 
 test("the drawer keeps its actions pinned while the groups scroll", async () => {
-  render(withIntl(<FilterDrawer metadata={metadata} params={params()} />));
+  render(
+    withIntl(<FilterDrawer filters={availableFilters} params={params()} />),
+  );
 
   fireEvent.click(screen.getByRole("button", { name: "Filters" }));
 
@@ -147,7 +204,9 @@ test("the drawer keeps its actions pinned while the groups scroll", async () => 
 });
 
 test("the drawer closes on Escape without applying anything", async () => {
-  render(withIntl(<FilterDrawer metadata={metadata} params={params()} />));
+  render(
+    withIntl(<FilterDrawer filters={availableFilters} params={params()} />),
+  );
 
   fireEvent.click(screen.getByRole("button", { name: "Filters" }));
   const dialog = await screen.findByRole("dialog");
@@ -158,7 +217,9 @@ test("the drawer closes on Escape without applying anything", async () => {
 });
 
 test("the drawer moves focus into itself when it opens", async () => {
-  render(withIntl(<FilterDrawer metadata={metadata} params={params()} />));
+  render(
+    withIntl(<FilterDrawer filters={availableFilters} params={params()} />),
+  );
 
   fireEvent.click(screen.getByRole("button", { name: "Filters" }));
   const dialog = await screen.findByRole("dialog");
@@ -169,7 +230,9 @@ test("the drawer moves focus into itself when it opens", async () => {
 });
 
 test("the drawer closes itself once its selection is applied", async () => {
-  render(withIntl(<FilterDrawer metadata={metadata} params={params()} />));
+  render(
+    withIntl(<FilterDrawer filters={availableFilters} params={params()} />),
+  );
 
   fireEvent.click(screen.getByRole("button", { name: "Filters" }));
   fireEvent.click(await screen.findByRole("checkbox", { name: "PC" }));

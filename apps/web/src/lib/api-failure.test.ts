@@ -48,6 +48,15 @@ test("ignores a Retry-After header that is not a whole number of seconds", () =>
   ).toBeUndefined();
 });
 
+test("does not invent a zero-second retry when the header is absent", () => {
+  const response = new Response(null, { status: 503 });
+
+  expect(
+    classifyApiFailure(envelope("UPSTREAM_UNAVAILABLE"), response)
+      .retryAfterSeconds,
+  ).toBeUndefined();
+});
+
 test("reports an unrecognized envelope as an unknown failure", () => {
   expect(classifyApiFailure({ detail: "not our envelope" })).toEqual({
     code: "UNKNOWN",

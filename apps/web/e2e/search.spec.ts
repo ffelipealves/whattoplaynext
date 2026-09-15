@@ -7,6 +7,8 @@ import { expect, test } from "@playwright/test";
 
 const UPSTREAM_FAILURE_NAME = "trigger-upstream-failure";
 const UPSTREAM_FAILURE_GAME_ID = 999_998;
+const RATE_LIMIT_FAILURE_GAME_ID = 999_997;
+const VALIDATION_FAILURE_GAME_ID = 999_996;
 const DETAIL_GAME_ID = 1942;
 const DETAIL_GAME_SLUG = "the-witcher-3-wild-hunt";
 
@@ -209,6 +211,48 @@ test("invalid and missing game IDs render the localized 404", async ({
 
     expect(response.status()).toBe(404);
     expect(await response.text()).toContain("Jogo não encontrado");
+  }
+});
+
+test("unknown routes render the localized 404 in both locales", async ({
+  request,
+}) => {
+  for (const [locale, title] of [
+    ["en", "Page not found"],
+    ["pt-br", "Página não encontrada"],
+  ] as const) {
+    const response = await request.get(`/${locale}/route-that-does-not-exist`);
+
+    expect(response.status()).toBe(404);
+    const html = await response.text();
+    expect(html).toContain(title);
+    expect(html).toContain('name="robots" content="noindex"');
+  }
+});
+
+test("game failures keep distinct localized states across the production boundary", async ({
+  page,
+}) => {
+  for (const [gameId, title] of [
+    [VALIDATION_FAILURE_GAME_ID, "This request could not be run"],
+    [RATE_LIMIT_FAILURE_GAME_ID, "Too many requests just now"],
+    [UPSTREAM_FAILURE_GAME_ID, "The game catalog is unavailable"],
+  ] as const) {
+    const response = await page.goto(`/en/games/${gameId}/classified-failure`);
+
+    expect(response?.status()).toBe(500);
+    await expect(
+      page.getByRole("alert").filter({ hasText: title }),
+    ).toBeVisible();
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+      "content",
+      "noindex",
+    );
+    if (gameId === RATE_LIMIT_FAILURE_GAME_ID) {
+      await expect(
+        page.getByText("You can try again in 30 seconds."),
+      ).toBeVisible();
+    }
   }
 });
 

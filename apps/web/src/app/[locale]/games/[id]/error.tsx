@@ -1,16 +1,18 @@
 "use client";
 
 import { GameDetailFailure } from "@/features/game/game-detail-failure";
+import { failureFromGameDetailError } from "@/features/game/game-detail-error";
 
 type GameErrorProps = {
-  reset: () => void;
+  error: Error & { digest?: string };
+  retry: () => void;
 };
 
-export default function GameError({ reset }: GameErrorProps) {
+export default function GameError({ error, retry }: GameErrorProps) {
   return (
-    <>
-      <meta content="noindex" name="robots" />
-      <GameDetailFailure retry={reset} />
-    </>
+    <GameDetailFailure
+      failure={failureFromGameDetailError(error)}
+      retry={retry}
+    />
   );
 }

@@ -52,8 +52,8 @@ function renderPage(
   return render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
       <SearchPage
+        filters={{ ok: true, metadata }}
         issues={issues}
-        metadata={metadata}
         params={params}
         result={result}
       />
@@ -82,8 +82,8 @@ test("keeps the live region present so a later count is announced", () => {
   rerender(
     <NextIntlClientProvider locale="en" messages={enMessages}>
       <SearchPage
+        filters={{ ok: true, metadata }}
         issues={issues}
-        metadata={metadata}
         params={params}
         result={{ ok: true, page: pageWith(7) }}
       />

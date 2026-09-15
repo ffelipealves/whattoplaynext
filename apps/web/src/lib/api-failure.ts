@@ -31,8 +31,18 @@ const PUBLISHED_CODES = new Set<string>([
   "VALIDATION_ERROR",
 ] satisfies PublishedErrorCode[]);
 
+const API_FAILURE_CODES: ReadonlySet<string> = new Set([
+  ...PUBLISHED_CODES,
+  "UNREACHABLE",
+  "UNKNOWN",
+]);
+
 /** The API process itself was never reached: no envelope exists to classify. */
 export const UNREACHABLE: ApiFailure = { code: "UNREACHABLE" };
+
+export function isApiFailureCode(value: string): value is ApiFailureCode {
+  return API_FAILURE_CODES.has(value);
+}
 
 function detailOf(error: unknown): Record<string, unknown> | undefined {
   const detail = (error as { error?: unknown } | null)?.error;
@@ -51,7 +61,11 @@ function retryAfterFrom(
   }
   // The API sends the same value as a header; an HTTP-date form is valid there
   // but carries no seconds to show, so it is left out rather than guessed at.
-  const header = Number(response?.headers.get("Retry-After"));
+  const retryAfterHeader = response?.headers.get("Retry-After");
+  if (retryAfterHeader === null || retryAfterHeader === undefined) {
+    return undefined;
+  }
+  const header = Number(retryAfterHeader);
   return Number.isInteger(header) && header >= 0 ? header : undefined;
 }
 

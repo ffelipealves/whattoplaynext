@@ -42,6 +42,8 @@ from whattoplaynext_api.core.errors import ApplicationError, ErrorCode
 # does, so the upstream-failure journey needs no unreachable service.
 UPSTREAM_FAILURE_NAME = "trigger-upstream-failure"
 UPSTREAM_FAILURE_GAME_ID = 999_998
+RATE_LIMIT_FAILURE_GAME_ID = 999_997
+VALIDATION_FAILURE_GAME_ID = 999_996
 
 FIXTURE_DIRECTORY = Path(__file__).resolve().parents[1] / "fixtures" / "igdb"
 
@@ -236,9 +238,13 @@ class FixtureCatalog:
         )
 
     async def get_game_detail(self, game_id: int) -> GameDetail:
-        """Serve one real normalized fixture, a failure sentinel, or not found."""
+        """Serve one normalized fixture, classified sentinels, or not found."""
         if game_id == UPSTREAM_FAILURE_GAME_ID:
             raise ApplicationError(ErrorCode.UPSTREAM_UNAVAILABLE)
+        if game_id == RATE_LIMIT_FAILURE_GAME_ID:
+            raise ApplicationError(ErrorCode.RATE_LIMITED, retry_after_seconds=30)
+        if game_id == VALIDATION_FAILURE_GAME_ID:
+            raise ApplicationError(ErrorCode.VALIDATION_ERROR)
         return await DETAIL_CATALOG.get_game_detail(game_id)
 
 

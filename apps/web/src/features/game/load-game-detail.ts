@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { getGameDetail, type GameDetail } from "./get-game-detail";
+import { gameDetailError } from "./game-detail-error";
 
 export function parseGameId(value: string): number | null {
   if (!/^[1-9]\d*$/.test(value)) {
@@ -23,7 +24,7 @@ export async function loadGameDetail(rawGameId: string): Promise<GameDetail> {
       notFound();
     }
 
-    throw new Error(`Could not load game detail: ${result.failure.code}`);
+    throw gameDetailError(result.failure);
   }
 
   return result.detail;

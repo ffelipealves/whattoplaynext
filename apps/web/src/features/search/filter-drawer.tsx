@@ -24,7 +24,7 @@ import { FiltersUnavailable, type FilterPanelProps } from "./filter-sidebar";
  * reports how many filters are currently applied. Only the open/closed state
  * lives here; the criteria still live in the URL.
  */
-export function FilterDrawer({ metadata, params }: FilterPanelProps) {
+export function FilterDrawer({ filters, params }: FilterPanelProps) {
   const t = useTranslations("Filters");
   const [isOpen, setIsOpen] = useState(false);
   const appliedCount = activeFilters(params).length;
@@ -45,16 +45,16 @@ export function FilterDrawer({ metadata, params }: FilterPanelProps) {
           <SheetDescription>{t("drawerDescription")}</SheetDescription>
         </SheetHeader>
         <div className="px-4 pb-8">
-          {metadata ? (
+          {filters.ok ? (
             <FilterForm
               key={filterSignature(params)}
-              metadata={metadata}
+              metadata={filters.metadata}
               onApplied={() => setIsOpen(false)}
               params={params}
               stickyActions
             />
           ) : (
-            <FiltersUnavailable />
+            <FiltersUnavailable failure={filters.failure} />
           )}
         </div>
       </SheetContent>

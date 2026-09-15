@@ -3,6 +3,14 @@
     "en": "English",
     "pt-br": "Português"
   },
+  "System": {
+    "notFoundTitle": "Página não encontrada",
+    "notFoundDescription": "A página que você pediu não existe.",
+    "backHome": "Voltar ao início",
+    "unexpectedTitle": "Algo deu errado",
+    "unexpectedDescription": "Não foi possível carregar esta página agora.",
+    "retryLabel": "Tentar novamente"
+  },
   "Landing": {
     "languageNavLabel": "Idioma",
     "eyebrow": "Descoberta estruturada de jogos",
@@ -126,21 +134,21 @@
     "backToGames": "Ver jogos"
   },
   "Failure": {
-    "validationTitle": "Não foi possível executar esta busca",
-    "validationDescription": "Alguns critérios deste link não são aceitos. Ajuste os filtros e busque novamente.",
-    "rateLimitedTitle": "Buscas demais agora há pouco",
+    "validationTitle": "Não foi possível executar esta solicitação",
+    "validationDescription": "Alguns valores deste link não são aceitos. Confira o endereço ou ajuste os filtros.",
+    "rateLimitedTitle": "Solicitações demais agora há pouco",
     "rateLimitedDescription": "O catálogo está limitando a frequência das respostas. Espere um instante e tente de novo.",
     "rateLimitedRetryIn": "Você pode tentar de novo em {seconds, plural, one {# segundo} other {# segundos}}.",
     "unavailableTitle": "O catálogo de jogos está indisponível",
-    "unavailableDescription": "O provedor que consultamos não está respondendo agora. Seus critérios continuam neste link.",
+    "unavailableDescription": "O provedor que consultamos não está respondendo agora. Tente novamente em instantes.",
     "timeoutTitle": "O catálogo de jogos demorou demais",
-    "timeoutDescription": "O provedor não respondeu a tempo. Uma busca mais restrita costuma voltar mais rápido.",
+    "timeoutDescription": "O provedor não respondeu a tempo. Tente novamente em instantes.",
     "invalidResponseTitle": "O catálogo de jogos enviou algo ilegível",
     "invalidResponseDescription": "Preferimos não mostrar nada a adivinhar o resultado. Tentar de novo costuma resolver.",
-    "unreachableTitle": "Não conseguimos falar com o serviço de busca",
+    "unreachableTitle": "Não conseguimos falar com o serviço de jogos",
     "unreachableDescription": "Verifique sua conexão ou tente novamente em instantes.",
     "genericTitle": "Algo deu errado",
-    "genericDescription": "Não foi possível carregar os resultados agora.",
+    "genericDescription": "Não foi possível carregar esta página agora.",
     "retryLabel": "Tentar novamente",
     "requestIdLabel": "Referência: {requestId}",
     "ignoredTitle": "Alguns critérios deste link foram ignorados",

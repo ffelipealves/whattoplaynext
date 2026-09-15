@@ -1,6 +1,6 @@
 import { useTranslations } from "next-intl";
 
-import type { FilterMetadata } from "@/features/catalog/get-filter-metadata";
+import type { FilterMetadataResult } from "@/features/catalog/get-filter-metadata";
 
 import { ActiveFilterChips } from "./active-filter-chips";
 import { activeFilters } from "./active-filters";
@@ -19,8 +19,7 @@ type SearchPageProps = {
   params: BrowseParams;
   issues: BrowseParamIssue[];
   result: SearchResult;
-  /** Absent when `GET /api/v1/filters` failed for this request. */
-  metadata?: FilterMetadata;
+  filters: FilterMetadataResult;
 };
 
 /**
@@ -34,9 +33,10 @@ export function SearchPage({
   params,
   issues,
   result,
-  metadata,
+  filters,
 }: SearchPageProps) {
   const t = useTranslations("Search");
+  const metadata = filters.ok ? filters.metadata : undefined;
   const hasActiveFilters = activeFilters(params).length > 0;
   const durationWasNarrowed =
     result.ok && Boolean(result.page.meta.excludedUnknownDuration);
@@ -61,12 +61,12 @@ export function SearchPage({
       </div>
 
       <div className="mt-8 flex gap-8">
-        <FilterSidebar metadata={metadata} params={params} />
+        <FilterSidebar filters={filters} params={params} />
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3">
-              <FilterDrawer metadata={metadata} params={params} />
+              <FilterDrawer filters={filters} params={params} />
               <SortLinks params={params} />
             </div>
             {/* Applying a filter is a client navigation: without a live

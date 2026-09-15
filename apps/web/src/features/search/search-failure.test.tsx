@@ -35,6 +35,9 @@ test("announces every failure as an alert, never as an empty result", () => {
   const alert = screen.getByRole("alert");
   expect(alert.textContent).toContain("The game catalog is unavailable");
   expect(alert.textContent).not.toContain("No games matched");
+  expect(
+    document.querySelector('meta[name="robots"]')?.getAttribute("content"),
+  ).toBe("noindex");
 });
 
 test("tells each mapped code apart", () => {
@@ -68,7 +71,7 @@ test("says nothing about timing when the API provided none", () => {
   renderFailure({ code: "RATE_LIMITED" });
 
   expect(screen.queryByText(/You can try again in/)).toBeNull();
-  expect(screen.getByText("Too many searches just now")).toBeDefined();
+  expect(screen.getByText("Too many requests just now")).toBeDefined();
 });
 
 test("offers a retry that repeats the same criteria", () => {
@@ -88,7 +91,7 @@ test("offers no retry for criteria the API rejected", () => {
 
   // Repeating a rejected query cannot help; the fix is changing the criteria.
   expect(screen.queryByRole("link", { name: "Try again" })).toBeNull();
-  expect(screen.getByText("This search could not be run")).toBeDefined();
+  expect(screen.getByText("This request could not be run")).toBeDefined();
 });
 
 test("shows the correlation id when the API provided one", () => {
@@ -100,7 +103,7 @@ test("shows the correlation id when the API provided one", () => {
 test("localizes the failure copy", () => {
   renderFailure({ code: "RATE_LIMITED", retryAfterSeconds: 1 }, ptMessages);
 
-  expect(screen.getByText("Buscas demais agora há pouco")).toBeDefined();
+  expect(screen.getByText("Solicitações demais agora há pouco")).toBeDefined();
   expect(
     screen.getByText("Você pode tentar de novo em 1 segundo."),
   ).toBeDefined();
