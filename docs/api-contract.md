@@ -1,6 +1,7 @@
-# Initial API Contract
+# API Contract
 
-Status: approved semantic baseline with generated executable schema
+Status: implemented through Milestone 3; Milestone 4 rate limits and caching
+remain planned. The generated OpenAPI schema is the executable authority.
 Base path: `/api/v1`
 
 FastAPI OpenAPI is the executable source of truth. The committed schema is
@@ -204,8 +205,10 @@ the candidate set with AND against the query text. The response never exceeds
 eight items, applies the same base-game/remake/remaster eligibility allow-list
 as browse and detail, and leaves missing release year or cover values as `null`.
 
-This endpoint is independently rate-limited and cached. Failure does not block
-normal name-filter submission.
+Independent public rate limiting and Redis caching are planned for Milestone 4,
+not active yet. A failed suggestion request does not block normal name-filter
+submission: the web application keeps the search field usable without
+autocomplete until that page is reloaded.
 
 ### `GET /api/v1/games/popular`
 
@@ -299,8 +302,10 @@ ratings and external links are provider text and allow-listed categories
 respectively; an unrecognized external-link category is omitted rather than
 guessed.
 
-The MVP includes released base games and their separately cataloged remakes
-and remasters. A game ID that does not exist, or that resolves to an excluded
+The intended MVP scope is released base games and their separately cataloged
+remakes and remasters. The current eligibility rule enforces content type, not
+release state; see [technical debt 1b](technical-debt.md#1b-released-games-is-not-enforced-as-a-catalog-condition).
+A game ID that does not exist, or that resolves to an excluded
 content type such as DLC, an expansion, a bundle, or a mod, returns
 `GAME_NOT_FOUND` — the same code for both cases, so a request cannot probe
 which excluded games exist. Upstream failures keep their own distinct codes.
@@ -308,8 +313,8 @@ which excluded games exist. Upstream failures keep their own distinct codes.
 ### `GET /api/v1/health`
 
 Returns process health without making a synchronous IGDB request. A separate
-readiness view may report cache and provider-circuit state without exposing
-credentials or internal network information.
+readiness view for cache and provider-circuit state is planned for Milestone 4;
+it must not expose credentials or internal network information.
 
 ## 3. Search semantics
 
@@ -370,12 +375,13 @@ Error messages are localized by the web application using the stable code. The
 API message is a safe English fallback and never includes provider payloads or
 stack traces.
 
-## 6. Rate limiting
+## 6. Rate limiting (Milestone 4 target)
 
-The initial public ceiling is 60 requests per minute per client IP, with lower
-route-specific budgets for uncached calls capable of consuming IGDB quota.
-Limits are configuration rather than hard-coded product behavior. HTTP 429
-responses include `Retry-After` and `retryAfterSeconds`.
+The planned initial public ceiling is 60 requests per minute per client IP,
+with lower route-specific budgets for uncached calls capable of consuming IGDB
+quota. These limits will be configuration rather than hard-coded product
+behavior. Today an HTTP 429 can only come from the provider; it is classified
+as `RATE_LIMITED` with `Retry-After` and `retryAfterSeconds` when available.
 
 ## 7. Versioning rules
 

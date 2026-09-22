@@ -30,17 +30,20 @@ approximate matching.
 - [Milestone 2 review](docs/milestone-2-review.md) — search-experience closeout,
   cross-browser and Core Web Vitals evidence, and the Milestone 3 handoff.
 - [Milestone 3 plan](docs/milestone-3-plan.md) — game-page, localization, and
-  SEO increments, open owner decisions, and the M3.1 handoff.
+  SEO increments and their accepted outcomes.
+- [Milestone 3 review](docs/milestone-3-review.md) — exit-criterion evidence,
+  browser matrix, Web Vitals spot checks, and the Milestone 4 handoff.
 - [Technical debt](docs/technical-debt.md) — deliberate compromises, what each
   costs, and the release gates that depend on them.
 - [MVP roadmap](docs/roadmap.md) — delivery sequence and milestone exit checks.
 
-## Planned stack
+## Stack
 
 - Next.js and TypeScript frontend
 - FastAPI and Pydantic backend
 - IGDB as the sole game-data provider for the MVP
-- Redis-compatible distributed cache
+- Redis-compatible distributed cache planned for Milestone 4; only the local
+  Compose service and configuration exist so far
 - OpenAPI-generated TypeScript client
 - English as the default UI language and Brazilian Portuguese as secondary
 
@@ -59,7 +62,7 @@ increment history, that finding, and the quality evidence.
 Name/domain selection and the IGDB commercial partnership remain owner-gated
 actions tracked separately in
 [External prerequisites](docs/external-prerequisites.md); they do not block
-Milestone 2 frontend work.
+the next engineering milestone.
 
 Milestone 2 (search experience) is complete. `GET /[locale]/games` is a
 working faceted search: name search with debounced autocomplete, structured
@@ -72,18 +75,22 @@ fixture-backed API on every push, and the closeout ran those journeys across
 Chromium, Firefox, and WebKit at desktop and mobile sizes. The
 [Milestone 2 review](docs/milestone-2-review.md) records the evidence.
 
-Driving the new UI against live IGDB also surfaced three API defects that
-fixtures alone could not: a rating filter that could never be served, and two
-query shapes that read the whole catalog to page it. All three are fixed;
+Driving the new UI against live IGDB also surfaced defects that fixtures
+alone could not: a rating filter that could never be served, and several
+query shapes that read the whole catalog to page it. Those paths were fixed;
 [Milestone 2 plan](docs/milestone-2-plan.md) has the full increment breakdown,
 and [Technical debt](docs/technical-debt.md) records what was deliberately
 left behind.
 
-Milestone 3 (game pages, localization, and SEO) is planned as ten increments in
-the [Milestone 3 plan](docs/milestone-3-plan.md), starting with M3.1: making
-browse and autocomplete apply the same content eligibility the game-detail
-endpoint already enforces, so that no search result can lead to a missing game
-page once results link to one.
+Milestone 3 (game pages, localization, and SEO) is complete. Eligible results
+open localized ID-plus-slug game pages with canonical redirects, nullable
+detail states, responsive imagery, and planned IGDB attribution. Localized
+metadata, `noindex` search pages, information-page drafts, and a daily sitemap
+selection are implemented. The [Milestone 3 review](docs/milestone-3-review.md)
+records the 135/135 browser-matrix pass and the one open Web Vitals finding:
+mobile search INP exceeds its lab target. Milestone 4 is next for Redis
+caching, rate limiting, resilience, operations, and security hardening; the
+[technical debt register](docs/technical-debt.md) tracks the known compromises.
 
 ## Local development
 
@@ -106,8 +113,8 @@ Install these tools before cloning the repository:
 
 The exact Node and Python versions are also recorded in `.node-version` and
 `.python-version`; pnpm is pinned by the `packageManager` field in
-`package.json`. Docker is optional for tests and builds, but required for
-cache-dependent local behavior.
+`package.json`. Docker is optional for current development, tests, and builds;
+the local Redis service is available for Milestone 4 cache work.
 
 Verify the command-line tools:
 
@@ -149,21 +156,26 @@ Copy-Item apps/api/.env.example apps/api/.env
 Copy-Item apps/web/.env.example apps/web/.env.local
 ```
 
-The defaults connect the web app to `http://localhost:8000` and the API to the
-local Redis service. Twitch credentials may remain blank until live IGDB work
-begins. When used, `WTPN_TWITCH_CLIENT_ID` and `WTPN_TWITCH_CLIENT_SECRET` must
-both be set in `apps/api/.env`; never place credentials in a `NEXT_PUBLIC_`
-variable or commit populated environment files.
+The defaults connect the web app to `http://localhost:8000` and configure an
+unused local Redis URL for the future cache. `WTPN_SITE_ORIGIN` supplies the
+absolute origin for canonical and sitemap URLs. Twitch credentials may remain
+blank until live IGDB work begins. When used, `WTPN_TWITCH_CLIENT_ID` and
+`WTPN_TWITCH_CLIENT_SECRET` must both be set in `apps/api/.env`; never place
+credentials in a `NEXT_PUBLIC_` variable or commit populated environment files.
 
 ### Start the applications
 
-Start Redis, confirm it is healthy, and run both development servers:
+Run both development servers. Start Redis first only if working on the
+Milestone 4 cache or its infrastructure:
 
 ```bash
-pnpm infra:up
-pnpm infra:status
 pnpm dev
 ```
+
+For Redis work, run `pnpm infra:up` and `pnpm infra:status` before `pnpm dev`.
+With Twitch credentials left blank, health and API documentation work, but
+catalog requests report the provider as unavailable until credentials are
+configured; the automated suite uses a fixture catalog instead.
 
 The services are available at:
 
@@ -206,7 +218,10 @@ does that, and `pnpm e2e:install` does it on its own. Two further runs are
 on demand rather than part of the gate: `pnpm e2e:browsers` repeats the suite
 in Chromium, Firefox, and WebKit at desktop and mobile viewports (install those
 engines with `pnpm e2e:install:browsers`), and `pnpm e2e:vitals` takes Core Web
-Vitals spot measurements of the search page.
+Vitals spot measurements of search and game pages. The latter is an opt-in lab
+check, not a release gate: mobile search INP is currently above the target.
+The CI browser matrix runs on a manual workflow dispatch or a push whose commit
+message contains `[browser-matrix]`.
 
 `pnpm check` remains an alias for `pnpm quality`. See
 [CONTRIBUTING.md](CONTRIBUTING.md#root-commands) for every package-specific

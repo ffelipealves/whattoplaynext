@@ -8,8 +8,16 @@ This is not a bug list: everything here works as designed. Defects go to the
 milestone plans and their outcome notes. Items marked **blocking** must be
 resolved before the release gate that names them.
 
-Last reviewed: 2026-09-22, at Milestone 3.10 closeout. No new debt was
-introduced; the existing mobile search INP finding remains open.
+Last reviewed: 2026-09-22, after the Milestone 3.10 documentation audit. No
+new product debt was introduced by the closeout; this pass corrected stale
+descriptions of caching, browser coverage, and failure tests. The existing
+mobile search INP finding remains open.
+
+For the Milestone 4 handoff, the highest-impact open items are the cold-query
+costs (2 and 2b), missing public rate limiter (4), sequential search metadata
+fetch (9), and mobile search INP (15). Release gates remain separate: decide
+how to enforce “released” (1b) and test actual branded browsers (14). The
+other entries below are deliberate compromises, not newly found defects.
 
 ## Provider and API
 
@@ -54,10 +62,10 @@ Milestone 2.4's follow-up cut a duration-filtered search from ~30 s to ~10 s by
 bounding the smaller index first, but ~10 s is the floor for that shape of
 query against a provider allowing four requests per second.
 
-Redis hides this in normal operation; it is only the cold path that hurts, and
-Milestone 4 owns caching. Paying it off further would mean caching the duration
-index itself — it is small enough (~9,300 rows) to hold whole — rather than
-re-reading it per request.
+No Redis cache is active yet, so this cost can affect current live requests.
+Milestone 4 owns the first cache layer. Paying it off further would mean
+caching the duration index itself — it is small enough (~9,300 rows) to hold
+whole — rather than re-reading it per request.
 
 ### 2b. A platform release range still materializes its whole match set
 
@@ -73,8 +81,9 @@ What remains is the count. After M3.1 eligibility, that shape matches 10,597
 games and took 63.7–71.8 s in two cold live runs; an exact `totalItems` — which
 pagination depends on — means resolving every one of them through the games
 endpoint to apply the rest of the filter: about fifty requests against a
-provider allowing four per second. Narrower ranges are proportionally better,
-and Redis hides all of it once warm.
+provider allowing four per second. Narrower ranges are proportionally better;
+Milestone 4 caching should improve repeated requests, but a cold range still
+has this cost.
 
 Paying off the rest means either giving up an exact total for this shape, or
 skipping the join when the platform is the only game-level criterion — the
@@ -100,9 +109,9 @@ pathological filtered sets, which is why it stays.
 `RATE_LIMITED` only ever surfaces when IGDB itself returns 429; nothing
 protects the provider from this service, or this service from a caller. The
 architecture places rate limiting before provider access, and Milestone 4 owns
-it. The consequence today is that the frontend's rate-limit state — copy,
-retry timing, and all — has never run against a live 429 and is covered by
-component tests alone.
+it. The frontend's rate-limit copy and retry timing are covered by component
+tests and a fixture-backed game-detail Playwright scenario, but have not been
+verified against a live provider 429.
 
 ## Web application
 
@@ -134,16 +143,11 @@ Coverage thresholds cover `src/features/**` and `src/lib/**`. Pages and route
 handlers are excluded, so the autocomplete route handler's tests — which do
 exist — count for nothing in the gate.
 
-Milestone 2.8 shrank this by moving the search page's composition into
-`features/search/search-page.tsx`, leaving the route with data fetching alone;
-what remains outside the floor is four thin files and one route handler. It is
-worth either extending the floor to `src/app/**` or writing down why those
-files are exempt, rather than leaving the boundary where it landed by
-accident.
-
-Milestone 3 makes the decision due: it adds real logic under `src/app/` — the
-game route's redirect-or-not-found decision, `robots.ts`, and `sitemap.ts` —
-which would all land outside the floor unless the boundary moves first.
+Milestone 2.8 shrank the gap by moving search-page composition into
+`features/search/search-page.tsx`. Milestone 3 then added the game route's
+redirect-or-not-found dispatch, `robots.ts`, and `sitemap.ts` under `src/app/`.
+The decision is now to extend the floor to relevant app files or document a
+clear exemption policy, rather than treating the exclusion as accidental.
 
 Milestone 3.2 kept the detail fetch, failure classification, ID parsing, and
 canonical-path construction under `features/game/`, but the thin route's
@@ -171,8 +175,9 @@ hardcoding the enums.
 
 Parsing the URL needs the published allow-lists and limits, so the games route
 awaits `GET /api/v1/filters` before it can parse criteria and only then queries
-results. That is one extra sequential round trip on every search page view,
-against an endpoint the API caches for seven days.
+results. That is one extra sequential round trip on every search page view.
+The seven-day Redis policy exists in the architecture plan but is not
+implemented yet.
 
 Removing it means either giving up URL validation against the published
 allow-list, or caching the metadata in the web application — the latter is a
@@ -233,12 +238,13 @@ viewports — is named in `playwright.config.ts` and runs on demand, locally wit
 `pnpm e2e:browsers` and in CI through the "Browser matrix" job, triggered by a
 manual dispatch or a push commit containing `[browser-matrix]`.
 
-The reasoning: nine scenarios times five configurations on every push would
-cost more than the regressions they could plausibly catch, and WebKit needs
-system libraries a developer machine often lacks (it could not launch on the
-Ubuntu machine the closeout ran on) but a hosted runner can install. The cost
-is that an engine-specific regression surfaces only when someone runs the
-matrix — which should at least be every release candidate.
+The reasoning: 27 scenarios times five configurations on every push would
+cost more than the regressions they could plausibly catch. WebKit needed
+system libraries that were missing on the Ubuntu machine at the M2 closeout;
+those were installed by M3.10, when the local and hosted matrices both passed
+135/135. The cost of keeping the matrix opt-in is that an engine-specific
+regression surfaces only when someone runs it — at least every release
+candidate.
 
 ### 14. No retail browser has been checked — **blocking for closed beta**
 

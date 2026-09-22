@@ -1,13 +1,15 @@
 # Architecture
 
-Status: accepted MVP architecture baseline
-Last updated: 2026-09-11
+Status: accepted MVP architecture baseline; implementation complete through
+Milestone 3, with the Milestone 4 infrastructure and operations marked below
+Last updated: 2026-09-22
 
 ## 1. Context
 
-This document describes how the approved [product requirements](product-requirements.md)
-are implemented. Product behavior, quality targets, and scope are defined only
-in that document.
+This document describes the accepted design and its implementation status.
+Product behavior, quality targets, and scope are defined only in the
+[product requirements](product-requirements.md). Sections labelled for
+Milestone 4 are targets, not claims that the mechanisms already run.
 
 ## 2. System view
 
@@ -16,18 +18,19 @@ Browser
   │
   ├── pages, metadata, localized UI
   ▼
-Next.js web application (Vercel)
+Next.js web application (Vercel target)
   │  generated REST client
   ▼
-FastAPI service (Render)
+FastAPI service (Render target)
   │
   ├── validation and query normalization
-  ├── rate limiting and resilience
-  ├── Redis-compatible cache (Upstash)
+  ├── IGDB transport timeout, retry, and 429 handling (implemented)
+  ├── public rate limiting and circuit breaker (Milestone 4)
+  ├── Redis-compatible cache (Milestone 4)
   └── IGDB adapter ───────────────► Twitch OAuth / IGDB API
 
-Anonymous analytics ──────────────► Umami Cloud
-Errors and health ────────────────► monitoring providers
+Anonymous analytics ──────────────► Umami Cloud (Milestone 4)
+Errors and health ────────────────► monitoring providers (Milestone 4)
 ```
 
 ## 3. Repository layout
@@ -67,8 +70,8 @@ search state lives in the URL; transient form state remains local to the form.
 - FastAPI;
 - Pydantic models and settings;
 - asynchronous HTTPX client;
-- asynchronous Redis-compatible client;
-- structured JSON logging;
+- asynchronous Redis-compatible client (Milestone 4);
+- structured JSON logging (Milestone 4);
 - Poetry dependency management;
 - Ruff, mypy, and pytest.
 
@@ -141,7 +144,7 @@ public API models.
 Responsibilities:
 
 - obtain and refresh a Twitch application token server-side;
-- enforce a process-wide and distributed upstream request budget;
+- enforce a process-wide and distributed upstream request budget (Milestone 4);
 - construct the minimum IGDB field projection;
 - join duration or related endpoint data when required;
 - normalize nullable fields and image URLs;
@@ -210,11 +213,20 @@ ordered before slicing the 24-item page, keeping totals exact and unknown values
 last for sorting. Missing durations remain eligible unless an inclusive duration
 bound is active; only that policy sets `excludedUnknownDuration`.
 
+Milestone 2 replaced exhaustive popularity and release/duration scans on broad
+queries with bounded index walks; Milestone 3.1 applied the detail endpoint's
+eligible `game_type` rule to every discovery path and count. The exhaustive
+popularity fallback and exact count on a broad platform release range remain
+documented in the [technical debt register](technical-debt.md).
+
 ## 7. Caching
 
-Redis is a disposable optimization, not a source of truth.
+Redis is a disposable optimization, not a source of truth. Its client, cache
+keys, coalescing, and stale-if-error behavior are Milestone 4 work; through
+Milestone 3 the API does not read or write Redis. The popular-game endpoint
+sets a 24-hour HTTP cache policy and the Next.js sitemap revalidates daily.
 
-Initial configurable TTLs:
+Planned configurable Redis TTLs:
 
 | Resource                                      |           Fresh TTL |
 | --------------------------------------------- | ------------------: |
@@ -224,27 +236,31 @@ Initial configurable TTLs:
 | Empty/negative lookup                         | short, configurable |
 | Popular-game sitemap selection                |            24 hours |
 
-Cache keys are generated from a canonical serialization of validated criteria,
-API version, locale-sensitive presentation needs, and response schema version.
-Identical in-flight cache misses share one upstream request.
+Cache keys will be generated from a canonical serialization of validated
+criteria, API version, locale-sensitive presentation needs, and response
+schema version. Identical in-flight cache misses will share one upstream
+request.
 
 Expired cache entries may be retained for a bounded stale-if-error window. A
-cache outage falls back to rate-limited IGDB access.
+cache outage should fall back to rate-limited IGDB access when Milestone 4
+implements this path.
 
 ## 8. Resilience
 
-The FastAPI provider adapter implements NFR-005 through NFR-009 with bounded
-timeouts, one retry for eligible transient failures, jitter, `Retry-After`
-support, a circuit breaker, and stale-if-error cache reads. Presentation of the
-resulting states belongs to the web application.
+The IGDB transport already has bounded timeouts, one retry for eligible
+transient failures, jitter, and bounded `Retry-After` handling. The web
+application renders classified provider failures and retry timing. The public
+rate limiter, circuit breaker, and stale-if-error cache reads are Milestone 4
+work; the provider's own 429 can currently surface as `RATE_LIMITED`.
 
 ## 9. Security and privacy
 
 The browser is untrusted, the FastAPI service is the only credential-bearing
-component, and IGDB and analytics are third-party trust boundaries. Validation
-and rate limiting run before provider access. Logs and analytics pass through
-explicit allow-lists/redaction, and public errors expose only stable codes and a
-correlation ID. The binding requirements are NFR-015 through NFR-023.
+component, and IGDB and analytics are third-party trust boundaries. Strict
+validation runs before provider access, and public errors expose only stable
+codes and a correlation ID. Public rate limiting, structured log redaction,
+and analytics allow-lists remain Milestone 4 work. The binding requirements
+are NFR-015 through NFR-023.
 
 Supported environment-variable names are committed only in `.env.example`
 files. Populated `.env` files remain untracked. Browser-visible configuration
@@ -257,19 +273,23 @@ secret uses a redacting type in application configuration.
 Next.js renders indexable routes and their metadata on the server. Search state
 is encoded in query parameters but result routes emit `noindex`. Game identity
 comes from the numeric ID; the slug is corrected with a locale-preserving
-canonical redirect. A daily cached job supplies the bounded popular-game set to
-the sitemap. See NFR-029 through NFR-032 for expected behavior.
+canonical redirect. The sitemap reads a bounded popular-game API selection,
+revalidates daily, and still lists static pages if that API fails. See NFR-029
+through NFR-032 for expected behavior.
 
 ## 11. Observability
 
-Next.js forwards or creates a correlation ID. FastAPI accepts a bounded safe
-identifier or generates a UUID, returns it in `X-Request-ID`, and includes it in
-the stable error envelope. Future cache and provider operations propagate the
-same value. Structured telemetry records the route template, response class,
-duration, cache outcome, provider outcome, circuit state, and a non-sensitive
-error code. Dashboards and retention follow NFR-023 and NFR-025 through NFR-027.
+FastAPI accepts a bounded safe caller identifier or generates a UUID, returns
+it in `X-Request-ID`, and includes it in the stable error envelope. End-to-end
+propagation through Next.js, future cache and provider operations, structured
+telemetry, dashboards, and retention remain Milestone 4 work under NFR-023 and
+NFR-025 through NFR-027.
 
 ## 12. Deployment
+
+The following are deployment targets, not evidence that public environments
+have been provisioned. Costs are historical planning estimates and must be
+rechecked before launch.
 
 ### Development and closed testing
 
@@ -307,9 +327,10 @@ provider credentials or live infrastructure.
 A small critical Playwright suite runs inside that gate, driving a real browser
 against the real application composed with a fixture catalog: it needs no
 provider credentials and no live infrastructure, exactly like the rest of the
-suite. The workflow installs the one browser it drives. Production deploys only
-from the main branch after required checks pass, and deployment secrets are
-scoped separately by environment.
+suite. The workflow installs Chromium for the default gate; its on-demand
+browser job runs 27 scenarios in five engine/layout projects on manual dispatch
+or a `[browser-matrix]` push commit. Deployment and secret scoping remain
+release work rather than an active CI deployment job.
 
 ## 14. Testing strategy
 
@@ -340,8 +361,8 @@ change.
 - FastAPI endpoint integration tests;
 - frontend component tests for filter and result states;
 - Playwright for search, URL restoration, pagination, locale switch, upstream
-  error, and zero-result behavior, against the application's own composition
-  root with a fixture catalog injected in place of the provider; game detail
-  joins it with Milestone 3;
+  error, zero-result behavior, canonical game detail, metadata, sitemap, and
+  accessibility journeys against a fixture catalog injected at the API
+  composition root;
 - automated accessibility checks plus manual keyboard and screen-reader smoke
   testing on critical flows.
