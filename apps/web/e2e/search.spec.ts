@@ -27,8 +27,15 @@ test("searching by name narrows the results and shows in the URL", async ({
     page.getByRole("status").filter({ hasText: "games" }),
   ).toHaveText("60 games");
 
-  await page.getByLabel("Game name").fill("Hollow");
-  await page.getByRole("button", { name: "Search" }).click();
+  const nameInput = page.getByLabel("Game name");
+  const searchButton = page.getByRole("button", { name: "Search" });
+  await nameInput.fill("Hollow");
+  // WebKit can keep resolving the asynchronously rendered suggestion list
+  // while it waits for the adjacent submit button to settle. Moving focus
+  // closes that list through the field's native blur behavior without using
+  // Escape, which clears a search input in some browsers.
+  await searchButton.focus();
+  await searchButton.click();
 
   await expect(page).toHaveURL(/name=Hollow/);
   await expect(
