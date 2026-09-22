@@ -1161,6 +1161,32 @@ class PopularityIndexTransport:
 
 
 @pytest.mark.anyio
+async def test_selects_at_most_500_eligible_popular_games_for_the_sitemap() -> None:
+    transport = PopularityIndexTransport(
+        ranked=[(game_id, 1.0 - game_id / 10_000) for game_id in range(1, 1_001)],
+        matching=list(range(2, 1_001, 2)),
+    )
+    catalog = IgdbCatalog(transport)
+
+    result = await catalog.get_popular_games()
+
+    assert [game.id for game in result.items] == list(range(2, 1_001, 2))
+    assert all(game.slug == f"game-{game.id}" for game in result.items)
+    assert transport.count_requests == []
+    assert transport.endpoints() == [
+        "popularity_primitives",
+        "games",
+        "popularity_primitives",
+        "games",
+    ]
+    game_queries = [
+        query for endpoint, query in transport.requests if endpoint == "games"
+    ]
+    assert all(query.startswith("fields id,slug;") for query in game_queries)
+    assert all("game_type = (0,8,9)" in query for query in game_queries)
+
+
+@pytest.mark.anyio
 async def test_pages_the_popularity_index_instead_of_listing_every_match() -> None:
     # A broad filter matches far more games than one page can show; reading
     # every matching id just to rank it is what made these queries time out.

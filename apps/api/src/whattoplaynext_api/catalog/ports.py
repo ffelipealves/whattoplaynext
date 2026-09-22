@@ -9,6 +9,7 @@ from whattoplaynext_api.catalog.models import (
     FilterMetadata,
     GameDetail,
     GamePage,
+    PopularGameSelection,
 )
 
 
@@ -25,6 +26,10 @@ class Catalog(Protocol):
 
     async def autocomplete(self, criteria: AutocompleteCriteria) -> AutocompleteResult:
         """Return at most eight normalized title suggestions."""
+        ...
+
+    async def get_popular_games(self) -> PopularGameSelection:
+        """Return the bounded popularity selection used by the sitemap."""
         ...
 
     async def get_game_detail(self, game_id: int) -> GameDetail:

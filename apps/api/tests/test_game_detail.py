@@ -21,6 +21,7 @@ from whattoplaynext_api.catalog.models import (
     GameRating,
     MultiplayerInfo,
     PlatformRelease,
+    PopularGameSelection,
     ResponseMeta,
     Theme,
 )
@@ -104,6 +105,9 @@ class FakeCatalog:
     async def autocomplete(self, criteria: AutocompleteCriteria) -> AutocompleteResult:
         return AutocompleteResult(items=[], meta=ResponseMeta(request_id=None))
 
+    async def get_popular_games(self) -> PopularGameSelection:
+        raise AssertionError("not used by detail route tests")
+
 
 class NotFoundCatalog:
     async def get_game_detail(self, game_id: int) -> GameDetail:
@@ -118,6 +122,9 @@ class NotFoundCatalog:
     async def autocomplete(self, criteria: AutocompleteCriteria) -> AutocompleteResult:
         raise AssertionError("not used by detail route tests")
 
+    async def get_popular_games(self) -> PopularGameSelection:
+        raise AssertionError("not used by detail route tests")
+
 
 class FailingCatalog:
     async def get_game_detail(self, game_id: int) -> GameDetail:
@@ -130,6 +137,9 @@ class FailingCatalog:
         raise AssertionError("not used by detail route tests")
 
     async def autocomplete(self, criteria: AutocompleteCriteria) -> AutocompleteResult:
+        raise AssertionError("not used by detail route tests")
+
+    async def get_popular_games(self) -> PopularGameSelection:
         raise AssertionError("not used by detail route tests")
 
 

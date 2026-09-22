@@ -215,6 +215,13 @@ class GameSummary(BaseModel):
     game_modes: list[CatalogOption] = Field(serialization_alias="gameModes")
 
 
+class PopularGame(BaseModel):
+    """One canonical game identity selected for sitemap discovery."""
+
+    id: int = Field(gt=0)
+    slug: str = Field(min_length=1)
+
+
 class Pagination(BaseModel):
     """Page location and total result information."""
 
@@ -247,6 +254,13 @@ class ResponseMeta(BaseModel):
         default=False,
         serialization_alias="excludedUnknownDuration",
     )
+
+
+class PopularGameSelection(BaseModel):
+    """A bounded popularity-ordered selection used to build the sitemap."""
+
+    items: list[PopularGame] = Field(max_length=500)
+    meta: ResponseMeta
 
 
 class GamePage(BaseModel):

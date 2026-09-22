@@ -32,6 +32,8 @@ from whattoplaynext_api.catalog.models import (
     MultiplayerInfo,
     Pagination,
     PlatformRelease,
+    PopularGame,
+    PopularGameSelection,
     ResponseMeta,
     SortDirection,
     SortOption,
@@ -114,6 +116,7 @@ DURATION_PROVIDER_FIELDS = {
 }
 
 AUTOCOMPLETE_SUGGESTION_LIMIT = 8
+POPULAR_GAME_SELECTION_LIMIT = 500
 
 # IGDB's maximum page size for a single query, and therefore the unit every
 # index walk in this adapter is measured in.
@@ -249,6 +252,53 @@ class IgdbCatalog:
             for record in records[:AUTOCOMPLETE_SUGGESTION_LIMIT]
         ]
         return AutocompleteResult(items=items, meta=ResponseMeta())
+
+    async def get_popular_games(self) -> PopularGameSelection:
+        """Return up to 500 eligible games in popularity order for the sitemap."""
+        items: list[PopularGame] = []
+        seen_ids: set[int] = set()
+        offset = 0
+        try:
+            while len(items) < POPULAR_GAME_SELECTION_LIMIT:
+                popularity_records = await self._transport.query(
+                    "popularity_primitives",
+                    (
+                        "fields game_id,value; where popularity_type = 1; "
+                        f"sort value desc; limit {PROVIDER_BATCH_SIZE}; "
+                        f"offset {offset};"
+                    ),
+                )
+                popularity = _popularity_values(popularity_records)
+                candidate_ids = [
+                    game_id for game_id in popularity if game_id not in seen_ids
+                ]
+                seen_ids.update(candidate_ids)
+                if candidate_ids:
+                    selected_records = await self._transport.query(
+                        "games",
+                        _popular_games_query(candidate_ids),
+                    )
+                    selected = {
+                        _required_int(record, "id"): _normalize_popular_game(record)
+                        for record in selected_records
+                    }
+                    items.extend(
+                        selected[game_id]
+                        for game_id in candidate_ids
+                        if game_id in selected
+                    )
+                if len(popularity_records) < PROVIDER_BATCH_SIZE:
+                    break
+                offset += PROVIDER_BATCH_SIZE
+        except IgdbTransportError as error:
+            raise _application_error(error) from error
+        except OSError, OverflowError, TypeError, ValueError:
+            raise ApplicationError(ErrorCode.UPSTREAM_INVALID_RESPONSE) from None
+
+        return PopularGameSelection(
+            items=items[:POPULAR_GAME_SELECTION_LIMIT],
+            meta=ResponseMeta(),
+        )
 
     async def get_game_detail(self, game_id: int) -> GameDetail:
         """Return complete normalized detail for one eligible game."""
@@ -797,6 +847,15 @@ def _candidate_games_by_ids_query(
     )
 
 
+def _popular_games_query(game_ids: list[int]) -> str:
+    """Read one popularity-index batch through the shared eligibility rule."""
+    ids = ",".join(str(game_id) for game_id in game_ids)
+    return (
+        "fields id,slug; where "
+        f"{_eligible_game_types_clause()} & id = ({ids}); limit {len(game_ids)};"
+    )
+
+
 def _candidate_games_fields(include_release_dates: bool) -> str:
     release_fields = (
         ",release_dates.platform,release_dates.date" if include_release_dates else ""
@@ -1200,6 +1259,13 @@ def _normalize_suggestion(record: dict[str, object]) -> AutocompleteSuggestion:
         title=_required_string(record, "name"),
         release_year=_release_year(record),
         cover=_normalize_cover(record.get("cover")),
+    )
+
+
+def _normalize_popular_game(record: dict[str, object]) -> PopularGame:
+    return PopularGame(
+        id=_required_int(record, "id"),
+        slug=_required_string(record, "slug"),
     )
 
 

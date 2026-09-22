@@ -22,6 +22,8 @@ from whattoplaynext_api.catalog.models import (
     GenreId,
     Pagination,
     PlatformId,
+    PopularGame,
+    PopularGameSelection,
     ResponseMeta,
     SortDirection,
     SortOption,
@@ -89,6 +91,15 @@ class FakeCatalog:
     async def autocomplete(self, criteria: AutocompleteCriteria) -> AutocompleteResult:
         raise AssertionError("not used by game route tests")
 
+    async def get_popular_games(self) -> PopularGameSelection:
+        return PopularGameSelection(
+            items=[
+                PopularGame(id=1942, slug="the-witcher-3-wild-hunt"),
+                PopularGame(id=1020, slug="grand-theft-auto-v"),
+            ],
+            meta=ResponseMeta(request_id=None),
+        )
+
     async def get_game_detail(self, game_id: int) -> GameDetail:
         raise AssertionError("not used by game route tests")
 
@@ -102,6 +113,9 @@ class FailingCatalog:
 
     async def autocomplete(self, criteria: AutocompleteCriteria) -> AutocompleteResult:
         raise AssertionError("not used by game route tests")
+
+    async def get_popular_games(self) -> PopularGameSelection:
+        raise ApplicationError(ErrorCode.UPSTREAM_UNAVAILABLE)
 
     async def get_game_detail(self, game_id: int) -> GameDetail:
         raise AssertionError("not used by game route tests")
@@ -167,6 +181,46 @@ async def test_browses_a_normalized_default_page() -> None:
     }
     assert catalog.criteria == BrowseCriteria()
     assert response.headers["x-request-id"] == "browse-default-page"
+
+
+@pytest.mark.anyio
+async def test_lists_the_daily_popular_game_selection() -> None:
+    application = create_app(Settings(environment="test"), catalog=FakeCatalog())
+    transport = ASGITransport(app=application)
+
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.get(
+            "/api/v1/games/popular",
+            headers={"X-Request-ID": "popular-games"},
+        )
+
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "public, max-age=86400, s-maxage=86400"
+    assert response.headers["x-request-id"] == "popular-games"
+    assert response.json() == {
+        "items": [
+            {"id": 1942, "slug": "the-witcher-3-wild-hunt"},
+            {"id": 1020, "slug": "grand-theft-auto-v"},
+        ],
+        "meta": {
+            "requestId": "popular-games",
+            "servedFrom": "provider",
+            "dataMayBeStale": False,
+            "excludedUnknownDuration": False,
+        },
+    }
+
+
+@pytest.mark.anyio
+async def test_surfaces_a_popular_game_selection_failure() -> None:
+    application = create_app(Settings(environment="test"), catalog=FailingCatalog())
+    transport = ASGITransport(app=application)
+
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.get("/api/v1/games/popular")
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "UPSTREAM_UNAVAILABLE"
 
 
 @pytest.mark.anyio

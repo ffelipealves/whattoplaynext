@@ -1,6 +1,6 @@
 # Milestone 3 Plan
 
-Status: in progress — M3.1 through M3.7 completed
+Status: in progress — M3.1 through M3.8 completed
 
 Prepared: 2026-09-13
 
@@ -396,6 +396,8 @@ and no new technical debt were introduced.
 
 ### M3.8 — Popular-game selection and sitemap
 
+Status: completed on 2026-09-22.
+
 Deliver:
 
 - a catalog capability returning up to 500 popular eligible games with their
@@ -412,6 +414,16 @@ Acceptance:
   never an error response or an empty file;
 - the selection is covered by adapter tests with fakes and verified once by
   hand against live IGDB.
+
+Outcome: the public `GET /api/v1/games/popular` route now exposes a
+popularity-ordered, eligible selection of at most 500 `{id, slug}` pairs with
+a 24-hour shared cache policy. The IGDB adapter walks popularity pages and
+keeps the existing base-game, remake, and remaster eligibility rule. The
+daily-revalidated sitemap uses canonical English entries with `pt-BR`
+alternates for four static routes and the selected games; a provider failure
+returns the static entries instead. Contract generation, adapter/API tests,
+sitemap unit tests, and production-browser coverage protect the behavior. No
+new technical debt was introduced.
 
 ### M3.9 — Accessibility and the core journey
 

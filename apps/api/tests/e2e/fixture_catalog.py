@@ -33,6 +33,8 @@ from whattoplaynext_api.catalog.models import (
     GameRating,
     GameSummary,
     Pagination,
+    PopularGame,
+    PopularGameSelection,
     ResponseMeta,
     SortOption,
 )
@@ -234,6 +236,13 @@ class FixtureCatalog:
                 )
                 for game in matches
             ],
+            meta=ResponseMeta(),
+        )
+
+    async def get_popular_games(self) -> PopularGameSelection:
+        """Return every deterministic fixture game for sitemap coverage."""
+        return PopularGameSelection(
+            items=[PopularGame(id=game.id, slug=game.slug) for game in ALL_GAMES[:500]],
             meta=ResponseMeta(),
         )
 

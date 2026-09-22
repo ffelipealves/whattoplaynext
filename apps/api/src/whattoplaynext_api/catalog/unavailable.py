@@ -7,6 +7,7 @@ from whattoplaynext_api.catalog.models import (
     FilterMetadata,
     GameDetail,
     GamePage,
+    PopularGameSelection,
 )
 from whattoplaynext_api.core.errors import ApplicationError, ErrorCode
 
@@ -23,6 +24,10 @@ class UnavailableCatalog:
         raise ApplicationError(ErrorCode.UPSTREAM_UNAVAILABLE)
 
     async def autocomplete(self, criteria: AutocompleteCriteria) -> AutocompleteResult:
+        """Report that no production provider has been composed."""
+        raise ApplicationError(ErrorCode.UPSTREAM_UNAVAILABLE)
+
+    async def get_popular_games(self) -> PopularGameSelection:
         """Report that no production provider has been composed."""
         raise ApplicationError(ErrorCode.UPSTREAM_UNAVAILABLE)
 

@@ -131,6 +131,29 @@ test("robots.txt allows the public site", async ({ request }) => {
   );
 });
 
+test("sitemap lists localized static pages and the bounded popular selection", async ({
+  request,
+}) => {
+  const response = await request.get("/sitemap.xml");
+
+  expect(response.status()).toBe(200);
+  const xml = await response.text();
+  const locations = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map(
+    ([, location]) => location,
+  );
+
+  expect(locations).toContain(`${SITE_ORIGIN}/en`);
+  expect(locations).toContain(`${SITE_ORIGIN}/en/about`);
+  expect(locations).toContain(
+    `${SITE_ORIGIN}/en/games/1942/the-witcher-3-wild-hunt`,
+  );
+  expect(locations).toHaveLength(64);
+  expect(xml).toContain(`hreflang="pt-BR" href="${SITE_ORIGIN}/pt-br"`);
+  expect(xml).toContain(
+    `hreflang="pt-BR" href="${SITE_ORIGIN}/pt-br/games/1942/the-witcher-3-wild-hunt"`,
+  );
+});
+
 test("the first-party social fallback is a shareable PNG", async ({
   request,
 }) => {

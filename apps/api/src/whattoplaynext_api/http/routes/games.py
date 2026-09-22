@@ -4,7 +4,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path, Query, Request
+from fastapi import APIRouter, Depends, Path, Query, Request, Response
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -24,6 +24,7 @@ from whattoplaynext_api.catalog.models import (
     GamePage,
     GenreId,
     PlatformId,
+    PopularGameSelection,
     SortDirection,
     SortOption,
 )
@@ -226,6 +227,40 @@ async def autocomplete_games(
         platform_ids=tuple(parameters.platform),
     )
     result = await catalog.autocomplete(criteria)
+    return result.model_copy(
+        update={
+            "meta": result.meta.model_copy(
+                update={"request_id": request.state.request_id}
+            )
+        }
+    )
+
+
+@router.get(
+    "/games/popular",
+    operation_id="getPopularGames",
+    responses={
+        200: {"headers": {REQUEST_ID_HEADER: REQUEST_ID_RESPONSE_HEADER}},
+        **documented_error_responses(
+            ErrorCode.UPSTREAM_INVALID_RESPONSE,
+            ErrorCode.UPSTREAM_TIMEOUT,
+            ErrorCode.UPSTREAM_UNAVAILABLE,
+            ErrorCode.RATE_LIMITED,
+            ErrorCode.METHOD_NOT_ALLOWED,
+            ErrorCode.INTERNAL_ERROR,
+        ),
+    },
+    response_model=PopularGameSelection,
+    summary="Get popular games for the sitemap",
+)
+async def get_popular_games(
+    request: Request,
+    response: Response,
+    catalog: Annotated[Catalog, Depends(get_catalog)],
+) -> PopularGameSelection:
+    """Return a cacheable, bounded selection of eligible popular games."""
+    response.headers["Cache-Control"] = "public, max-age=86400, s-maxage=86400"
+    result = await catalog.get_popular_games()
     return result.model_copy(
         update={
             "meta": result.meta.model_copy(

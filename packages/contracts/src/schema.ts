@@ -79,6 +79,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/games/popular": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get popular games for the sitemap
+         * @description Return a cacheable, bounded selection of eligible popular games.
+         */
+        get: operations["getPopularGames"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -421,6 +441,25 @@ export interface components {
             platform: components["schemas"]["CatalogOption"];
             /** Releasedate */
             releaseDate: string | null;
+        };
+        /**
+         * PopularGame
+         * @description One canonical game identity selected for sitemap discovery.
+         */
+        PopularGame: {
+            /** Id */
+            id: number;
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * PopularGameSelection
+         * @description A bounded popularity-ordered selection used to build the sitemap.
+         */
+        PopularGameSelection: {
+            /** Items */
+            items: components["schemas"]["PopularGame"][];
+            meta: components["schemas"]["ResponseMeta"];
         };
         /**
          * ResponseMeta
@@ -828,6 +867,94 @@ export interface operations {
             };
             /** @description One or more parameter values are invalid. */
             422: {
+                headers: {
+                    /** @description Identifier used to correlate this response. */
+                    "X-Request-ID"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too many requests. */
+            429: {
+                headers: {
+                    /** @description Identifier used to correlate this response. */
+                    "X-Request-ID"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description An unexpected error occurred. */
+            500: {
+                headers: {
+                    /** @description Identifier used to correlate this response. */
+                    "X-Request-ID"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Game data provider returned an invalid response. */
+            502: {
+                headers: {
+                    /** @description Identifier used to correlate this response. */
+                    "X-Request-ID"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Game data is temporarily unavailable. */
+            503: {
+                headers: {
+                    /** @description Identifier used to correlate this response. */
+                    "X-Request-ID"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Game data provider timed out. */
+            504: {
+                headers: {
+                    /** @description Identifier used to correlate this response. */
+                    "X-Request-ID"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPopularGames: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Identifier used to correlate this response. */
+                    "X-Request-ID"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PopularGameSelection"];
+                };
+            };
+            /** @description Method not allowed. */
+            405: {
                 headers: {
                     /** @description Identifier used to correlate this response. */
                     "X-Request-ID"?: string;

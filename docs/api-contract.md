@@ -207,6 +207,30 @@ as browse and detail, and leaves missing release year or cover values as `null`.
 This endpoint is independently rate-limited and cached. Failure does not block
 normal name-filter submission.
 
+### `GET /api/v1/games/popular`
+
+Returns up to 500 popularity-ordered, eligible game identities for sitemap
+generation. It accepts no parameters and is deliberately narrower than browse:
+each item has only the canonical ID and slug needed to construct a game URL.
+
+```json
+{
+  "items": [{ "id": 1942, "slug": "the-witcher-3-wild-hunt" }],
+  "meta": {
+    "requestId": "...",
+    "servedFrom": "provider",
+    "dataMayBeStale": false,
+    "excludedUnknownDuration": false
+  }
+}
+```
+
+The selection pages IGDB's Visits primitive in descending popularity order and
+joins every index page against the same base-game, remake, and remaster
+eligibility allow-list used by browse, autocomplete, and detail. It stops when
+it has 500 eligible games or the index ends. The response is publicly cacheable
+for 24 hours with `Cache-Control: public, max-age=86400, s-maxage=86400`.
+
 ### `GET /api/v1/games/{gameId}`
 
 Returns normalized detail data for one IGDB game ID. The slug is handled by the
