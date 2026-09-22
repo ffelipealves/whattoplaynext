@@ -133,7 +133,7 @@ export function LandingPage({ catalogStatus }: LandingPageProps) {
                   <h2 className="font-[family-name:var(--font-display)] text-xl font-semibold tracking-[-0.025em]">
                     {principle.title}
                   </h2>
-                  <p className="mt-2 text-sm leading-6 text-[#17203a]/65">
+                  <p className="mt-2 text-sm leading-6 text-[#17203a]/75">
                     {principle.description}
                   </p>
                 </li>

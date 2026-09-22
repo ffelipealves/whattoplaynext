@@ -26,7 +26,7 @@ export function SearchFailure({ failure, params }: SearchFailureProps) {
       <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">
         {t(copy.title)}
       </h2>
-      <p className="text-sm text-[#17203a]/65">{t(copy.description)}</p>
+      <p className="text-sm text-[#17203a]/75">{t(copy.description)}</p>
 
       {failure.retryAfterSeconds !== undefined && (
         <p className="text-sm font-semibold text-[#17203a]/75">
@@ -46,7 +46,7 @@ export function SearchFailure({ failure, params }: SearchFailureProps) {
       )}
 
       {failure.requestId && (
-        <p className="mt-2 text-xs text-[#17203a]/45">
+        <p className="mt-2 text-xs text-[#17203a]/75">
           {t("requestIdLabel", { requestId: failure.requestId })}
         </p>
       )}

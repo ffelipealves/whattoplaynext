@@ -187,18 +187,19 @@ here or in Redis — is the cheapest lever on that gap.
 
 ### 10. Part of the search page has no browser-level test
 
-**Partly paid in Milestone 2.10.** The gap that mattered most — Apply, the one
+**Partly paid in Milestones 2.10 and 3.9.** The Apply interaction — the one
 interaction whose correctness depends on hydration — is now covered:
 `e2e/layouts.spec.ts` checks the boxes, asserts the URL and count stay untouched,
 applies, and asserts platform AND genre and the resulting chip, in the sidebar
 on desktop and the drawer on mobile, across every engine in the matrix.
 Removing a single chip is covered the same way.
 
-Still covered only by component tests and hand verification: autocomplete
-(debounce, selection, degradation), Clear all, the filter form's validation
-messages, the ignored-criteria notice, and the duration notice. Autocomplete is
-the one worth adding next, since its debounce and abort behave on real timers in
-a browser and on fake ones in Vitest.
+Milestone 3.9 added real-browser autocomplete coverage for debounce, keyboard
+selection, and degradation. Still covered only by component tests and hand
+verification: Clear all, the filter form's validation messages, the
+ignored-criteria notice, and the duration notice. The superseded-request abort
+path remains covered by the component test with fake timers, not a browser
+scenario.
 
 ### 11. `pnpm e2e` leaves the build pointing at the fixture API
 

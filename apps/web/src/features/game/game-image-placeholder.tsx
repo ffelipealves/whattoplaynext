@@ -14,7 +14,7 @@ export function GameImagePlaceholder({
   return (
     <div
       aria-label={label}
-      className="flex h-full w-full flex-col items-center justify-center gap-3 overflow-hidden rounded-[inherit] bg-[linear-gradient(145deg,#dce6fb,#edf2ff)] px-5 text-center text-[#17203a]/55"
+      className="flex h-full w-full flex-col items-center justify-center gap-3 overflow-hidden rounded-[inherit] bg-[linear-gradient(145deg,#dce6fb,#edf2ff)] px-5 text-center text-[#17203a]/75"
       role="img"
       style={{ aspectRatio: `${width} / ${height}` }}
     >

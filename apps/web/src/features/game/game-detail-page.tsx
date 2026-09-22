@@ -39,7 +39,7 @@ function DetailSection({ children, title }: DetailSectionProps) {
 }
 
 function EmptyState({ children }: { children: ReactNode }) {
-  return <p className="text-sm text-[#17203a]/55">{children}</p>;
+  return <p className="text-sm text-[#17203a]/75">{children}</p>;
 }
 
 function TagList({ items }: { items: string[] }) {
@@ -66,7 +66,7 @@ function RatingCard({
 
   return (
     <li className="rounded-xl bg-[#f4f7ff] p-4">
-      <h3 className="text-sm font-semibold text-[#17203a]/65">{label}</h3>
+      <h3 className="text-sm font-semibold text-[#17203a]/75">{label}</h3>
       {rating ? (
         <>
           <p className="mt-1 font-[family-name:var(--font-display)] text-2xl font-semibold">
@@ -75,8 +75,8 @@ function RatingCard({
               minimumFractionDigits: 1,
             })}
           </p>
-          <p className="mt-1 text-xs text-[#17203a]/60">{rating.source}</p>
-          <p className="text-xs text-[#17203a]/60">
+          <p className="mt-1 text-xs text-[#17203a]/75">{rating.source}</p>
+          <p className="text-xs text-[#17203a]/75">
             {t("ratingVotes", { count: rating.count })}
           </p>
         </>
@@ -98,13 +98,13 @@ function DurationCard({
 
   return (
     <li className="rounded-xl bg-[#f4f7ff] p-4">
-      <h3 className="text-sm font-semibold text-[#17203a]/65">{label}</h3>
+      <h3 className="text-sm font-semibold text-[#17203a]/75">{label}</h3>
       {duration ? (
         <>
           <p className="mt-1 font-[family-name:var(--font-display)] text-2xl font-semibold">
             {formatDuration(duration.seconds, t)}
           </p>
-          <p className="mt-1 text-xs text-[#17203a]/60">
+          <p className="mt-1 text-xs text-[#17203a]/75">
             {t("durationSubmissions", { count: duration.submissionCount })}
           </p>
         </>
@@ -164,7 +164,7 @@ export function GameDetailPage({ detail }: GameDetailPageProps) {
                   {detail.summary}
                 </p>
                 {summaryLanguageDiffers && (
-                  <p className="mt-2 text-xs font-medium text-[#17203a]/55">
+                  <p className="mt-2 text-xs font-medium text-[#17203a]/75">
                     {t("summaryLanguageEnglish")}
                   </p>
                 )}
@@ -174,11 +174,11 @@ export function GameDetailPage({ detail }: GameDetailPageProps) {
             )}
           </div>
           <div className="mt-5">
-            <h2 className="text-sm font-semibold text-[#17203a]/65">
+            <h2 className="text-sm font-semibold text-[#17203a]/75">
               {t("alternativeNamesHeading")}
             </h2>
             {detail.alternativeNames.length > 0 ? (
-              <p className="mt-1 text-sm text-[#17203a]/70">
+              <p className="mt-1 text-sm text-[#17203a]/75">
                 {detail.alternativeNames.join(" · ")}
               </p>
             ) : (
@@ -200,7 +200,7 @@ export function GameDetailPage({ detail }: GameDetailPageProps) {
                   <span className="font-medium">{release.platform.label}</span>
                   {release.releaseDate ? (
                     <time
-                      className="text-sm text-[#17203a]/65"
+                      className="text-sm text-[#17203a]/75"
                       dateTime={release.releaseDate}
                     >
                       {format.dateTime(
@@ -253,7 +253,7 @@ export function GameDetailPage({ detail }: GameDetailPageProps) {
           {multiplayerFeatures.length > 0 ? (
             <>
               <TagList items={multiplayerFeatures} />
-              <p className="mt-4 text-sm text-[#17203a]/65">
+              <p className="mt-4 text-sm text-[#17203a]/75">
                 {detail.multiplayer.maxPlayers == null
                   ? t("maxPlayersUnavailable")
                   : t("maxPlayers", {
@@ -361,7 +361,7 @@ function DetailTags({
 }) {
   return (
     <div>
-      <h3 className="mb-2 text-sm font-semibold text-[#17203a]/65">{title}</h3>
+      <h3 className="mb-2 text-sm font-semibold text-[#17203a]/75">{title}</h3>
       {items.length > 0 ? (
         <TagList items={items} />
       ) : (

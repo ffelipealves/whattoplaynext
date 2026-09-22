@@ -1,6 +1,6 @@
 # Milestone 3 Plan
 
-Status: in progress — M3.1 through M3.8 completed
+Status: in progress — M3.1 through M3.9 completed
 
 Prepared: 2026-09-13
 
@@ -427,6 +427,8 @@ new technical debt was introduced.
 
 ### M3.9 — Accessibility and the core journey
 
+Status: completed on 2026-09-22.
+
 Deliver:
 
 - a keyboard pass and a screen-reader smoke test across the core journey —
@@ -444,6 +446,28 @@ Acceptance:
 - every new page state has an axe check with no critical or serious
   violations;
 - the new scenarios pass in the quality gate and in `pnpm e2e:browsers`.
+
+Outcome: production-build Playwright now exercises the name field and result
+link by keyboard, opens the canonical game page, checks the summary in the
+accessibility tree, follows a labelled external link in a new tab, and returns
+to the search in English desktop and Portuguese mobile layouts. Existing
+browser scenarios cover canonical redirects, localized 404s, and metadata.
+Autocomplete now has browser coverage for the real 300 ms debounce, keyboard
+selection, submission, and graceful failure. axe-core runs in the browser on
+the open suggestion list, the degraded plain field, and the game detail; no
+critical or serious violations remain. Its real-browser contrast check found
+faint secondary text that the earlier jsdom checks could not measure; those
+text colors were darkened across the affected UI.
+
+An isolated Orca 46.1 + Firefox smoke confirmed the result, game-detail page,
+and external-link announcements in desktop English. At 390 px in Portuguese,
+it also announced the search field. Return navigation completed in both runs.
+The game summary was present in the browser accessibility tree. Orca did not
+yield a reliable continuous-reading transcript for the paragraph, so the
+smoke evidence for its text is the accessibility-tree assertion rather than a
+claimed speech recording. The same Playwright journey passes in the five
+browser/layout projects; the screen-reader smoke used Firefox in both
+viewport sizes.
 
 ### M3.10 — Milestone 3 closeout
 

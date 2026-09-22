@@ -31,7 +31,7 @@ export function ResultsGrid({ result, params }: ResultsGridProps) {
             ? t("zeroResultsTitleWithName", { name })
             : t("zeroResultsTitle")}
         </p>
-        <p className="text-sm text-[#17203a]/65">
+        <p className="text-sm text-[#17203a]/75">
           {hasActiveFilters
             ? t("zeroResultsFilterDescription")
             : t("zeroResultsDescription")}

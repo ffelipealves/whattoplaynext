@@ -50,7 +50,7 @@ function PageLink({
 }) {
   if (disabled) {
     return (
-      <span className="rounded-full px-3 py-1.5 text-sm font-semibold text-[#17203a]/30">
+      <span className="rounded-full px-3 py-1.5 text-sm font-semibold text-[#17203a]/75">
         {children}
       </span>
     );
@@ -94,7 +94,7 @@ export function PaginationLinks({ params, totalPages }: PaginationLinksProps) {
       {pageWindow.map((entry, index) =>
         entry === "ellipsis" ? (
           <span
-            className="px-2 text-sm text-[#17203a]/45"
+            className="px-2 text-sm text-[#17203a]/75"
             key={`ellipsis-${index}`}
           >
             …

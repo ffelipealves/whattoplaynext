@@ -74,7 +74,7 @@ export function SearchPage({
                 region is always present so a later change is announced. */}
             <p
               aria-live="polite"
-              className="text-sm font-semibold text-[#17203a]/60"
+              className="text-sm font-semibold text-[#17203a]/75"
               role="status"
             >
               {result.ok

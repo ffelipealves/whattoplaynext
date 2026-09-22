@@ -22,7 +22,7 @@ export function UnexpectedError({ retry }: UnexpectedErrorProps) {
         <h1 className="font-[family-name:var(--font-display)] text-lg font-semibold">
           {t("unexpectedTitle")}
         </h1>
-        <p className="text-sm text-[#17203a]/65">
+        <p className="text-sm text-[#17203a]/75">
           {t("unexpectedDescription")}
         </p>
         <Button className="mt-3" onClick={retry} type="button">

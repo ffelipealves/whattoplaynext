@@ -3,6 +3,7 @@
 **/coverage/
 **/dist/
 **/node_modules/
+**/test-results/
 **/.venv/
 **/next-env.d.ts
 apps/api/poetry.lock

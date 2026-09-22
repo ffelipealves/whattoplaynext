@@ -172,7 +172,7 @@ export function NameSearchForm({
                   <span className="block truncate text-sm font-semibold text-[#17203a]">
                     {suggestion.title}
                   </span>
-                  <span className="block text-xs text-[#17203a]/55">
+                  <span className="block text-xs text-[#17203a]/75">
                     {suggestion.releaseYear ?? "—"}
                   </span>
                 </span>

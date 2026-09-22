@@ -17,7 +17,7 @@ export function SystemNotFound({ kind }: SystemNotFoundProps) {
       <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-[-0.02em]">
         {isGame ? game("notFoundTitle") : system("notFoundTitle")}
       </h1>
-      <p className="text-sm text-[#17203a]/65">
+      <p className="text-sm text-[#17203a]/75">
         {isGame ? game("notFoundDescription") : system("notFoundDescription")}
       </p>
       <Link

@@ -30,7 +30,7 @@ export function FiltersUnavailable({
     >
       <meta content="noindex" name="robots" />
       <p className="text-sm font-semibold text-[#17203a]">{t(copy.title)}</p>
-      <p className="mt-1 text-xs text-[#17203a]/65">{t(copy.description)}</p>
+      <p className="mt-1 text-xs text-[#17203a]/75">{t(copy.description)}</p>
       {failure.retryAfterSeconds !== undefined && (
         <p className="mt-2 text-xs font-semibold text-[#17203a]/75">
           {t("rateLimitedRetryIn", {
@@ -39,7 +39,7 @@ export function FiltersUnavailable({
         </p>
       )}
       {failure.requestId && (
-        <p className="mt-2 text-xs text-[#17203a]/45">
+        <p className="mt-2 text-xs text-[#17203a]/75">
           {t("requestIdLabel", { requestId: failure.requestId })}
         </p>
       )}

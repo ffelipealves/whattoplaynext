@@ -35,7 +35,7 @@ export function ResultCard({ game }: ResultCardProps) {
               src={game.cover.url}
             />
           ) : (
-            <div className="flex h-full items-center justify-center px-4 text-center text-xs font-semibold text-[#17203a]/45">
+            <div className="flex h-full items-center justify-center px-4 text-center text-xs font-semibold text-[#17203a]/75">
               {t("noCover")}
             </div>
           )}
@@ -46,7 +46,7 @@ export function ResultCard({ game }: ResultCardProps) {
             {game.title}
           </h3>
 
-          <p className="text-xs font-medium text-[#17203a]/55">
+          <p className="text-xs font-medium text-[#17203a]/75">
             {game.releaseYear ?? "—"}
           </p>
 
@@ -61,12 +61,12 @@ export function ResultCard({ game }: ResultCardProps) {
           )}
 
           {game.genres.length > 0 && (
-            <p className="text-xs text-[#17203a]/65">
+            <p className="text-xs text-[#17203a]/75">
               {game.genres.map((genre) => genre.label).join(" · ")}
             </p>
           )}
 
-          <div className="mt-auto flex items-center justify-between gap-2 pt-2 text-xs font-semibold text-[#17203a]/70">
+          <div className="mt-auto flex items-center justify-between gap-2 pt-2 text-xs font-semibold text-[#17203a]/75">
             <span>
               {game.rating
                 ? `${Math.round(game.rating.value)} · ${t("ratingVotes", { count: game.rating.count })}`
@@ -82,7 +82,7 @@ export function ResultCard({ game }: ResultCardProps) {
           </div>
 
           {game.gameModes.length > 0 && (
-            <p className="text-xs text-[#17203a]/55">
+            <p className="text-xs text-[#17203a]/75">
               {game.gameModes.map((mode) => mode.label).join(" · ")}
             </p>
           )}

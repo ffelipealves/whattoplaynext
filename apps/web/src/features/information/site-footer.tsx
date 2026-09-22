@@ -54,9 +54,9 @@ export function SiteFooter() {
               </li>
             </ul>
           </nav>
-          <p className="mt-3 text-xs text-[#17203a]/55">{t("draftStatus")}</p>
+          <p className="mt-3 text-xs text-[#17203a]/75">{t("draftStatus")}</p>
         </div>
-        <IgdbAttribution className="text-sm text-[#17203a]/65" />
+        <IgdbAttribution className="text-sm text-[#17203a]/75" />
       </div>
     </footer>
   );

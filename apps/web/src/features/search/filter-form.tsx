@@ -135,7 +135,7 @@ function FieldLabel({
 }) {
   return (
     <label
-      className="block text-xs font-semibold text-[#17203a]/60"
+      className="block text-xs font-semibold text-[#17203a]/75"
       htmlFor={htmlFor}
     >
       {children}
@@ -372,7 +372,7 @@ export function FilterForm({
             step={RATING_STEP}
             value={[minimumRating]}
           />
-          <p className="text-xs font-semibold text-[#17203a]/60">
+          <p className="text-xs font-semibold text-[#17203a]/75">
             {minimumRating > MIN_RATING
               ? t("ratingAtLeast", { value: minimumRating })
               : t("ratingAny")}
@@ -385,7 +385,7 @@ export function FilterForm({
 
         <div className="mt-3 space-y-3">
           <fieldset>
-            <legend className="text-xs font-semibold text-[#17203a]/60">
+            <legend className="text-xs font-semibold text-[#17203a]/75">
               {t("durationKindLegend")}
             </legend>
             <div className="mt-2 flex flex-wrap gap-3">

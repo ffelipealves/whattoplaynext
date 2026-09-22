@@ -10,7 +10,7 @@ function DraftNotice() {
   return (
     <aside className="rounded-2xl border border-[#ff694f]/40 bg-[#fff4f1] p-5">
       <p className="font-semibold text-[#17203a]">{t("draftLabel")}</p>
-      <p className="mt-1 text-sm leading-6 text-[#17203a]/70">
+      <p className="mt-1 text-sm leading-6 text-[#17203a]/75">
         {t("draftNotice")}
       </p>
     </aside>
