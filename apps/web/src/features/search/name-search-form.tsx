@@ -41,6 +41,13 @@ function preservedFields(params: BrowseParams): [string, string][] {
   );
 }
 
+/** Exposes when React has attached this progressive enhancement to the field. */
+function markHydrated(node: HTMLInputElement | null) {
+  if (node) {
+    node.dataset.hydrated = "true";
+  }
+}
+
 export function NameSearchForm({
   params,
   minimumQueryLength,
@@ -126,6 +133,7 @@ export function NameSearchForm({
           }}
           onKeyDown={handleKeyDown}
           placeholder={t("nameInputPlaceholder")}
+          ref={markHydrated}
           role={isAvailable ? "combobox" : undefined}
           type="search"
           value={query}

@@ -82,6 +82,10 @@ test("autocomplete failure leaves an accessible plain search field", async ({
   await page.goto("/en/games");
   await page.waitForLoadState("networkidle");
   const name = page.getByLabel("Game name");
+  // A trusted click hydrates the Suspense boundary. The field's enhanced
+  // behavior is only meaningful after its client handlers are attached.
+  await name.click();
+  await expect(name).toHaveAttribute("data-hydrated", "true");
   await name.fill("Hollow");
   await expect(name).not.toHaveAttribute("role", "combobox");
   await expectNoSevereAxeViolations(page);
