@@ -80,6 +80,7 @@ test("autocomplete failure leaves an accessible plain search field", async ({
     route.fulfill({ status: 502, body: "{}" }),
   );
   await page.goto("/en/games");
+  await page.waitForLoadState("networkidle");
   const name = page.getByLabel("Game name");
   await name.fill("Hollow");
   await expect(name).not.toHaveAttribute("role", "combobox");
@@ -100,6 +101,11 @@ for (const locale of ["en", "pt-br"] as const) {
       await page.setViewportSize({ width: 390, height: 844 });
     }
     await page.goto(`/${locale}/games`);
+    await page.waitForLoadState("networkidle");
+    // Firefox may leave keyboard focus in browser chrome after navigation.
+    // A click on empty page space places it in the document; the journey
+    // still reaches every control by Tab and activates it by keyboard.
+    await page.locator("body").click({ position: { x: 1, y: 1 } });
     const name = page.getByLabel(
       locale === "en" ? "Game name" : "Nome do jogo",
     );
