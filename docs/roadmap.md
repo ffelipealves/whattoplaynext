@@ -125,6 +125,8 @@ guardrails, and recorded decisions are defined in
 
 ## Milestone 4 — Cache, resilience, security, and operations
 
+Status: planned; see the [Milestone 4 plan](milestone-4-plan.md).
+
 Deliverables:
 
 - Redis cache, canonical keys, TTLs, stale-if-error, and request coalescing;
@@ -134,6 +136,10 @@ Deliverables:
 - error monitoring, health monitoring, and core metrics;
 - security headers, CORS, validation, and secret review;
 - Umami events with an explicit property allow-list.
+
+The nine increments are ordered from operational decisions and Redis
+foundation through cache behavior, rate limiting, circuit breaking,
+observability, security, and analytics closeout.
 
 Exit criteria:
 

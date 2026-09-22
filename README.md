@@ -33,6 +33,8 @@ approximate matching.
   SEO increments and their accepted outcomes.
 - [Milestone 3 review](docs/milestone-3-review.md) — exit-criterion evidence,
   browser matrix, Web Vitals spot checks, and the Milestone 4 handoff.
+- [Milestone 4 plan](docs/milestone-4-plan.md) — cache, resilience, security,
+  operations, analytics, increments, and exit criteria.
 - [Technical debt](docs/technical-debt.md) — deliberate compromises, what each
   costs, and the release gates that depend on them.
 - [MVP roadmap](docs/roadmap.md) — delivery sequence and milestone exit checks.
