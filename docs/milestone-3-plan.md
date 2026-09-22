@@ -1,6 +1,7 @@
 # Milestone 3 Plan
 
-Status: in progress — M3.1 through M3.9 completed
+Status: completed on 2026-09-22 — M3.1 through M3.10 accepted; see the
+[Milestone 3 review](milestone-3-review.md)
 
 Prepared: 2026-09-13
 
@@ -471,6 +472,8 @@ viewport sizes.
 
 ### M3.10 — Milestone 3 closeout
 
+Status: completed on 2026-09-22.
+
 Deliver:
 
 - a Milestone 3 review mirroring the Milestone 2 review, with evidence for
@@ -484,6 +487,17 @@ Acceptance:
 - `pnpm quality` passes, including Playwright, without provider credentials;
 - every Milestone 3 exit criterion in the roadmap has recorded evidence;
 - the browser matrix passes in CI.
+
+Outcome: the [Milestone 3 review](milestone-3-review.md) records evidence for
+all five roadmap exit criteria, the Core Web Vitals spot checks for search and
+game pages, the current generated contract artifacts, and the reviewed debt
+register. `pnpm quality` passed without provider credentials; the final
+[hosted run](https://github.com/ffelipealves/whattoplaynext/actions/runs/35778827555)
+passed its quality job and all 135 browser scenarios across five projects
+without flaky tests. The game's LCP, INP, and CLS met the lab targets, while
+the previously known mobile search INP remains open as debt entry 15. CI-only
+accessibility-test timing found during closeout was stabilized before the
+accepted run.
 
 ## 5. Scope guardrails
 

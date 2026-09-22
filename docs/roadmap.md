@@ -96,8 +96,9 @@ guardrails are defined in [Milestone 2 plan](milestone-2-plan.md).
 
 ## Milestone 3 — Game pages, localization, and SEO
 
-Status: in progress; delivery starts with M3.1, and the owner decisions that
-affect later increments remain open in the plan.
+Status: completed on 2026-09-22; see the
+[Milestone 3 review](milestone-3-review.md). External public-beta decisions
+remain separate release gates.
 
 Deliverables:
 
@@ -118,8 +119,8 @@ Exit criteria:
 - the sitemap contains static pages and the cached popular-game selection;
 - keyboard and screen-reader smoke tests pass for the core journey.
 
-The proposed vertical slices, module seams, test expectations, scope
-guardrails, and the decisions still open are defined in
+The delivered vertical slices, module seams, test expectations, scope
+guardrails, and recorded decisions are defined in
 [Milestone 3 plan](milestone-3-plan.md).
 
 ## Milestone 4 — Cache, resilience, security, and operations

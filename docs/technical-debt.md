@@ -8,7 +8,7 @@ This is not a bug list: everything here works as designed. Defects go to the
 milestone plans and their outcome notes. Items marked **blocking** must be
 resolved before the release gate that names them.
 
-Last reviewed: 2026-09-22, during Milestone 3.10 closeout. No new debt was
+Last reviewed: 2026-09-22, at Milestone 3.10 closeout. No new debt was
 introduced; the existing mobile search INP finding remains open.
 
 ## Provider and API

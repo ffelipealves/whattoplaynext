@@ -1,11 +1,11 @@
 # Milestone 3 Review
 
-Status: closeout pending CI browser matrix
+Status: closeout accepted
 
 Reviewed: 2026-09-22
 
-Audited baseline: `53d2be5` (game-page Web Vitals spot check); the closeout
-documentation and CI trigger follow in a separate commit.
+Audited baseline: `eae3480` (final quality gate and browser matrix); this
+review's acceptance record follows in a documentation-only commit.
 
 This review records the delivered game-page, localization, and SEO work, the
 verification behind each [roadmap](roadmap.md) exit criterion, and the
@@ -33,18 +33,18 @@ open; the opt-in vitals suite is intentionally not part of `pnpm quality`.
 
 ## Increment history
 
-| Increment | Commit               | Delivered outcome                                                                                             |
-| --------- | -------------------- | ------------------------------------------------------------------------------------------------------------- |
-| M3.1      | `b6de335`            | One eligible-game-type rule for detail, browse, counts, and autocomplete.                                     |
-| M3.2      | `25ead15`            | Localized, ID-based game routes and permanent canonical slug redirects.                                       |
-| M3.3      | `400af68`            | Complete game-detail states, absent-field handling, provider-language indicator, and accessible presentation. |
-| M3.4      | `dd6b199`            | Responsive covers and screenshot gallery with reserved dimensions and first-party placeholders.               |
-| M3.5      | `a183c9a`            | Localized system and failure states with distinct recovery behavior.                                          |
-| M3.6      | `7fc1c2c`            | Localized information drafts and persistent planned IGDB attribution.                                         |
-| M3.7      | `e04b286`            | Localized canonical, alternate, Open Graph, robots, and sitemap metadata.                                     |
-| M3.8      | `1390935`            | Eligible popular-game sitemap selection, bounded to 500 and cached for a day.                                 |
-| M3.9      | `1eef757`            | Keyboard, accessible-name, axe, and screen-reader smoke coverage for the search-to-game journey.              |
-| M3.10     | `53d2be5` + closeout | Game-page Web Vitals, quality and browser-matrix verification, contract and debt review.                      |
+| Increment | Commit                         | Delivered outcome                                                                                                                  |
+| --------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| M3.1      | `b6de335`                      | One eligible-game-type rule for detail, browse, counts, and autocomplete.                                                          |
+| M3.2      | `25ead15`                      | Localized, ID-based game routes and permanent canonical slug redirects.                                                            |
+| M3.3      | `400af68`                      | Complete game-detail states, absent-field handling, provider-language indicator, and accessible presentation.                      |
+| M3.4      | `dd6b199`                      | Responsive covers and screenshot gallery with reserved dimensions and first-party placeholders.                                    |
+| M3.5      | `a183c9a`                      | Localized system and failure states with distinct recovery behavior.                                                               |
+| M3.6      | `7fc1c2c`                      | Localized information drafts and persistent planned IGDB attribution.                                                              |
+| M3.7      | `e04b286`                      | Localized canonical, alternate, Open Graph, robots, and sitemap metadata.                                                          |
+| M3.8      | `1390935`                      | Eligible popular-game sitemap selection, bounded to 500 and cached for a day.                                                      |
+| M3.9      | `1eef757`                      | Keyboard, accessible-name, axe, and screen-reader smoke coverage for the search-to-game journey.                                   |
+| M3.10     | `53d2be5`–`eae3480` + closeout | Game-page Web Vitals, quality and browser-matrix verification, contract and debt review, plus CI accessibility-test stabilization. |
 
 The small `6dd53d6` test-stability follow-up sits between M3.8 and M3.9.
 
@@ -72,10 +72,19 @@ also found no drift.
 
 `pnpm e2e:browsers` passed locally against a production build: 27 scenarios
 each in desktop Chromium, desktop Firefox, desktop WebKit, mobile Chromium,
-and mobile WebKit — 135 of 135, with three workers. This is engine/layout
-coverage, not a pass on the two latest branded Chrome, Edge, Firefox, and
-Safari releases required at the closed-beta gate; see debt entry 14. The
-hosted CI matrix result is pending below.
+and mobile WebKit — 135 of 135, with three workers. The final hosted
+[CI run 35778827555](https://github.com/ffelipealves/whattoplaynext/actions/runs/35778827555)
+also passed 135 of 135, with no flaky tests; its quality job passed on the
+same baseline. This is engine/layout coverage, not a pass on the two latest
+branded Chrome, Edge, Firefox, and Safari releases required at the closed-beta
+gate; see debt entry 14.
+
+The first hosted attempts exposed CI-only timing in the M3.9 accessibility
+tests: Firefox did not always place initial keyboard focus in the document,
+and WebKit could receive input before the search form's selective hydration.
+The tests now establish document focus and wait for the autocomplete field's
+hydrated handler before exercising its failure path. The final local
+`CI=true` matrix and hosted matrix passed all 135 scenarios without retry.
 
 ### Core Web Vitals spot check
 
@@ -102,11 +111,11 @@ performance still need remeasurement after M4 caching.
 
 ## M3.10 acceptance
 
-| Criterion                                          | Result  | Evidence                                                                            |
-| -------------------------------------------------- | ------- | ----------------------------------------------------------------------------------- |
-| `pnpm quality` passes without provider credentials | Pass    | Local gate results above; Chromium browser suite and all builds completed.          |
-| Every roadmap exit criterion has recorded evidence | Pass    | Exit-criteria table above.                                                          |
-| Browser matrix passes in CI                        | Pending | The local 135/135 run passed; the hosted run must be recorded here before closeout. |
+| Criterion                                          | Result | Evidence                                                                                                                                                            |
+| -------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm quality` passes without provider credentials | Pass   | Local gate results above; Chromium browser suite and all builds completed.                                                                                          |
+| Every roadmap exit criterion has recorded evidence | Pass   | Exit-criteria table above.                                                                                                                                          |
+| Browser matrix passes in CI                        | Pass   | [Run 35778827555](https://github.com/ffelipealves/whattoplaynext/actions/runs/35778827555): 135/135 across five projects, no flaky tests; quality gate also passed. |
 
 ## Deferred work and M4 handoff
 
