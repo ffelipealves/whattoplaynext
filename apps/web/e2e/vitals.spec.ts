@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * Core Web Vitals spot measurements for the search page — lab numbers from one
+ * Core Web Vitals spot measurements for search and game pages — lab numbers from one
  * machine, recorded against NFR-003's targets. They are not the 75th-percentile
  * field data that requirement is written in; formal performance testing is a
  * later milestone's concern. Run with `pnpm e2e:vitals`.
@@ -84,6 +84,15 @@ async function settle(page: Page) {
   await page.waitForTimeout(400);
 }
 
+async function throttleMobileCpu(page: Page) {
+  if ((page.viewportSize()?.width ?? 0) >= DESKTOP_MIN_WIDTH) {
+    return;
+  }
+  // A mid-range phone rather than this machine's full CPU.
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+}
+
 async function serveControlledImages(page: Page) {
   const transparentPng = Buffer.from(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+X2NDWQAAAABJRU5ErkJggg==",
@@ -102,12 +111,7 @@ test("the search page meets its Core Web Vitals targets @vitals", async ({
 }, testInfo) => {
   await observeVitals(page);
   const isDesktop = (page.viewportSize()?.width ?? 0) >= DESKTOP_MIN_WIDTH;
-
-  if (!isDesktop) {
-    // A mid-range phone rather than this machine's full CPU.
-    const cdp = await page.context().newCDPSession(page);
-    await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
-  }
+  await throttleMobileCpu(page);
 
   await page.goto("/en/games", { waitUntil: "load" });
   await expect(
@@ -153,10 +157,11 @@ test("the search page meets its Core Web Vitals targets @vitals", async ({
   expect.soft(record.cls, "CLS").toBeLessThanOrEqual(TARGETS.cls);
 });
 
-test("the game page keeps zero CLS while cover and screenshots load @vitals", async ({
+test("the game page spot-checks LCP, INP, and CLS @vitals", async ({
   page,
 }, testInfo) => {
   await observeVitals(page);
+  await throttleMobileCpu(page);
   await serveControlledImages(page);
 
   await page.goto("/en/games/1942/the-witcher-3-wild-hunt", {
@@ -165,6 +170,10 @@ test("the game page keeps zero CLS while cover and screenshots load @vitals", as
   await expect(
     page.getByRole("heading", { name: "The Witcher 3: Wild Hunt" }),
   ).toBeVisible();
+  await settle(page);
+  // LCP belongs to the initial page. Scrolling to a lazy screenshot below the
+  // fold is useful for CLS, but should not redefine the initial paint.
+  const initialLcpMs = (await readVitals(page)).lcpMs;
 
   const screenshots = page.getByRole("region", { name: "Screenshots" });
   await screenshots.scrollIntoViewIfNeeded();
@@ -175,12 +184,26 @@ test("the game page keeps zero CLS while cover and screenshots load @vitals", as
   ).toBeVisible();
   await settle(page);
 
+  await screenshots
+    .getByRole("button", {
+      name: "Open screenshot 1 of The Witcher 3: Wild Hunt",
+    })
+    .click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await settle(page);
+  await page.getByRole("button", { name: "Next screenshot" }).click();
+  await settle(page);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toBeHidden();
+  await settle(page);
+
   const record = {
     ...(await readVitals(page)),
+    lcpMs: initialLcpMs,
     layout:
       (page.viewportSize()?.width ?? 0) >= DESKTOP_MIN_WIDTH
         ? "desktop"
-        : "mobile",
+        : "mobile (4x CPU throttle)",
   };
   testInfo.annotations.push({
     type: "vitals-game",
@@ -190,5 +213,8 @@ test("the game page keeps zero CLS while cover and screenshots load @vitals", as
     `game vitals ${testInfo.project.name}: ${JSON.stringify(record)}`,
   );
 
+  expect(record.lcpMs, "LCP was observed").toBeGreaterThan(0);
+  expect.soft(record.lcpMs, "LCP").toBeLessThanOrEqual(TARGETS.lcpMs);
+  expect.soft(record.inpMs, "INP").toBeLessThanOrEqual(TARGETS.inpMs);
   expect(record.cls, "CLS").toBe(0);
 });
