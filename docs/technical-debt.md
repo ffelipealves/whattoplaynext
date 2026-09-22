@@ -8,8 +8,8 @@ This is not a bug list: everything here works as designed. Defects go to the
 milestone plans and their outcome notes. Items marked **blocking** must be
 resolved before the release gate that names them.
 
-Last reviewed: 2026-09-15, after Milestone 3.7. No new debt was introduced by
-the increment.
+Last reviewed: 2026-09-22, during Milestone 3.10 closeout. No new debt was
+introduced; the existing mobile search INP finding remains open.
 
 ## Provider and API
 
@@ -150,7 +150,9 @@ canonical-path construction under `features/game/`, but the thin route's
 redirect/not-found dispatch and segment error boundaries remain outside the
 unit-coverage floor. Their observable 308, 404, and 500 behavior is covered by
 Playwright against a production build; the coverage-boundary decision remains
-open for the later `robots.ts` and `sitemap.ts` work.
+open. The later `robots.ts` and `sitemap.ts` are also outside the unit-coverage
+floor, though their responses and the bounded popular selection have unit and
+production-browser tests.
 
 ### 8. Selected ids are cast to the contract's unions
 
@@ -228,7 +230,8 @@ costs an afternoon.
 **Decided in Milestone 2.10.** Every push runs the suite in desktop Chromium
 only. The full matrix — Chromium, Firefox, and WebKit, at desktop and mobile
 viewports — is named in `playwright.config.ts` and runs on demand, locally with
-`pnpm e2e:browsers` and in CI through the manual "Browser matrix" job.
+`pnpm e2e:browsers` and in CI through the "Browser matrix" job, triggered by a
+manual dispatch or a push commit containing `[browser-matrix]`.
 
 The reasoning: nine scenarios times five configurations on every push would
 cost more than the regressions they could plausibly catch, and WebKit needs
@@ -287,6 +290,14 @@ mobile search interaction. Its new game-page measurement remained independent:
 controlled delayed cover and screenshot loads produced CLS 0 on desktop and
 mobile.
 
+Milestone 3.10 rechecked both pages against the fixture build. Search measured
+LCP/INP/CLS of 724 ms/40 ms/0 on desktop and 1,248 ms/448 ms/0 on the
+4×-throttled mobile viewport; its mobile interactions were 448, 120, and 272
+ms. The game page measured 248 ms/104 ms/0 on desktop and 332 ms/144 ms/0 on
+mobile, including opening, advancing, and closing its screenshot dialog.
+Thus the mobile search INP finding is unchanged, while the game page met the
+lab targets. These still are not field p75 measurements.
+
 ## Continuous integration
 
 ### 16. The browser matrix and pushes to `main` cancel each other
@@ -304,3 +315,8 @@ be dispatched again from the start.
 Paying it off is a one-line change: add `${{ github.event_name }}` to the
 concurrency group, or move the matrix into a workflow of its own, so a manual
 run never competes with a push for the same slot.
+
+Milestone 3.10 added an explicit `[browser-matrix]` push-commit trigger, which
+runs the quality gate and matrix as jobs of one push workflow. It lets a
+closeout request matrix verification without a competing manual dispatch, but
+does not remove this concurrency issue when someone does dispatch manually.
