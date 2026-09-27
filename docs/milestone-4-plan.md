@@ -1,6 +1,6 @@
 # Milestone 4 Plan
 
-Status: in progress — M4.1 through M4.5 accepted on 2026-09-27; M4.6 through M4.9 not started
+Status: in progress — M4.1 through M4.6 accepted on 2026-09-27; M4.7 through M4.9 not started
 
 Prepared: 2026-09-22
 
@@ -343,7 +343,7 @@ key.
 
 ### M4.6 — Circuit breaker and request-storm protection
 
-Status: planned.
+Status: completed on 2026-09-27.
 
 Deliver:
 
@@ -361,6 +361,43 @@ Acceptance:
   request storm;
 - the circuit closes after a successful half-open probe;
 - cache and stale-if-error behavior remains correct while the circuit is open.
+
+Outcome: `ProviderCircuit` and `CircuitBreakingTransport`
+(`adapters/igdb/circuit.py`) wrap every IGDB operation, including the
+transport's own retry and the token request. Five consecutive timeout,
+unavailable, or `429` outcomes open the circuit for 30 seconds. While it is
+open, calls fail at once as `UNAVAILABLE` with the remaining open time,
+rounded up, as the retry delay. After that, exactly one caller probes while
+the others are told to retry in a second. Success closes the circuit and
+resets the open period. A counted failure reopens it for twice as long, capped
+at five minutes. A cancelled probe hands the turn to the next caller.
+
+Invalid requests, invalid responses, and rejected authentication never open
+the circuit; they are logged at error level as `provider.failure_not_counted`.
+A probe answered that way closes the circuit, because IGDB did answer. Calls
+admitted before the circuit opened that fail late do not extend it.
+Transitions are logged as `circuit.opened`, `circuit.half_open`, and
+`circuit.closed`. The circuit is exposed on `app.state.provider_circuit` for
+the M4.7 readiness endpoint, and it is `None` without a configured provider.
+The thresholds are settings (`WTPN_CIRCUIT_*`).
+
+Two adjacent defects were fixed on the way:
+
+- `fix(api)` made the transport classify `TwitchTokenError`. A Twitch outage
+  had escaped as an unclassified exception, which the HTTP boundary could only
+  report as `500 INTERNAL_ERROR`, bypassing the stale fallback. A regression
+  test covers all four token failure reasons.
+- The catalog now passes a known retry delay through for every provider
+  failure, not only `429`, so the open circuit's remaining time reaches the
+  visitor as `retryAfterSeconds`. The translation test that pinned the old
+  rule was updated deliberately.
+
+An integration test drives `CachingCatalog` over `IgdbCatalog` through the
+circuit. With the circuit open, a fresh entry is served fresh, an expired one
+stale, and a miss gets `503 UPSTREAM_UNAVAILABLE` with a 30-second retry,
+without a single further IGDB call. The API passed 349 tests with the opt-in
+Redis test skipped (98% coverage for the circuit module), and the full
+`pnpm quality` gate, including all 28 Playwright journeys, was green.
 
 ### M4.7 — Correlation, logs, health, and metrics
 

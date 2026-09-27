@@ -10,6 +10,10 @@ from fastapi import FastAPI
 
 from whattoplaynext_api import __version__
 from whattoplaynext_api.adapters.igdb.catalog import IgdbCatalog
+from whattoplaynext_api.adapters.igdb.circuit import (
+    CircuitBreakingTransport,
+    ProviderCircuit,
+)
 from whattoplaynext_api.adapters.igdb.throttle import ProviderThrottle
 from whattoplaynext_api.adapters.igdb.token import (
     HttpxTwitchTokenEndpoint,
@@ -34,12 +38,16 @@ from whattoplaynext_api.ratelimit.limiter import (
 from whattoplaynext_api.ratelimit.policy import ProviderAdmission, RateLimiting
 
 
-def build_catalog(settings: Settings) -> tuple[Catalog, httpx.AsyncClient | None]:
+def build_catalog(
+    settings: Settings,
+    circuit: ProviderCircuit | None = None,
+) -> tuple[Catalog, httpx.AsyncClient | None]:
     """Compose the production IGDB catalog, or report it unavailable.
 
     Returns the shared HTTP client alongside the catalog so its lifecycle can
     be tied to the application (or a standalone script's) shutdown; the
-    client is ``None`` whenever no client was created.
+    client is ``None`` whenever no client was created. With a circuit, every
+    IGDB operation passes through it.
     """
     if settings.twitch_client_id is None or settings.twitch_client_secret is None:
         return UnavailableCatalog(), None
@@ -58,7 +66,20 @@ def build_catalog(settings: Settings) -> tuple[Catalog, httpx.AsyncClient | None
             max_in_flight=settings.provider_max_in_flight,
         ),
     )
-    return IgdbCatalog(transport), client
+    if circuit is None:
+        return IgdbCatalog(transport), client
+    return IgdbCatalog(CircuitBreakingTransport(transport, circuit)), client
+
+
+def build_circuit(settings: Settings) -> ProviderCircuit:
+    """Compose the process-wide circuit breaker around IGDB."""
+    return ProviderCircuit(
+        failure_threshold=settings.circuit_failure_threshold,
+        open_seconds=settings.circuit_open_seconds,
+        max_open_seconds=max(
+            settings.circuit_open_seconds, settings.circuit_max_open_seconds
+        ),
+    )
 
 
 def build_cache(settings: Settings) -> tuple[Cache, RedisCacheStore | None]:
@@ -153,10 +174,14 @@ def create_app(
     resolved_settings = settings or get_settings()
     closers: list[Callable[[], Awaitable[None]]] = []
     resolved_catalog = catalog
+    circuit: ProviderCircuit | None = None
     if resolved_catalog is None:
-        resolved_catalog, client = build_catalog(resolved_settings)
+        circuit = build_circuit(resolved_settings)
+        resolved_catalog, client = build_catalog(resolved_settings, circuit)
         if client is not None:
             closers.append(client.aclose)
+        else:
+            circuit = None  # no provider configured, so nothing to protect
     if cache_store is not None or catalog is not None:
         cache = _cache(resolved_settings, cache_store)
     else:
@@ -190,6 +215,8 @@ def create_app(
     application.state.catalog = resolved_catalog
     application.state.cache = cache
     application.state.rate_limiting = rate_limiting
+    # Read by the readiness endpoint; None when no production provider exists.
+    application.state.provider_circuit = circuit
     application.include_router(api_router, prefix=resolved_settings.api_prefix)
     return application
 

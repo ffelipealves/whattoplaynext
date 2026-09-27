@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     # IGDB's own ceiling; lower it if the provider starts answering 429.
     provider_requests_per_second: float = Field(default=4, gt=0, le=4)
     provider_max_in_flight: int = Field(default=8, ge=1, le=8)
+    circuit_failure_threshold: int = Field(default=5, ge=1, le=100)
+    circuit_open_seconds: float = Field(default=30, gt=0, le=3600)
+    circuit_max_open_seconds: float = Field(default=300, gt=0, le=86_400)
     twitch_client_id: str | None = None
     twitch_client_secret: SecretStr | None = None
 

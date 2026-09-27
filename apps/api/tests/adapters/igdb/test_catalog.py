@@ -308,33 +308,27 @@ async def test_translates_provider_failures_for_public_adapters(
         await catalog.get_filter_metadata()
 
     assert error.value.code is expected_code
-    assert error.value.retry_after_seconds == (
-        2 if reason is IgdbErrorReason.RATE_LIMITED else None
-    )
+    # A known retry time always reaches the caller; the transport sets one only
+    # for IGDB's 429, the open circuit, or an unreachable throttle turn.
+    assert error.value.retry_after_seconds == 2
 
     with pytest.raises(ApplicationError) as browse_error:
         await catalog.browse_games(BrowseCriteria())
 
     assert browse_error.value.code is expected_code
-    assert browse_error.value.retry_after_seconds == (
-        2 if reason is IgdbErrorReason.RATE_LIMITED else None
-    )
+    assert browse_error.value.retry_after_seconds == 2
 
     with pytest.raises(ApplicationError) as autocomplete_error:
         await catalog.autocomplete(AutocompleteCriteria(query="witcher"))
 
     assert autocomplete_error.value.code is expected_code
-    assert autocomplete_error.value.retry_after_seconds == (
-        2 if reason is IgdbErrorReason.RATE_LIMITED else None
-    )
+    assert autocomplete_error.value.retry_after_seconds == 2
 
     with pytest.raises(ApplicationError) as detail_error:
         await catalog.get_game_detail(1942)
 
     assert detail_error.value.code is expected_code
-    assert detail_error.value.retry_after_seconds == (
-        2 if reason is IgdbErrorReason.RATE_LIMITED else None
-    )
+    assert detail_error.value.retry_after_seconds == 2
 
 
 @pytest.mark.anyio

@@ -1642,11 +1642,9 @@ def _application_error(error: IgdbTransportError) -> ApplicationError:
         IgdbErrorReason.RATE_LIMITED: ErrorCode.RATE_LIMITED,
         IgdbErrorReason.UNAVAILABLE: ErrorCode.UPSTREAM_UNAVAILABLE,
     }
+    # A retry time exists only where it is known: IGDB's own Retry-After, the
+    # open circuit's remaining time, or a throttle turn out of reach.
     return ApplicationError(
         error_codes[error.reason],
-        retry_after_seconds=(
-            error.retry_after_seconds
-            if error.reason is IgdbErrorReason.RATE_LIMITED
-            else None
-        ),
+        retry_after_seconds=error.retry_after_seconds,
     )

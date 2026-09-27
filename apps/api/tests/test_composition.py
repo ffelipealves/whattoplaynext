@@ -7,6 +7,7 @@ from httpx2 import ASGITransport, AsyncClient
 from pydantic import RedisDsn, SecretStr
 
 from whattoplaynext_api.adapters.igdb.catalog import IgdbCatalog
+from whattoplaynext_api.adapters.igdb.circuit import CircuitState, ProviderCircuit
 from whattoplaynext_api.adapters.redis.store import RedisCacheStore
 from whattoplaynext_api.cache.cache import Cache, CacheHealth
 from whattoplaynext_api.cache.catalog import CachingCatalog
@@ -189,3 +190,41 @@ def test_settings_cannot_raise_the_provider_ceiling_above_igdbs() -> None:
         Settings(provider_requests_per_second=5)
     with pytest.raises(ValueError):
         Settings(provider_max_in_flight=9)
+
+
+@pytest.mark.anyio
+async def test_the_production_provider_is_protected_by_a_circuit() -> None:
+    application = create_app(
+        Settings(
+            environment="test",
+            redis_url=None,
+            twitch_client_id="test-client-id",
+            twitch_client_secret=SecretStr("test-client-secret"),
+            circuit_failure_threshold=3,
+        )
+    )
+
+    async with application.router.lifespan_context(application):
+        circuit = application.state.provider_circuit
+
+    assert isinstance(circuit, ProviderCircuit)
+    assert circuit.state is CircuitState.CLOSED
+
+
+def test_no_circuit_is_reported_without_a_configured_provider() -> None:
+    application = create_app(
+        Settings(
+            environment="test",
+            redis_url=None,
+            twitch_client_id=None,
+            twitch_client_secret=None,
+        )
+    )
+
+    assert application.state.provider_circuit is None
+
+
+def test_an_injected_catalog_has_no_provider_circuit() -> None:
+    application = create_app(Settings(environment="test"), catalog=FixtureCatalog())
+
+    assert application.state.provider_circuit is None

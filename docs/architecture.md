@@ -348,7 +348,8 @@ server, which has no use for them.
 
 ### 8.2 Circuit breaker
 
-One process-local circuit protects IGDB access, including token requests.
+Implemented in M4.6. One process-local circuit protects IGDB access, including
+token requests.
 
 - Counted failures are the outcome of a transport operation after its own
   retry: timeout, connection failure or `5xx`, and `429`. Validation, not
