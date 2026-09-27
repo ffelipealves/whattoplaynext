@@ -140,9 +140,10 @@ production catalog; an injected catalog receives only an injected store, so
 tests and the browser fixture server cannot reach a developer's Redis. Tests
 cover the fakes-based behavior, a refused connection, and a server that
 accepts connections but never answers (it fails within the deadline). An
-opt-in test runs against a real Redis when `WTPN_TEST_REDIS_URL` is set; it
-was not run for this increment because no Redis or Docker was available on
-the development machine. The API suite passed 231 tests with one opt-in skip
+opt-in test runs against a real Redis when `WTPN_TEST_REDIS_URL` is set. It
+was first run on 2026-09-27, after the owner enabled Docker Desktop in WSL:
+all eight store tests passed against the Compose `redis:8.2.9-alpine`,
+including write, read, TTL expiry, and delete. The API suite passed 231 tests with one opt-in skip
 at 94% coverage (100% for the new modules), with ruff and strict mypy clean and
 the committed OpenAPI contract unchanged. No catalog route uses the cache yet.
 
@@ -218,8 +219,10 @@ trip; the warm p95 is over 20 repeated requests:
 | `platform=pc` + all of 2020                     | 10,536  | 67.1 s | 1.08 ms  |
 | unfiltered, sorted by rating                    | 233,997 | 2.2 s  | 0.90 ms  |
 
-The warm path is far inside NFR-001's 500 ms p95 even allowing for a Redis
-round trip; the cold shapes are unchanged, as expected.
+A follow-up through the real local Redis on the unfiltered rating shape
+measured 1.76 s cold and 1.00 ms p50 / 1.96 ms p95 warm over 100 requests, so
+the Redis round trip adds about a millisecond. The warm path is far inside
+NFR-001's 500 ms p95; the cold shapes are unchanged, as expected.
 
 ### M4.4 — Stale-if-error and provider degradation
 
