@@ -3,6 +3,7 @@
 import httpx
 import pytest
 
+from whattoplaynext_api.adapters.igdb.token import TokenErrorReason, TwitchTokenError
 from whattoplaynext_api.adapters.igdb.transport import (
     IgdbErrorReason,
     IgdbTransport,
@@ -297,3 +298,46 @@ async def test_reports_a_bounded_retry_after_when_rate_limit_is_exhausted() -> N
     assert error.value.retry_after_seconds == 2
     assert "private quota details" not in str(error.value)
     assert attempts == 2
+
+
+class FailingTokenProvider:
+    def __init__(self, reason: TokenErrorReason) -> None:
+        self.reason = reason
+
+    async def get_access_token(self) -> str:
+        raise TwitchTokenError(self.reason)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("token_reason", "transport_reason"),
+    [
+        (
+            TokenErrorReason.AUTHENTICATION_REJECTED,
+            IgdbErrorReason.AUTHENTICATION_REJECTED,
+        ),
+        (TokenErrorReason.TIMEOUT, IgdbErrorReason.TIMEOUT),
+        (TokenErrorReason.UNAVAILABLE, IgdbErrorReason.UNAVAILABLE),
+        (TokenErrorReason.INVALID_RESPONSE, IgdbErrorReason.INVALID_RESPONSE),
+    ],
+)
+async def test_a_token_failure_is_a_classified_transport_failure(
+    token_reason: TokenErrorReason, transport_reason: IgdbErrorReason
+) -> None:
+    # Regression: a Twitch outage used to escape as an unclassified exception,
+    # which the HTTP boundary could only report as an internal error.
+    async def handler(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("no IGDB request without a token")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        transport = IgdbTransport(
+            client=client,
+            client_id="test-client-id",
+            token_provider=FailingTokenProvider(token_reason),
+        )
+
+        with pytest.raises(IgdbTransportError) as raised:
+            await transport.query("games", "fields id;")
+
+    assert raised.value.reason is transport_reason
+    assert raised.value.__cause__ is None

@@ -11,6 +11,8 @@ from typing import Protocol, cast
 
 import httpx
 
+from whattoplaynext_api.adapters.igdb.token import TwitchTokenError
+
 IGDB_API_BASE_URL = "https://api.igdb.com/v4"
 
 
@@ -104,7 +106,12 @@ class IgdbTransport:
 
     async def _request(self, endpoint: str, query: str) -> object:
         """Execute one authenticated request with bounded retries."""
-        access_token = await self._token_provider.get_access_token()
+        try:
+            access_token = await self._token_provider.get_access_token()
+        except TwitchTokenError as error:
+            # The token is part of reaching IGDB: its failures are the
+            # provider's failures, classified the same way.
+            raise IgdbTransportError(IgdbErrorReason(error.reason.value)) from None
         started_at = self._clock()
         last_reason: IgdbErrorReason | None = None
         for attempt in range(2):
