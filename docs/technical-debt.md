@@ -8,18 +8,20 @@ This is not a bug list: everything here works as designed. Defects go to the
 milestone plans and their outcome notes. Items marked **blocking** must be
 resolved before the release gate that names them.
 
-Last reviewed: 2026-09-27, for the Milestone 4.1 operational decisions. The
-owner decided how “released” is enforced (1b), the rate-limiter design was
-fixed (4), the cache policy now targets entries 2, 2b, and 9, and one new
-deliberate compromise was recorded (17). The mobile search INP finding remains
-open.
+Last reviewed: 2026-09-27, at the Milestone 4 closeout. Milestone 4 resolved
+1b, 4, and 18, measured 2 and 2b warm, and added 17 and 19. The mobile INP
+finding (15) was re-measured and now includes the game page in this
+environment.
 
-For the Milestone 4 handoff, the highest-impact open items are the cold-query
-costs (2 and 2b), missing public rate limiter (4), sequential search metadata
-fetch (9), and mobile search INP (15). Release gates remain separate: test
-actual branded browsers (14); “released” (1b) was decided and implemented in
-M4.3. The
-other entries below are deliberate compromises, not newly found defects.
+For the closed-beta handoff, the highest-impact open items are:
+
+- the cold-query costs (2 and 2b): warm requests are now about 1 ms, but the
+  first request for each shape still pays;
+- mobile search INP (15);
+- process-local resilience (17), before a second API instance runs.
+
+The release gate that remains is testing actual branded browsers (14). The
+other entries are deliberate compromises, not newly found defects.
 
 ## Provider and API
 
@@ -332,6 +334,14 @@ mobile, including opening, advancing, and closing its screenshot dialog.
 Thus the mobile search INP finding is unchanged, while the game page met the
 lab targets. These still are not field p75 measurements.
 
+The Milestone 4 closeout re-measured on a different machine (WSL2, Docker
+running). Mobile search INP was 950–1,300 ms and mobile game-page INP 230–320
+ms. The Milestone 3 closeout commit, rebuilt and measured alternately on the
+same machine, gave 1,040–2,576 ms, and so did a build without analytics. The
+gap from the Milestone 3 numbers is the environment, not a regression, but it
+means the game page is also over 200 ms here. Field data remains the deciding
+measurement.
+
 ## Continuous integration
 
 ### 16. The browser matrix and pushes to `main` cancel each other
@@ -401,3 +411,18 @@ unrelated to the change trains people to ignore it. The fix:
 Verified the same day: three consecutive `pnpm coverage:web` runs passed
 245/245 at load averages up to 6.8. Two concurrent full suites, one with
 coverage, at a load average of 8.6, also both passed 245/245.
+
+### 19. The debounce journey depends on wall-clock gaps
+
+Found at the Milestone 4 closeout. `accessibility.spec.ts` types “Wit”, waits
+100 ms, types “Witcher”, and expects exactly one suggestion request, relying on
+the 300 ms debounce to swallow the first. When five browser projects run in
+parallel on a loaded machine, the gap between the two keystrokes can exceed
+300 ms, a request for “Wit” is legitimately sent, and the assertion fails.
+That happened on Firefox and mobile Chromium during `pnpm e2e:browsers`. The
+same test passed three times in a row on Firefox alone.
+
+The autocomplete behaves correctly; the test measures real time on a machine
+it does not control. Paying it off means asserting the debounce with a
+controlled clock (Playwright's `page.clock`), or asserting only that the last
+query was requested rather than the exact list.

@@ -1,7 +1,7 @@
 # Architecture
 
 Status: accepted MVP architecture baseline; implementation complete through
-Milestone 3, with the Milestone 4 infrastructure and operations marked below
+Milestone 4
 Last updated: 2026-09-27 (Milestone 4.1 operational decisions)
 
 ## 1. Context
@@ -457,19 +457,22 @@ Decided in M4.1 for M4.7:
 
 ## 11a. Analytics
 
-Decided in M4.1 for M4.9. Umami Cloud receives cookieless events from the
-browser through one typed web module; nothing else calls Umami. Automatic
-tracking is off: page views are sent manually with the route template as the
-URL (for example `/pt-br/games/[game]`), no query string, and the referrer
-reduced to its host. Do Not Track is honored, and analytics is disabled
-whenever its website ID is not configured, including in tests.
+Decided in M4.1 and implemented in M4.9 (`features/analytics/`). Umami Cloud
+receives cookieless events from the browser through one module; nothing else
+calls Umami. Automatic tracking is off. Page views are sent manually with the
+route template as the URL (for example `/pt-br/games/[game]`), an empty title
+(a game page's title is the game's name), no query string, and the referrer
+reduced to its host on the first view only. Do Not Track is honored.
+Analytics is disabled whenever `NEXT_PUBLIC_UMAMI_WEBSITE_ID` is not
+configured. The browser suite enables it against a recording stub so that
+payloads can be inspected.
 
 | Event                   | Allowed properties                                                                                          |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------- |
 | page view               | locale, route template                                                                                      |
 | `search-submitted`      | locale, filter categories used, sort, direction, result-count bucket, response-time bucket, refinement flag |
 | `sort-changed`          | locale, sort, direction                                                                                     |
-| `game-detail-viewed`    | locale, entry (`search-result`, `autocomplete`, `direct`), time-since-search bucket                         |
+| `game-detail-viewed`    | locale, entry (`search-result`, `direct`), time-since-search bucket                                         |
 | `external-link-clicked` | locale, link category from the external-link allow-list                                                     |
 | `failure-shown`         | locale, surface (`search`, `game`, `filters`), stable error code                                            |
 | `stale-data-shown`      | locale, surface                                                                                             |

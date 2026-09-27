@@ -1,6 +1,6 @@
 # Milestone 4 Plan
 
-Status: in progress — M4.1 through M4.8 accepted on 2026-09-27; M4.9 not started
+Status: completed on 2026-09-27 — M4.1 through M4.9 delivered; the WebKit browser-matrix run remains open (see the [Milestone 4 review](milestone-4-review.md))
 
 Prepared: 2026-09-22
 
@@ -517,7 +517,7 @@ web 255, and the Playwright suite 34 journeys; `pnpm quality` was green.
 
 ### M4.9 — Analytics and milestone closeout
 
-Status: planned.
+Status: completed on 2026-09-27; the WebKit matrix run is open.
 
 Deliver:
 
@@ -537,6 +537,36 @@ Acceptance:
 - performance targets pass for cold, warm, stale, and degraded profiles;
 - the remaining debt is explicitly handed to closed beta, public beta, or a
   later engineering milestone.
+
+Outcome:
+
+- **Integration**: `features/analytics/` is the single boundary.
+  `events.ts` holds the typed allow-list, the buckets, the route templates,
+  and a run-time `sanitizeEvent` that drops unknown events, keys, and values.
+  `track.ts` is the only code that calls `window.umami`: it holds early calls
+  in a bounded queue until the script loads, and it sends page views with the
+  route template, an empty title, and the referrer's host on the first view
+  only. Umami would otherwise send the full URL and a game page's title.
+- **Where events come from**: small client components emit search,
+  sort-change, failure, and stale events from the search page, and
+  detail-view, external-link, failure, and stale events from the game page.
+- **Configuration**: analytics is off unless `NEXT_PUBLIC_UMAMI_WEBSITE_ID`
+  is set, and the CSP gains only the configured script and collection
+  origins.
+- **Browser inspection**: the browser suite runs with analytics on against a
+  recording stub the fixture API serves. `analytics.spec.ts` checks the
+  payloads themselves.
+
+Acceptance results, detailed in the [Milestone 4 review](milestone-4-review.md):
+
+- analytics inspection passes;
+- every exit criterion has evidence;
+- `pnpm quality` passes;
+- warm and degraded profiles meet their targets, but the two debt shapes do
+  not meet the uncached target;
+- the remaining debt is handed over;
+- the browser matrix passed Chromium and Firefox, and WebKit is open because
+  the development machine lacks its system libraries.
 
 ## 5. Scope guardrails
 

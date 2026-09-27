@@ -33,6 +33,8 @@ approximate matching.
   SEO increments and their accepted outcomes.
 - [Milestone 3 review](docs/milestone-3-review.md) — exit-criterion evidence,
   browser matrix, Web Vitals spot checks, and the Milestone 4 handoff.
+- [Milestone 4 review](docs/milestone-4-review.md) — exit-criterion evidence,
+  performance and browser results, and the closed-beta handoff.
 - [Milestone 4 plan](docs/milestone-4-plan.md) — cache, resilience, security,
   operations, analytics, increments, and exit criteria.
 - [Security review](docs/security-review.md) — trust boundaries, verified
@@ -92,17 +94,16 @@ detail states, responsive imagery, and planned IGDB attribution. Localized
 metadata, `noindex` search pages, information-page drafts, and a daily sitemap
 selection are implemented. The [Milestone 3 review](docs/milestone-3-review.md)
 records the 135/135 browser-matrix pass and the one open Web Vitals finding:
-mobile search INP exceeds its lab target. Milestone 4 is in progress: M4.1
-recorded the cache, rate-limit, circuit-breaker, readiness, analytics, and
-released-game decisions, M4.2 delivered the Redis foundation, and M4.3
-cached catalog responses with request coalescing and excluded unreleased
-games, verified against live IGDB. M4.4 serves saved data with a localized
-warning when IGDB fails, and M4.5 limits each visitor and keeps IGDB under its
-own request ceiling. M4.6 stops calling IGDB during an outage and probes it
-before resuming. M4.7 adds redacted JSON logs, one request ID from web to
-IGDB, and a readiness endpoint. M4.8 hardens both surfaces and records a
-[security review](docs/security-review.md); M4.9 (analytics and closeout) is
-next. The
+mobile search INP exceeds its lab target.
+
+Milestone 4 delivered the Redis response cache with request coalescing and a
+marked stale fallback, per-visitor rate limits, the IGDB request ceiling, a
+circuit breaker, redacted JSON logs with one request ID from web to IGDB, a
+readiness endpoint, security headers on both surfaces, and allow-listed
+anonymous analytics. Unreleased and undated games are now excluded. The
+[Milestone 4 review](docs/milestone-4-review.md) records the evidence, the
+open WebKit matrix run, and the release-gate handoff to closed beta; the
+[security review](docs/security-review.md) records accepted risks. The
 [technical debt register](docs/technical-debt.md) tracks the known compromises.
 
 ## Local development
