@@ -14,6 +14,7 @@ import type {
   FilterMetadata,
 } from "@/features/catalog/get-filter-metadata";
 import { Link, useRouter } from "@/i18n/navigation";
+import { markSearchSubmitted } from "@/features/analytics/track";
 
 import { activeFilters } from "./active-filters";
 import {
@@ -261,6 +262,7 @@ export function FilterForm({
   }
 
   function apply(values: FilterFormValues) {
+    markSearchSubmitted();
     startTransition(() => {
       router.push({
         pathname: "/games",

@@ -70,3 +70,17 @@ test("every page gets the fixed hardening headers", () => {
   expect(header(headers, "Permissions-Policy")).toContain("camera=()");
   expect(header(headers, "Permissions-Policy")).toContain("browsing-topics=()");
 });
+
+test("analytics origins are allowed for scripts and connections only", () => {
+  const policy = contentSecurityPolicy({
+    development: false,
+    siteOrigin: "https://whattoplaynext.example",
+    analyticsOrigins: ["https://cloud.umami.is"],
+  });
+
+  expect(policy).toContain(
+    "script-src 'self' 'unsafe-inline' https://cloud.umami.is",
+  );
+  expect(policy).toContain("connect-src 'self' https://cloud.umami.is");
+  expect(policy).toContain("img-src 'self' data: blob:;");
+});

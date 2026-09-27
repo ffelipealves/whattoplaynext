@@ -23,6 +23,7 @@ export function ResultCard({ game }: ResultCardProps) {
     <article className="overflow-hidden rounded-2xl border border-[#17203a]/15 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
       <Link
         className="flex h-full flex-col focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3157d5]"
+        data-analytics-entry="search-result"
         href={`/games/${game.id}/${game.slug}`}
       >
         <div className="relative aspect-[264/374] w-full bg-[#dce6fb]">

@@ -2,6 +2,8 @@ import { useTranslations } from "next-intl";
 
 import type { FilterMetadataResult } from "@/features/catalog/get-filter-metadata";
 import { StaleDataNotice } from "@/features/catalog/stale-data-notice";
+import { SearchAnalytics } from "@/features/analytics/trackers";
+import type { FilterCategory } from "@/features/analytics/events";
 
 import { ActiveFilterChips } from "./active-filter-chips";
 import { activeFilters } from "./active-filters";
@@ -44,6 +46,22 @@ export function SearchPage({
 
   return (
     <main className="mx-auto max-w-[88rem] px-5 py-10 sm:px-8 lg:px-12">
+      <SearchAnalytics
+        categories={filterCategories(params)}
+        direction={params.direction}
+        filtersFailure={filters.ok ? undefined : filters.failure.code}
+        result={
+          result.ok
+            ? {
+                ok: true,
+                totalItems: result.page.pagination.totalItems,
+                stale: result.page.meta.dataMayBeStale,
+              }
+            : { ok: false, code: result.failure.code }
+        }
+        searchKey={searchKey(params)}
+        sort={params.sort}
+      />
       <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-[-0.02em]">
         {t("heading")}
       </h1>
@@ -115,4 +133,35 @@ export function SearchPage({
       </div>
     </main>
   );
+}
+
+/** Which kinds of criteria a search used, never their values. */
+function filterCategories(params: BrowseParams): FilterCategory[] {
+  const used: [FilterCategory, boolean][] = [
+    ["name", Boolean(params.name)],
+    ["platform", params.platformIds.length > 0],
+    ["genre", params.genreIds.length > 0],
+    ["release", Boolean(params.releaseFrom || params.releaseTo)],
+    ["rating", params.minimumRating !== undefined],
+    ["mode", params.gameModeIds.length > 0],
+    [
+      "duration",
+      params.minimumDurationHours !== undefined ||
+        params.maximumDurationHours !== undefined,
+    ],
+  ];
+  return used.filter(([, isUsed]) => isUsed).map(([category]) => category);
+}
+
+/**
+ * Identifies the submitted criteria so a new search can be told from a page
+ * or sort change. Compared in the browser's memory only; never sent.
+ */
+function searchKey(params: BrowseParams): string {
+  return JSON.stringify({
+    ...params,
+    page: undefined,
+    sort: undefined,
+    direction: undefined,
+  });
 }

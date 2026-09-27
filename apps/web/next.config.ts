@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 
+import {
+  analyticsConfig,
+  analyticsOrigins,
+} from "./src/features/analytics/analytics-config";
 import { securityHeaders } from "./src/lib/security-headers";
 
 const nextConfig: NextConfig = {
@@ -17,6 +21,7 @@ const nextConfig: NextConfig = {
           // The build fails elsewhere without this setting; the fallback only
           // keeps configuration loading from failing first.
           siteOrigin: process.env.WTPN_SITE_ORIGIN || "http://localhost:3000",
+          analyticsOrigins: analyticsOrigins(analyticsConfig()),
         }),
       },
     ];

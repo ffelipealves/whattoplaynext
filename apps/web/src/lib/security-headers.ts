@@ -12,6 +12,8 @@
 type SecurityHeaderOptions = {
   development: boolean;
   siteOrigin: string;
+  /** Origins serving the analytics script and receiving its events. */
+  analyticsOrigins?: string[];
 };
 
 type Header = { key: string; value: string };
@@ -23,15 +25,17 @@ function isHttps(siteOrigin: string): boolean {
 export function contentSecurityPolicy({
   development,
   siteOrigin,
+  analyticsOrigins = [],
 }: SecurityHeaderOptions): string {
+  const analytics = analyticsOrigins.map((origin) => ` ${origin}`).join("");
   const directives = [
     "default-src 'self'",
     // Hot reloading evaluates code and talks to the dev server over a socket.
-    `script-src 'self' 'unsafe-inline'${development ? " 'unsafe-eval'" : ""}`,
+    `script-src 'self' 'unsafe-inline'${development ? " 'unsafe-eval'" : ""}${analytics}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self'",
-    `connect-src 'self'${development ? " ws:" : ""}`,
+    `connect-src 'self'${development ? " ws:" : ""}${analytics}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

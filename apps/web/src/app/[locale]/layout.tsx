@@ -5,6 +5,9 @@ import { notFound } from "next/navigation";
 import { Bricolage_Grotesque, Instrument_Sans } from "next/font/google";
 
 import { routing } from "@/i18n/routing";
+import { analyticsConfig } from "@/features/analytics/analytics-config";
+import { AnalyticsScript } from "@/features/analytics/analytics-script";
+import { PageviewTracker } from "@/features/analytics/trackers";
 import { SiteFooter } from "@/features/information/site-footer";
 import { getSiteOrigin } from "@/lib/seo";
 
@@ -62,6 +65,7 @@ export default async function LocaleLayout({
   }
 
   setRequestLocale(locale);
+  const analytics = analyticsConfig();
 
   return (
     <html className="font-sans" lang={locale}>
@@ -69,6 +73,12 @@ export default async function LocaleLayout({
         <NextIntlClientProvider>
           {children}
           <SiteFooter />
+          {analytics && (
+            <>
+              <AnalyticsScript {...analytics} />
+              <PageviewTracker />
+            </>
+          )}
         </NextIntlClientProvider>
       </body>
     </html>

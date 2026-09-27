@@ -11,7 +11,9 @@ import {
 vi.mock("next/headers", () => ({ headers: vi.fn() }));
 
 const mockedHeaders = vi.mocked(headers);
-const fetchMock = vi.fn(async (_request: Request) => Response.json({}));
+const fetchMock = vi.fn<(request: Request) => Promise<Response>>(async () =>
+  Response.json({}),
+);
 
 beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://localhost:8000");

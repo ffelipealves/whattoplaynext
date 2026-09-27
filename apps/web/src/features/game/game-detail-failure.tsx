@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import type { ApiFailure } from "@/lib/api-failure";
 import { failureCopy, isRecoverableFailure } from "@/lib/failure-presentation";
+import { GameFailureAnalytics } from "@/features/analytics/trackers";
 
 type GameDetailFailureProps = {
   failure: ApiFailure;
@@ -17,6 +18,7 @@ export function GameDetailFailure({ failure, retry }: GameDetailFailureProps) {
 
   return (
     <main className="mx-auto max-w-3xl px-5 py-24 sm:px-8">
+      <GameFailureAnalytics code={failure.code} />
       <meta content="noindex" name="robots" />
       <div
         className="flex flex-col items-center gap-2 rounded-2xl border border-[#17203a]/15 bg-white px-6 py-16 text-center"

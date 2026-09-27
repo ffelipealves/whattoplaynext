@@ -3,6 +3,7 @@ import { type ReactNode, useId } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { StaleDataNotice } from "@/features/catalog/stale-data-notice";
+import { GameAnalytics } from "@/features/analytics/trackers";
 
 import { GameCover } from "./game-cover";
 import type { GameDetail } from "./get-game-detail";
@@ -148,6 +149,7 @@ export function GameDetailPage({ detail }: GameDetailPageProps) {
 
   return (
     <main className="mx-auto max-w-7xl px-5 py-10 text-[#17203a] sm:px-8 lg:px-12">
+      <GameAnalytics stale={detail.meta.dataMayBeStale} />
       {detail.meta.dataMayBeStale && (
         <div className="mb-8">
           <StaleDataNotice meta={detail.meta} />
@@ -334,6 +336,7 @@ export function GameDetailPage({ detail }: GameDetailPageProps) {
                 <li key={link.url}>
                   <a
                     aria-label={t("externalLinkLabel", { label: link.label })}
+                    data-analytics-link={link.label}
                     className="inline-flex rounded-full border border-[#3157d5]/25 px-4 py-2 text-sm font-semibold text-[#3157d5] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3157d5]"
                     href={link.url}
                     rel="noopener noreferrer"

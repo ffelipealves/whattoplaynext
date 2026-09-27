@@ -97,6 +97,10 @@ export default defineConfig({
           env: {
             NEXT_PUBLIC_API_BASE_URL: API_BASE_URL,
             WTPN_SITE_ORIGIN: WEB_BASE_URL,
+            // Analytics on, against a recording stub the fixture API serves,
+            // so journeys can inspect exactly what would be sent.
+            NEXT_PUBLIC_UMAMI_WEBSITE_ID: "e2e-website",
+            NEXT_PUBLIC_UMAMI_SCRIPT_URL: `${API_BASE_URL}/e2e/umami-stub.js`,
           },
           reuseExistingServer: !process.env.CI,
           timeout: 180_000,
