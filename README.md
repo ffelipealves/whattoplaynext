@@ -102,7 +102,7 @@ circuit breaker, redacted JSON logs with one request ID from web to IGDB, a
 readiness endpoint, security headers on both surfaces, and allow-listed
 anonymous analytics. Unreleased and undated games are now excluded. The
 [Milestone 4 review](docs/milestone-4-review.md) records the evidence, the
-open WebKit matrix run, and the release-gate handoff to closed beta; the
+185/185 browser matrix, and the release-gate handoff to closed beta; the
 [security review](docs/security-review.md) records accepted risks. The
 [technical debt register](docs/technical-debt.md) tracks the known compromises.
 

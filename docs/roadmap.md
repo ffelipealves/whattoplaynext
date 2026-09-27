@@ -125,8 +125,7 @@ guardrails, and recorded decisions are defined in
 
 ## Milestone 4 — Cache, resilience, security, and operations
 
-Status: completed on 2026-09-27, with one verification open: the WebKit
-projects of the browser matrix. See the
+Status: completed on 2026-09-27; the browser matrix passed 185/185. See the
 [Milestone 4 review](milestone-4-review.md) and the
 [Milestone 4 plan](milestone-4-plan.md).
 

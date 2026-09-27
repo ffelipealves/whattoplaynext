@@ -1,6 +1,6 @@
 # Milestone 4 Review
 
-Status: closeout recorded; one verification open (the WebKit browser matrix)
+Status: closeout accepted
 
 Reviewed: 2026-09-27
 
@@ -40,10 +40,8 @@ Verification was run on the development machine:
 
 - the fixture-backed `pnpm quality` gate passes: 387 API tests, 293 web tests,
   and 37 Chromium journeys;
-- Firefox and mobile Chromium pass their journeys;
-- WebKit could not run there without system libraries that need
-  administrator rights, so the five-engine matrix is the one open
-  verification.
+- the five-project browser matrix (Chromium, Firefox, and WebKit at desktop
+  and mobile sizes) passed 185 of 185.
 
 ## Increment history
 
@@ -97,11 +95,10 @@ On the development machine (WSL2, Ubuntu 26.04), `pnpm e2e:browsers` passed
   load, now recorded as
   [technical debt 19](technical-debt.md#19-the-debounce-journey-depends-on-wall-clock-gaps).
 
-**Open verification:** run the WebKit projects, either after
-`sudo npx playwright install-deps webkit` on this machine or through the CI
-browser matrix with a `[browser-matrix]` push. Milestone 3 last passed WebKit
-at 135/135, and no Milestone 4 change is engine-specific. Still, the M4.9
-acceptance names the matrix, so it is recorded as open rather than assumed.
+After the owner installed WebKit's system libraries the same day, the full
+matrix passed **185 of 185** across the five projects in 4.0 minutes. It ran
+with two workers instead of the default, which keeps the debounce journey
+within its wall-clock window.
 
 ### Core Web Vitals spot check
 
@@ -166,4 +163,3 @@ decided; it was postponed on 2026-09-27. These release-gate items remain open:
    retention, and describe the digest-only handling of addresses.
 5. **Existing gates**: branded-browser testing (technical debt 14), IGDB
    written confirmation, and name and domain.
-6. **The open WebKit matrix run.**

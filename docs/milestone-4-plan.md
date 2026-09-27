@@ -1,6 +1,6 @@
 # Milestone 4 Plan
 
-Status: completed on 2026-09-27 — M4.1 through M4.9 delivered; the WebKit browser-matrix run remains open (see the [Milestone 4 review](milestone-4-review.md))
+Status: completed on 2026-09-27 — M4.1 through M4.9 accepted; see the [Milestone 4 review](milestone-4-review.md)
 
 Prepared: 2026-09-22
 
@@ -517,7 +517,7 @@ web 255, and the Playwright suite 34 journeys; `pnpm quality` was green.
 
 ### M4.9 — Analytics and milestone closeout
 
-Status: completed on 2026-09-27; the WebKit matrix run is open.
+Status: completed on 2026-09-27.
 
 Deliver:
 
@@ -565,8 +565,8 @@ Acceptance results, detailed in the [Milestone 4 review](milestone-4-review.md):
 - warm and degraded profiles meet their targets, but the two debt shapes do
   not meet the uncached target;
 - the remaining debt is handed over;
-- the browser matrix passed Chromium and Firefox, and WebKit is open because
-  the development machine lacks its system libraries.
+- the browser matrix passed 185/185 once WebKit's system libraries were
+  installed.
 
 ## 5. Scope guardrails
 
