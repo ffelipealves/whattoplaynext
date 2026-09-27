@@ -1245,6 +1245,7 @@
               "items": {
                 "$ref": "#/components/schemas/PlatformId"
               },
+              "maxItems": 50,
               "title": "Platform",
               "type": "array"
             }
@@ -1257,6 +1258,7 @@
               "items": {
                 "$ref": "#/components/schemas/GenreId"
               },
+              "maxItems": 50,
               "title": "Genre",
               "type": "array"
             }
@@ -1321,6 +1323,7 @@
               "items": {
                 "$ref": "#/components/schemas/GameModeId"
               },
+              "maxItems": 50,
               "title": "Gamemode",
               "type": "array"
             }
@@ -1584,6 +1587,7 @@
               "items": {
                 "$ref": "#/components/schemas/PlatformId"
               },
+              "maxItems": 50,
               "title": "Platform",
               "type": "array"
             }

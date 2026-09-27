@@ -39,6 +39,10 @@ from whattoplaynext_api.http.routes.filters import get_catalog
 
 router = APIRouter(tags=["catalog"])
 
+# Repeated values are deduplicated against small allow-lists; the bound only
+# stops a request from making validation walk an arbitrarily long list.
+MAXIMUM_REPEATED_VALUES = 50
+
 DurationHours = Annotated[
     Decimal,
     WithJsonSchema({"type": "number", "minimum": 1, "maximum": 1000}),
@@ -51,8 +55,12 @@ class BrowseParameters(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str | None = Field(default=None, max_length=100)
-    platform: list[PlatformId] = Field(default_factory=list)
-    genre: list[GenreId] = Field(default_factory=list)
+    platform: list[PlatformId] = Field(
+        default_factory=list, max_length=MAXIMUM_REPEATED_VALUES
+    )
+    genre: list[GenreId] = Field(
+        default_factory=list, max_length=MAXIMUM_REPEATED_VALUES
+    )
     release_from: date | None = Field(default=None, alias="releaseFrom")
     release_to: date | None = Field(default=None, alias="releaseTo")
     minimum_rating: int | None = Field(
@@ -61,7 +69,11 @@ class BrowseParameters(BaseModel):
         le=100,
         alias="minimumRating",
     )
-    game_mode: list[GameModeId] = Field(default_factory=list, alias="gameMode")
+    game_mode: list[GameModeId] = Field(
+        default_factory=list,
+        alias="gameMode",
+        max_length=MAXIMUM_REPEATED_VALUES,
+    )
     duration_kind: DurationKind = Field(
         default=DurationKind.NORMAL,
         alias="durationKind",
@@ -122,7 +134,9 @@ class AutocompleteParameters(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     query: str = Field(alias="q", min_length=2, max_length=100)
-    platform: list[PlatformId] = Field(default_factory=list)
+    platform: list[PlatformId] = Field(
+        default_factory=list, max_length=MAXIMUM_REPEATED_VALUES
+    )
 
     @field_validator("query", mode="before")
     @classmethod

@@ -60,6 +60,14 @@ class Settings(BaseSettings):
         return value
 
     @model_validator(mode="after")
+    def refuse_debug_in_production(self) -> Self:
+        """Starlette's debug mode answers an unexpected error with a traceback."""
+        if self.debug and self.environment == "production":
+            msg = "debug mode must stay off in production"
+            raise ValueError(msg)
+        return self
+
+    @model_validator(mode="after")
     def require_complete_twitch_credentials(self) -> Self:
         """Reject partial provider credentials before the application starts."""
         if bool(self.twitch_client_id) != bool(self.twitch_client_secret):

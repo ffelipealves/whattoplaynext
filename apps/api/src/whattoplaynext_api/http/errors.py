@@ -14,6 +14,7 @@ from whattoplaynext_api.http.correlation import (
     REQUEST_ID_HEADER,
     RequestCorrelationMiddleware,
 )
+from whattoplaynext_api.http.security import API_SECURITY_HEADERS
 
 logger = logging.getLogger("whattoplaynext_api.http")
 
@@ -147,7 +148,12 @@ async def handle_unexpected_error(
         exc_info=error,
         extra={"request_id": request.state.request_id},
     )
-    return build_error_response(request, ErrorCode.INTERNAL_ERROR)
+    response = build_error_response(request, ErrorCode.INTERNAL_ERROR)
+    # Starlette's server-error handling sits outside every middleware, so the
+    # security headers are applied here as well.
+    response.headers.update(API_SECURITY_HEADERS)
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 async def handle_not_found_error(

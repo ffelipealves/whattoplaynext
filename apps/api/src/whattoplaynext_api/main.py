@@ -30,6 +30,7 @@ from whattoplaynext_api.core.settings import Settings, get_settings
 from whattoplaynext_api.core.structured_logging import configure_logging
 from whattoplaynext_api.http.errors import install_http_boundary
 from whattoplaynext_api.http.router import api_router
+from whattoplaynext_api.http.security import SecurityHeadersMiddleware
 from whattoplaynext_api.ratelimit.identity import IdentityDigester
 from whattoplaynext_api.ratelimit.limiter import (
     CounterStore,
@@ -205,14 +206,21 @@ def create_app(
                 else None
             ),
         )
+    production = resolved_settings.environment == "production"
     application = FastAPI(
         debug=resolved_settings.debug,
+        # The contract is exported without HTTP (scripts/export_openapi.py), so
+        # production needs neither the schema route nor its documentation UIs.
+        docs_url=None if production else "/docs",
+        redoc_url=None if production else "/redoc",
+        openapi_url=None if production else "/openapi.json",
         description="Provider-neutral game discovery API.",
         title=resolved_settings.app_name,
         version=__version__,
         lifespan=_lifespan(closers),
     )
     install_http_boundary(application)
+    application.add_middleware(SecurityHeadersMiddleware, strict_transport=production)
     application.state.catalog = resolved_catalog
     application.state.cache = cache
     application.state.rate_limiting = rate_limiting
