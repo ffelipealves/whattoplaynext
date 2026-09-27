@@ -133,8 +133,9 @@ rather than accepted and then failed upstream. Release bounds are inclusive and 
 the release dates belonging to any selected platform. Without a platform
 criterion they fall back to `first_release_date`.
 
-Browse always restricts `game_type` to the same base-game, remake, and remaster
-allow-list that detail accepts. Popularity reads the IGDB Visits index in
+Browse always applies the eligibility rule that detail uses: the base-game,
+remake, and remaster `game_type` allow-list plus a past or same-day
+`first_release_date`. Popularity reads the IGDB Visits index in
 popularity order for both filtered and unfiltered requests and joins each page
 against that eligibility constraint plus any caller filters until the requested
 page is full. It falls back to listing every matching ID when the match set is
@@ -305,16 +306,16 @@ ratings and external links are provider text and allow-listed categories
 respectively; an unrecognized external-link category is omitted rather than
 guessed.
 
-The intended MVP scope is released base games and their separately cataloged
-remakes and remasters. The current eligibility rule enforces content type, not
-release state; see [technical debt 1b](technical-debt.md#1b-released-games-is-not-enforced-as-a-catalog-condition).
-From M4.3, a game is also required to have a `first_release_date` no later
-than the end of the current UTC day, in detail and every discovery path
+The MVP scope is released base games and their separately cataloged remakes
+and remasters. Since M4.3, eligibility requires both an allowed content type
+and a `first_release_date` no later than the end of the current UTC day, in
+detail and every discovery path
 ([architecture §8a](architecture.md#8a-released-game-eligibility)).
 A game ID that does not exist, or that resolves to an excluded
 content type such as DLC, an expansion, a bundle, or a mod, returns
 `GAME_NOT_FOUND` — the same code for both cases, so a request cannot probe
-which excluded games exist. An unreleased game will answer the same way. Upstream failures keep their own distinct codes.
+which excluded games exist. An unreleased or undated game answers the same
+way. Upstream failures keep their own distinct codes.
 
 ### `GET /api/v1/health`
 

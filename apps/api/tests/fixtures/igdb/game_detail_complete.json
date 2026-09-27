@@ -9,6 +9,7 @@
     ],
     "summary": "A story-driven, next-generation open world role-playing game.",
     "game_type": 0,
+    "first_release_date": 1431993600,
     "cover": { "id": 12345, "image_id": "co1wyy" },
     "screenshots": [
       { "id": 5001, "image_id": "sc1abc" },

@@ -387,7 +387,8 @@ and count, in autocomplete and the popular selection, and in the detail check,
 which answers `GAME_NOT_FOUND` for an unreleased game. A game whose first
 release happened on a platform outside the MVP scope counts as released; that
 imprecision was accepted in exchange for a rule that needs no release-date
-join. M4.3 implements it before the first cache entry is written.
+join. M4.3 implemented it before the first cache entry is written:
+`IgdbCatalog` takes an injectable day so tests pin the cutoff.
 
 ## 9. Security and privacy
 

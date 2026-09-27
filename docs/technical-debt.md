@@ -42,7 +42,7 @@ First flagged in the [Milestone 1 review](milestone-1-review.md#deferred-externa
 and observed from the frontend in Milestone 2.3; closed before Milestone 3 adds
 links from result cards.
 
-### 1b. “Released games” is not enforced as a catalog condition
+### 1b. “Released games” is not enforced as a catalog condition — **resolved in M4.3**
 
 The MVP scope says released base games, remakes, and remasters, but eligibility
 currently constrains only `game_type`. Detail, browse, and autocomplete do not
@@ -53,13 +53,18 @@ product requirements.
 This was made explicit while closing M3.1 instead of silently expanding an
 increment about content type into a release-state policy.
 
-**Decided on 2026-09-27; implementation in M4.3.** The owner chose the global
+**Decided and implemented on 2026-09-27 in M4.3.** The owner chose the global
 rule: `first_release_date` present and no later than the end of the current
 UTC day, applied with the `game_type` allow-list to detail and every discovery
 path ([architecture §8a](architecture.md#8a-released-game-eligibility)). The
 residual imprecision is accepted: a game first released on a platform outside
 the MVP scope counts as released. It lands in M4.3, before any entry is
-cached, so the change needs no cache invalidation.
+cached, so the change needs no cache invalidation. `IgdbCatalog` takes an
+injectable day, and every games query, count, autocomplete, popular-selection
+batch, and the detail check carry
+`first_release_date != null & first_release_date <= <end of today>`. The
+changed live totals still need an owner-run measurement, because no Twitch
+credentials were available when it landed.
 
 ### 2. A duration filter still costs seconds on a cold cache
 

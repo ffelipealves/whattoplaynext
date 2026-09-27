@@ -1,5 +1,6 @@
 """IGDB implementation of the provider-neutral catalog interface."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time
 from json import dumps
@@ -147,11 +148,25 @@ WEBSITE_LABELS = {
 }
 
 
+def _utc_today() -> date:
+    return datetime.now(UTC).date()
+
+
 class IgdbCatalog:
     """Normalize IGDB data behind the catalog application interface."""
 
-    def __init__(self, transport: IgdbQueryTransport) -> None:
+    def __init__(
+        self,
+        transport: IgdbQueryTransport,
+        *,
+        today: Callable[[], date] = _utc_today,
+    ) -> None:
         self._transport = transport
+        self._today = today
+
+    def _eligibility(self) -> str:
+        """The content and release rule every games query must carry."""
+        return _eligibility_clause(self._today())
 
     async def get_filter_metadata(self) -> FilterMetadata:
         """Return allow-listed filters with application-owned identities."""
@@ -202,12 +217,12 @@ class IgdbCatalog:
                 total_items, game_ids = await self._filtered_popularity_ids(criteria)
                 game_records = await self._games_by_ids(
                     game_ids,
-                    _where_query(criteria),
+                    _where_query(criteria, self._eligibility()),
                     include_release_dates=False,
                 )
                 items = _normalize_games(game_records, game_ids)
             else:
-                where_query = _where_query(criteria)
+                where_query = _where_query(criteria, self._eligibility())
                 total_items = await self._transport.count("games", where_query)
                 game_records = await self._transport.query(
                     "games",
@@ -241,7 +256,7 @@ class IgdbCatalog:
         try:
             records = await self._transport.query(
                 "games",
-                _autocomplete_query(criteria),
+                _autocomplete_query(criteria, self._eligibility()),
             )
         except IgdbTransportError as error:
             raise _application_error(error) from error
@@ -257,6 +272,7 @@ class IgdbCatalog:
         """Return up to 500 eligible games in popularity order for the sitemap."""
         items: list[PopularGame] = []
         seen_ids: set[int] = set()
+        eligibility = self._eligibility()
         offset = 0
         try:
             while len(items) < POPULAR_GAME_SELECTION_LIMIT:
@@ -276,7 +292,7 @@ class IgdbCatalog:
                 if candidate_ids:
                     selected_records = await self._transport.query(
                         "games",
-                        _popular_games_query(candidate_ids),
+                        _popular_games_query(candidate_ids, eligibility),
                     )
                     selected = {
                         _required_int(record, "id"): _normalize_popular_game(record)
@@ -304,7 +320,7 @@ class IgdbCatalog:
         """Return complete normalized detail for one eligible game."""
         try:
             records = await self._transport.query("games", _detail_query(game_id))
-            if not records or not _is_eligible_game_type(records[0]):
+            if not records or not _is_eligible(records[0], self._today()):
                 raise ApplicationError(ErrorCode.GAME_NOT_FOUND)
             duration_records = await self._transport.query(
                 "game_time_to_beats",
@@ -322,6 +338,7 @@ class IgdbCatalog:
     ) -> tuple[int, list[GameSummary]]:
         where_query = _where_query(
             criteria,
+            self._eligibility(),
             include_release_bounds=not bool(criteria.platform_ids),
         )
         duration_kinds = tuple(
@@ -610,7 +627,7 @@ class IgdbCatalog:
         self,
         criteria: BrowseCriteria,
     ) -> tuple[int, list[int]]:
-        where_query = _where_query(criteria)
+        where_query = _where_query(criteria, self._eligibility())
         total_items = await self._transport.count("games", where_query)
         required = criteria.page * criteria.page_size
         ordered_ids = (
@@ -847,13 +864,10 @@ def _candidate_games_by_ids_query(
     )
 
 
-def _popular_games_query(game_ids: list[int]) -> str:
+def _popular_games_query(game_ids: list[int], eligibility: str) -> str:
     """Read one popularity-index batch through the shared eligibility rule."""
     ids = ",".join(str(game_id) for game_id in game_ids)
-    return (
-        "fields id,slug; where "
-        f"{_eligible_game_types_clause()} & id = ({ids}); limit {len(game_ids)};"
-    )
+    return f"fields id,slug; where {eligibility} & id = ({ids}); limit {len(game_ids)};"
 
 
 def _candidate_games_fields(include_release_dates: bool) -> str:
@@ -908,10 +922,11 @@ def _needs_local_evaluation(criteria: BrowseCriteria) -> bool:
 
 def _where_query(
     criteria: BrowseCriteria,
+    eligibility: str,
     *,
     include_release_bounds: bool = True,
 ) -> str:
-    clauses = [_eligible_game_types_clause()]
+    clauses = [eligibility]
     if criteria.name is not None:
         clauses.append(f"name ~ *{dumps(criteria.name, ensure_ascii=False)}*")
     _append_option_clause(clauses, "platforms", criteria.platform_ids, PLATFORMS)
@@ -931,9 +946,17 @@ def _where_query(
     return f"where {' & '.join(clauses)};"
 
 
-def _eligible_game_types_clause() -> str:
+def _eligibility_clause(today: date) -> str:
+    """Eligible content types, released no later than the end of ``today``.
+
+    An undated game is not released: ``!= null`` keeps the rule explicit rather
+    than relying on how IGDB compares a missing field.
+    """
     game_types = ",".join(str(game_type) for game_type in sorted(ELIGIBLE_GAME_TYPES))
-    return f"game_type = ({game_types})"
+    return (
+        f"game_type = ({game_types}) & first_release_date != null & "
+        f"first_release_date <= {_day_end(today)}"
+    )
 
 
 def _day_start(day: date) -> int:
@@ -1072,8 +1095,8 @@ def _search_query(
     )
 
 
-def _autocomplete_query(criteria: AutocompleteCriteria) -> str:
-    clauses = [_eligible_game_types_clause()]
+def _autocomplete_query(criteria: AutocompleteCriteria, eligibility: str) -> str:
+    clauses = [eligibility]
     _append_option_clause(clauses, "platforms", criteria.platform_ids, PLATFORMS)
     where = f" where {' & '.join(clauses)};"
     escaped_query = dumps(criteria.query, ensure_ascii=False)
@@ -1357,6 +1380,7 @@ def _normalize_rating(record: dict[str, object]) -> GameRating | None:
 def _detail_query(game_id: int) -> str:
     return (
         "fields id,slug,name,alternative_names.name,summary,game_type,"
+        "first_release_date,"
         "cover.image_id,screenshots.image_id,"
         "release_dates.platform,release_dates.date,"
         "genres.id,themes.id,themes.name,platforms.id,game_modes.id,"
@@ -1377,12 +1401,17 @@ def _detail_duration_query(game_id: int) -> str:
     )
 
 
-def _is_eligible_game_type(record: dict[str, object]) -> bool:
+def _is_eligible(record: dict[str, object], today: date) -> bool:
+    """Apply the eligibility clause to a record fetched by ID alone."""
     game_type = record.get("game_type")
+    released = record.get("first_release_date")
     return (
         isinstance(game_type, int)
         and not isinstance(game_type, bool)
         and game_type in ELIGIBLE_GAME_TYPES
+        and isinstance(released, int)
+        and not isinstance(released, bool)
+        and released <= _day_end(today)
     )
 
 

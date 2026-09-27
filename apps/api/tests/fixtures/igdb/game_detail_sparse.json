@@ -3,6 +3,7 @@
     "id": 1942,
     "slug": "minimal-game",
     "name": "Minimal Game",
-    "game_type": 0
+    "game_type": 0,
+    "first_release_date": 1577836800
   }
 ]

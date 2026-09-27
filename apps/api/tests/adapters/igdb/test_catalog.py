@@ -8,7 +8,7 @@ from typing import cast
 import httpx
 import pytest
 
-from whattoplaynext_api.adapters.igdb.catalog import IgdbCatalog
+from whattoplaynext_api.adapters.igdb.catalog import IgdbCatalog, IgdbQueryTransport
 from whattoplaynext_api.adapters.igdb.transport import (
     IgdbErrorReason,
     IgdbTransport,
@@ -27,6 +27,17 @@ from whattoplaynext_api.catalog.models import (
 from whattoplaynext_api.core.errors import ApplicationError, ErrorCode
 
 FIXTURE_DIRECTORY = Path(__file__).parents[2] / "fixtures" / "igdb"
+
+TODAY = date(2026, 9, 27)
+# Eligible content types, released no later than the end of TODAY in UTC.
+ELIGIBILITY = (
+    "game_type = (0,8,9) & first_release_date != null & "
+    "first_release_date <= 1790553599"
+)
+
+
+def catalog_for(transport: IgdbQueryTransport) -> IgdbCatalog:
+    return IgdbCatalog(transport, today=lambda: TODAY)
 
 
 def load_records(name: str) -> list[dict[str, object]]:
@@ -228,7 +239,7 @@ class FakeTokenProvider:
 @pytest.mark.anyio
 async def test_normalizes_allow_listed_filter_metadata_from_provider_records() -> None:
     transport = FixtureTransport()
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     metadata = await catalog.get_filter_metadata()
 
@@ -291,7 +302,7 @@ async def test_translates_provider_failures_for_public_adapters(
     reason: IgdbErrorReason,
     expected_code: ErrorCode,
 ) -> None:
-    catalog = IgdbCatalog(FailingTransport(reason))
+    catalog = catalog_for(FailingTransport(reason))
 
     with pytest.raises(ApplicationError) as error:
         await catalog.get_filter_metadata()
@@ -328,7 +339,7 @@ async def test_translates_provider_failures_for_public_adapters(
 
 @pytest.mark.anyio
 async def test_rejects_empty_provider_taxonomies_as_an_invalid_response() -> None:
-    catalog = IgdbCatalog(EmptyTransport())
+    catalog = catalog_for(EmptyTransport())
 
     with pytest.raises(ApplicationError) as error:
         await catalog.get_filter_metadata()
@@ -339,7 +350,7 @@ async def test_rejects_empty_provider_taxonomies_as_an_invalid_response() -> Non
 @pytest.mark.anyio
 async def test_browses_complete_game_summaries_with_an_explicit_projection() -> None:
     transport = BrowseFixtureTransport()
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     result = await catalog.browse_games(BrowseCriteria())
 
@@ -395,11 +406,11 @@ async def test_browses_complete_game_summaries_with_an_explicit_projection() -> 
             "excludedUnknownDuration": False,
         },
     }
-    assert transport.count_requests == [("games", "where game_type = (0,8,9);")]
+    assert transport.count_requests == [("games", f"where {ELIGIBILITY};")]
     assert transport.requests == [
         (
             "games",
-            ("fields id; where game_type = (0,8,9); sort id asc; limit 500; offset 0;"),
+            f"fields id; where {ELIGIBILITY}; sort id asc; limit 500; offset 0;",
         ),
         (
             "popularity_primitives",
@@ -413,7 +424,7 @@ async def test_browses_complete_game_summaries_with_an_explicit_projection() -> 
             (
                 "fields id,slug,name,first_release_date,cover.image_id,"
                 "platforms.id,genres.id,total_rating,total_rating_count,"
-                "game_modes.id; where game_type = (0,8,9) & id = (1942); "
+                f"game_modes.id; where {ELIGIBILITY} & id = (1942); "
                 "limit 1;"
             ),
         ),
@@ -427,7 +438,7 @@ async def test_browses_complete_game_summaries_with_an_explicit_projection() -> 
 
 @pytest.mark.anyio
 async def test_keeps_missing_optional_game_fields_nullable_or_empty() -> None:
-    catalog = IgdbCatalog(BrowseFixtureTransport("games_sparse.json"))
+    catalog = catalog_for(BrowseFixtureTransport("games_sparse.json"))
 
     result = await catalog.browse_games(BrowseCriteria())
 
@@ -456,7 +467,7 @@ async def test_returns_a_successful_empty_page_from_a_valid_count_object() -> No
         return httpx.Response(200, json=[])
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        catalog = IgdbCatalog(
+        catalog = catalog_for(
             IgdbTransport(
                 client=client,
                 client_id="sanitized-client-id",
@@ -472,7 +483,7 @@ async def test_returns_a_successful_empty_page_from_a_valid_count_object() -> No
     assert requests == [
         (
             "/v4/games/count",
-            b"where game_type = (0,8,9);",
+            f"where {ELIGIBILITY};".encode(),
         ),
     ]
 
@@ -483,7 +494,7 @@ async def test_rejects_a_malformed_count_object_as_an_upstream_failure() -> None
         return httpx.Response(200, json={"unexpected": 1})
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        catalog = IgdbCatalog(
+        catalog = catalog_for(
             IgdbTransport(
                 client=client,
                 client_id="sanitized-client-id",
@@ -508,7 +519,7 @@ async def test_classifies_an_out_of_range_release_timestamp() -> None:
             "first_release_date": 10**30,
         }
     ]
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     with pytest.raises(ApplicationError) as error:
         await catalog.browse_games(BrowseCriteria())
@@ -523,7 +534,7 @@ async def test_returns_the_second_popularity_page_from_the_ranked_index() -> Non
         matching=list(range(1, 501)),
         total=50_000,
     )
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     result = await catalog.browse_games(BrowseCriteria(page=2))
 
@@ -546,7 +557,7 @@ async def test_returns_the_second_popularity_page_from_the_ranked_index() -> Non
 @pytest.mark.anyio
 async def test_translates_strict_and_or_criteria_to_the_games_endpoint() -> None:
     transport = SearchFixtureTransport()
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     result = await catalog.browse_games(
         BrowseCriteria(
@@ -575,6 +586,8 @@ async def test_translates_strict_and_or_criteria_to_the_games_endpoint() -> None
     count_query = transport.count_requests[0][1]
     expected_filters = {
         "game_type = (0,8,9)",
+        "first_release_date != null",
+        "first_release_date <= 1790553599",
         'name ~ *"Hollow Knight"*',
         "platforms = (6,167)",
         "genres = (8,31)",
@@ -598,7 +611,7 @@ async def test_keeps_strict_filters_when_sorting_by_popularity() -> None:
         ranked=[(1942, 0.5), (3000, 0.9)],
         matching=[1942, 3000],
     )
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     result = await catalog.browse_games(
         BrowseCriteria(
@@ -622,7 +635,7 @@ async def test_keeps_strict_filters_when_sorting_by_popularity() -> None:
         (
             "fields id,slug,name,first_release_date,cover.image_id,platforms.id,"
             "genres.id,total_rating,total_rating_count,game_modes.id; where "
-            "game_type = (0,8,9) & genres = (31) & id = (3000,1942); limit 2;"
+            f"{ELIGIBILITY} & genres = (31) & id = (3000,1942); limit 2;"
         ),
     )
 
@@ -646,7 +659,7 @@ async def test_translates_supported_sort_fields_without_changing_direction(
     provider_sort: str,
 ) -> None:
     transport = SearchFixtureTransport()
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     await catalog.browse_games(BrowseCriteria(sort=sort, direction=direction))
 
@@ -656,7 +669,7 @@ async def test_translates_supported_sort_fields_without_changing_direction(
 @pytest.mark.anyio
 async def test_escapes_name_text_inside_the_apicalypse_string_literal() -> None:
     transport = SearchFixtureTransport()
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     await catalog.browse_games(
         BrowseCriteria(
@@ -667,7 +680,7 @@ async def test_escapes_name_text_inside_the_apicalypse_string_literal() -> None:
 
     count_query = transport.count_requests[0][1]
     assert count_query == (
-        'where game_type = (0,8,9) & name ~ *"He said \\"hi\\";\\nfields *"*;'
+        f'where {ELIGIBILITY} & name ~ *"He said \\"hi\\";\\nfields *"*;'
     )
     assert "\n" not in count_query
 
@@ -675,7 +688,7 @@ async def test_escapes_name_text_inside_the_apicalypse_string_literal() -> None:
 @pytest.mark.anyio
 async def test_sorts_by_the_selected_duration_and_keeps_unknown_values() -> None:
     transport = M17FixtureTransport()
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     result = await catalog.browse_games(
         BrowseCriteria(
@@ -697,7 +710,7 @@ async def test_sorts_by_the_selected_duration_and_keeps_unknown_values() -> None
 @pytest.mark.anyio
 async def test_filters_platform_releases_and_durations_before_paging() -> None:
     transport = M17FixtureTransport()
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     result = await catalog.browse_games(
         BrowseCriteria(
@@ -720,7 +733,10 @@ async def test_filters_platform_releases_and_durations_before_paging() -> None:
     )
     assert "platforms = (6,167)" in games_query
     assert "release_dates.platform,release_dates.date" in games_query
-    assert "first_release_date" not in games_query.split("where", 1)[-1]
+    # The global release range yields to platform dates; only the released
+    # rule inside the eligibility clause may mention the global date.
+    where = games_query.split("where", 1)[-1].replace(ELIGIBILITY, "")
+    assert "first_release_date" not in where
 
 
 @pytest.mark.anyio
@@ -738,7 +754,7 @@ async def test_maps_each_duration_kind_for_inclusive_filtering(
     maximum: int,
     expected_ids: list[int],
 ) -> None:
-    catalog = IgdbCatalog(M17FixtureTransport())
+    catalog = catalog_for(M17FixtureTransport())
 
     result = await catalog.browse_games(
         BrowseCriteria(
@@ -757,7 +773,7 @@ async def test_maps_each_duration_kind_for_inclusive_filtering(
 @pytest.mark.anyio
 async def test_uses_first_release_date_bounds_when_no_platform_is_selected() -> None:
     transport = SearchFixtureTransport()
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     await catalog.browse_games(
         BrowseCriteria(
@@ -775,7 +791,7 @@ async def test_uses_first_release_date_bounds_when_no_platform_is_selected() -> 
 @pytest.mark.anyio
 async def test_autocompletes_with_a_normalized_relevance_ordered_projection() -> None:
     transport = AutocompleteFixtureTransport()
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     result = await catalog.autocomplete(AutocompleteCriteria(query="witcher"))
 
@@ -808,7 +824,7 @@ async def test_autocompletes_with_a_normalized_relevance_ordered_projection() ->
             "games",
             (
                 'search "witcher"; fields id,slug,name,first_release_date,'
-                "cover.image_id; where game_type = (0,8,9); limit 8;"
+                f"cover.image_id; where {ELIGIBILITY}; limit 8;"
             ),
         )
     ]
@@ -816,7 +832,7 @@ async def test_autocompletes_with_a_normalized_relevance_ordered_projection() ->
 
 @pytest.mark.anyio
 async def test_keeps_missing_optional_autocomplete_fields_nullable() -> None:
-    catalog = IgdbCatalog(
+    catalog = catalog_for(
         AutocompleteFixtureTransport(load_records("games_sparse.json"))
     )
 
@@ -834,7 +850,7 @@ async def test_keeps_missing_optional_autocomplete_fields_nullable() -> None:
 @pytest.mark.anyio
 async def test_narrows_autocomplete_results_by_platform_context() -> None:
     transport = AutocompleteFixtureTransport()
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     await catalog.autocomplete(
         AutocompleteCriteria(
@@ -848,7 +864,7 @@ async def test_narrows_autocomplete_results_by_platform_context() -> None:
             "games",
             (
                 'search "witcher"; fields id,slug,name,first_release_date,'
-                "cover.image_id; where game_type = (0,8,9) & "
+                f"cover.image_id; where {ELIGIBILITY} & "
                 "platforms = (6,167); limit 8;"
             ),
         )
@@ -861,7 +877,7 @@ async def test_returns_at_most_eight_autocomplete_suggestions() -> None:
         {"id": game_id, "slug": f"game-{game_id}", "name": f"Game {game_id}"}
         for game_id in range(1, 11)
     ]
-    catalog = IgdbCatalog(AutocompleteFixtureTransport(records))
+    catalog = catalog_for(AutocompleteFixtureTransport(records))
 
     result = await catalog.autocomplete(AutocompleteCriteria(query="game"))
 
@@ -871,7 +887,7 @@ async def test_returns_at_most_eight_autocomplete_suggestions() -> None:
 @pytest.mark.anyio
 async def test_escapes_autocomplete_text_inside_the_apicalypse_string_literal() -> None:
     transport = AutocompleteFixtureTransport([])
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     await catalog.autocomplete(AutocompleteCriteria(query='He said "hi";\nfields *'))
 
@@ -883,7 +899,7 @@ async def test_escapes_autocomplete_text_inside_the_apicalypse_string_literal() 
 @pytest.mark.anyio
 async def test_returns_complete_normalized_detail_from_a_full_projection() -> None:
     transport = DetailFixtureTransport()
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     result = await catalog.get_game_detail(1942)
 
@@ -990,7 +1006,7 @@ async def test_returns_complete_normalized_detail_from_a_full_projection() -> No
 
 @pytest.mark.anyio
 async def test_keeps_missing_optional_detail_fields_nullable_or_empty() -> None:
-    catalog = IgdbCatalog(
+    catalog = catalog_for(
         DetailFixtureTransport(
             "game_detail_sparse.json", "game_time_to_beats_detail_sparse.json"
         )
@@ -1035,7 +1051,7 @@ async def test_keeps_missing_optional_detail_fields_nullable_or_empty() -> None:
 
 @pytest.mark.anyio
 async def test_rejects_an_absent_game_id_as_not_found() -> None:
-    catalog = IgdbCatalog(EmptyTransport())
+    catalog = catalog_for(EmptyTransport())
 
     with pytest.raises(ApplicationError) as error:
         await catalog.get_game_detail(999999)
@@ -1050,7 +1066,7 @@ async def test_rejects_an_ineligible_game_type_as_not_found(
 ) -> None:
     transport = DetailFixtureTransport()
     transport.responses["games"][0]["game_type"] = game_type
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     with pytest.raises(ApplicationError) as error:
         await catalog.get_game_detail(1942)
@@ -1060,13 +1076,65 @@ async def test_rejects_an_ineligible_game_type_as_not_found(
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize(
+    "first_release_date",
+    [
+        None,
+        1790553600,  # the first second of the day after TODAY
+        "1431993600",
+        True,
+    ],
+)
+async def test_treats_an_unreleased_or_undated_game_as_not_found(
+    first_release_date: object,
+) -> None:
+    transport = DetailFixtureTransport()
+    record = transport.responses["games"][0]
+    if first_release_date is None:
+        del record["first_release_date"]
+    else:
+        record["first_release_date"] = first_release_date
+    catalog = catalog_for(transport)
+
+    with pytest.raises(ApplicationError) as raised:
+        await catalog.get_game_detail(1942)
+
+    assert raised.value.code is ErrorCode.GAME_NOT_FOUND
+    assert [endpoint for endpoint, _ in transport.requests] == ["games"]
+
+
+@pytest.mark.anyio
+async def test_a_game_released_during_today_is_eligible() -> None:
+    transport = DetailFixtureTransport()
+    transport.responses["games"][0]["first_release_date"] = 1790553599
+    catalog = catalog_for(transport)
+
+    detail = await catalog.get_game_detail(1942)
+
+    assert detail.id == 1942
+    assert "first_release_date" in transport.requests[0][1]
+
+
+@pytest.mark.anyio
+async def test_the_release_cutoff_follows_the_injected_day() -> None:
+    transport = BrowseFixtureTransport("games_sparse.json")
+    catalog = IgdbCatalog(transport, today=lambda: date(2027, 1, 1))
+
+    await catalog.browse_games(
+        BrowseCriteria(sort=SortOption.RATING, direction=SortDirection.DESCENDING)
+    )
+
+    assert "first_release_date <= 1798847999" in transport.count_requests[0][1]
+
+
+@pytest.mark.anyio
 @pytest.mark.parametrize("game_type", [0, 8, 9])
 async def test_accepts_base_game_remake_and_remaster_game_types(
     game_type: int,
 ) -> None:
     transport = DetailFixtureTransport()
     transport.responses["games"][0]["game_type"] = game_type
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     result = await catalog.get_game_detail(1942)
 
@@ -1166,7 +1234,7 @@ async def test_selects_at_most_500_eligible_popular_games_for_the_sitemap() -> N
         ranked=[(game_id, 1.0 - game_id / 10_000) for game_id in range(1, 1_001)],
         matching=list(range(2, 1_001, 2)),
     )
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     result = await catalog.get_popular_games()
 
@@ -1183,7 +1251,7 @@ async def test_selects_at_most_500_eligible_popular_games_for_the_sitemap() -> N
         query for endpoint, query in transport.requests if endpoint == "games"
     ]
     assert all(query.startswith("fields id,slug;") for query in game_queries)
-    assert all("game_type = (0,8,9)" in query for query in game_queries)
+    assert all(ELIGIBILITY in query for query in game_queries)
 
 
 @pytest.mark.anyio
@@ -1195,7 +1263,7 @@ async def test_pages_the_popularity_index_instead_of_listing_every_match() -> No
         matching=list(range(1, 900)),
         total=200_000,
     )
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     result = await catalog.browse_games(
         BrowseCriteria(
@@ -1233,7 +1301,7 @@ async def test_keeps_walking_the_index_until_the_requested_page_is_full() -> Non
         matching=[game_id for game_id in range(1, 2001) if game_id % 50 == 0],
         total=50_000,
     )
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     result = await catalog.browse_games(
         BrowseCriteria(
@@ -1257,7 +1325,7 @@ async def test_lists_a_small_match_set_without_touching_the_index() -> None:
         ranked=[(game_id, 1.0 - game_id / 10000) for game_id in range(1, 1001)],
         matching=list(range(1, 101)),
     )
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     await catalog.browse_games(
         BrowseCriteria(genre_ids=(GenreId.ADVENTURE,), sort=SortOption.POPULARITY)
@@ -1280,7 +1348,7 @@ async def test_lists_every_match_when_too_few_are_ranked_to_fill_the_page() -> N
         ranked=[(30, 0.9)],
         matching=[10, 20, 30],
     )
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     result = await catalog.browse_games(
         BrowseCriteria(
@@ -1299,7 +1367,7 @@ async def test_bounds_the_duration_index_before_reading_matching_games() -> None
     # The duration index is orders of magnitude smaller than the catalog, so
     # bounding it first replaces a full scan of every matching game.
     transport = M17FixtureTransport({"games": 200_000, "game_time_to_beats": 4})
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     await catalog.browse_games(
         BrowseCriteria(
@@ -1332,7 +1400,7 @@ async def test_excludes_unrecorded_durations_under_an_upper_bound_only() -> None
     # IGDB stores "not recorded" as zero, which would otherwise satisfy a
     # maximum-only bound.
     transport = M17FixtureTransport()
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     await catalog.browse_games(
         BrowseCriteria(
@@ -1355,7 +1423,7 @@ async def test_still_scans_candidates_when_only_sorting_by_duration() -> None:
     # Without a duration bound there is no index to narrow, so the candidate
     # scan remains the only way to order by a value the games endpoint lacks.
     transport = M17FixtureTransport()
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     await catalog.browse_games(
         BrowseCriteria(sort=SortOption.DURATION, direction=SortDirection.ASCENDING)
@@ -1372,7 +1440,7 @@ async def test_reads_the_matching_games_when_they_outnumber_the_duration_index()
     # listing the few matches beats walking a duration index that covers most
     # of the catalog.
     transport = M17FixtureTransport({"games": 5, "game_time_to_beats": 9_000})
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     await catalog.browse_games(
         BrowseCriteria(
@@ -1497,7 +1565,7 @@ async def test_pages_the_release_index_instead_of_reading_every_match() -> None:
         matching=list(range(1, 2001)),
         candidate_total=200_000,
     )
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     result = await catalog.browse_games(
         BrowseCriteria(
@@ -1527,7 +1595,7 @@ async def test_orders_by_the_earliest_release_on_a_selected_platform() -> None:
         matching=[1, 2, 3],
         candidate_total=200_000,
     )
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     ascending = await catalog.browse_games(
         BrowseCriteria(
@@ -1557,7 +1625,7 @@ async def test_keeps_walking_the_release_index_past_unmatched_games() -> None:
         matching=[game_id for game_id in range(1, 2001) if game_id % 50 == 0],
         candidate_total=200_000,
     )
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     result = await catalog.browse_games(
         BrowseCriteria(
@@ -1579,7 +1647,7 @@ async def test_reads_the_matches_when_they_are_fewer_than_the_release_index() ->
         matching=[1, 2],
         candidate_total=2,
     )
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     await catalog.browse_games(
         BrowseCriteria(
@@ -1605,7 +1673,7 @@ async def test_bounds_the_release_index_before_reading_matching_games() -> None:
         candidate_total=200_000,
         release_total=2,
     )
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     result = await catalog.browse_games(
         BrowseCriteria(
@@ -1638,7 +1706,7 @@ async def test_reads_the_matches_when_they_are_fewer_than_the_release_range() ->
         candidate_total=2,
         release_total=50_000,
     )
-    catalog = IgdbCatalog(transport)
+    catalog = catalog_for(transport)
 
     await catalog.browse_games(
         BrowseCriteria(
@@ -1656,23 +1724,23 @@ async def test_reads_the_matches_when_they_are_fewer_than_the_release_range() ->
 @pytest.mark.anyio
 async def test_applies_content_eligibility_to_every_game_lookup_strategy() -> None:
     plain_sort = SearchFixtureTransport()
-    await IgdbCatalog(plain_sort).browse_games(BrowseCriteria(sort=SortOption.RATING))
+    await catalog_for(plain_sort).browse_games(BrowseCriteria(sort=SortOption.RATING))
 
     popularity_walk = PopularityIndexTransport(
         ranked=[(game_id, 1.0 - game_id / 10_000) for game_id in range(1, 2_501)],
         matching=list(range(1, 2_501)),
         total=250_000,
     )
-    await IgdbCatalog(popularity_walk).browse_games(BrowseCriteria(page=100))
+    await catalog_for(popularity_walk).browse_games(BrowseCriteria(page=100))
 
     exhaustive_popularity = PopularityIndexTransport(
         ranked=[(30, 0.9)],
         matching=[10, 20, 30],
     )
-    await IgdbCatalog(exhaustive_popularity).browse_games(BrowseCriteria())
+    await catalog_for(exhaustive_popularity).browse_games(BrowseCriteria())
 
     duration_index = M17FixtureTransport({"games": 200_000, "game_time_to_beats": 4})
-    await IgdbCatalog(duration_index).browse_games(
+    await catalog_for(duration_index).browse_games(
         BrowseCriteria(
             minimum_duration_seconds=7_200,
             maximum_duration_seconds=36_000,
@@ -1685,7 +1753,7 @@ async def test_applies_content_eligibility_to_every_game_lookup_strategy() -> No
         candidate_total=200_000,
         release_total=2,
     )
-    await IgdbCatalog(release_range).browse_games(
+    await catalog_for(release_range).browse_games(
         BrowseCriteria(
             platform_ids=(PlatformId.PC,),
             release_from=date(2020, 1, 1),
@@ -1698,7 +1766,7 @@ async def test_applies_content_eligibility_to_every_game_lookup_strategy() -> No
         matching=list(range(1, 501)),
         candidate_total=200_000,
     )
-    await IgdbCatalog(release_walk).browse_games(
+    await catalog_for(release_walk).browse_games(
         BrowseCriteria(
             platform_ids=(PlatformId.PC,),
             sort=SortOption.RELEASE_DATE,
@@ -1706,7 +1774,7 @@ async def test_applies_content_eligibility_to_every_game_lookup_strategy() -> No
     )
 
     autocomplete = AutocompleteFixtureTransport([])
-    await IgdbCatalog(autocomplete).autocomplete(AutocompleteCriteria(query="witcher"))
+    await catalog_for(autocomplete).autocomplete(AutocompleteCriteria(query="witcher"))
 
     transports = (
         plain_sort,
@@ -1728,7 +1796,7 @@ async def test_applies_content_eligibility_to_every_game_lookup_strategy() -> No
     ]
 
     assert game_queries
-    assert all("game_type = (0,8,9)" in query for query in game_queries)
+    assert all(ELIGIBILITY in query for query in game_queries)
     assert not any(
         query.startswith("fields id;")
         and "sort id asc" in query
