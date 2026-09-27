@@ -90,8 +90,9 @@ detail states, responsive imagery, and planned IGDB attribution. Localized
 metadata, `noindex` search pages, information-page drafts, and a daily sitemap
 selection are implemented. The [Milestone 3 review](docs/milestone-3-review.md)
 records the 135/135 browser-matrix pass and the one open Web Vitals finding:
-mobile search INP exceeds its lab target. Milestone 4 is next for Redis
-caching, rate limiting, resilience, operations, and security hardening; the
+mobile search INP exceeds its lab target. Milestone 4 is in progress: M4.1
+recorded the cache, rate-limit, circuit-breaker, readiness, analytics, and
+released-game decisions, and M4.2 (Redis foundation) is next. The
 [technical debt register](docs/technical-debt.md) tracks the known compromises.
 
 ## Local development

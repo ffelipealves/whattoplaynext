@@ -1,6 +1,6 @@
 # Milestone 4 Plan
 
-Status: planned — M4.1 through M4.9 not started
+Status: in progress — M4.1 accepted on 2026-09-27; M4.2 through M4.9 not started
 
 Prepared: 2026-09-22
 
@@ -71,12 +71,38 @@ Decide and document:
 - whether “released game” means a past global date, a platform date, or another
   owner-approved policy.
 
+Status: completed on 2026-09-27.
+
 Acceptance:
 
 - the decisions are recorded in the architecture, API contract, and debt
   register;
 - every M4 increment has a measurable outcome and a test seam;
 - the release-gate decisions are labelled separately from engineering work.
+
+Outcome: the decisions are recorded in
+[architecture §7, §8, §8a, §11, and §11a](architecture.md#7-caching), the
+[API contract](api-contract.md) (readiness, rate limiting, and freshness
+metadata), and the [debt register](technical-debt.md) (1b, 2, 2b, 4, 9, and
+new entry 17). Section 7 below lists them with their labels. Reading the web
+application while deciding changed one premise of the plan: the browser never
+calls the API, so the API sees the web server's address and cannot rate-limit
+visitors by its socket peer. The owner chose a forwarded, token-authenticated
+visitor address.
+
+Each remaining increment now has one measurable outcome and the seam its tests
+use. No test needs Redis or IGDB credentials unless marked opt-in.
+
+| Increment | Measurable outcome                                                                                                  | Test seam                                                                                               |
+| --------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| M4.2      | With Redis stopped, every catalog route still answers from the provider, and liveness makes zero dependency calls.  | Application-owned cache interface with an in-memory fake and a failing fake; opt-in real-Redis profile. |
+| M4.3      | A repeated identical request makes zero provider calls; 20 concurrent identical misses make one; warm p95 < 500 ms. | Caching catalog around a counting fake `Catalog`, injectable clock, canonical-key unit tests.           |
+| M4.4      | With the provider failing, an expired in-window entry is served as stale; after the window, the classified error.   | Failing fake catalog plus clock advance; web component and Playwright scenario for the stale notice.    |
+| M4.5      | The 61st request in a minute and the 21st provider-reaching miss are rejected with `Retry-After`; hits are not.     | Rate-limit interface with an in-memory store and injectable clock; header-forging API tests.            |
+| M4.6      | After five consecutive failures, zero provider calls until the probe; one successful probe closes the circuit.      | Circuit unit tests with an injectable clock; fake transport that fails on demand.                       |
+| M4.7      | One request ID appears in web, API, cache, and provider events; redaction tests find no forbidden value.            | Captured log records in API tests; web test that asserts the outgoing `X-Request-ID`.                   |
+| M4.8      | Header tests pass on both surfaces; cross-origin and non-`GET` API requests are rejected.                           | API integration tests and a production-build Playwright header check.                                   |
+| M4.9      | Every captured analytics payload in the critical journeys contains only allow-listed events and properties.         | Typed analytics module with a capturing sink injected in component and Playwright tests.                |
 
 ### M4.2 — Redis foundation
 
@@ -110,7 +136,9 @@ Deliver:
 - canonical serialization of criteria and schema-versioned entries;
 - in-flight miss coalescing so concurrent identical requests share one
   provider call;
-- hit/miss/fill metadata in the internal result path.
+- hit/miss/fill metadata in the internal result path;
+- the released-game rule from [architecture §8a](architecture.md#8a-released-game-eligibility),
+  landed first so no entry is cached under the old eligibility.
 
 Acceptance:
 
@@ -118,7 +146,9 @@ Acceptance:
 - equivalent criteria produce the same key and different criteria cannot
   collide;
 - concurrent misses result in one upstream request;
-- the duration and platform-release-range debt has a measured warm-path result.
+- the duration and platform-release-range debt has a measured warm-path result;
+- unreleased and undated games are excluded from detail and every discovery
+  path, and the changed live totals are recorded.
 
 ### M4.4 — Stale-if-error and provider degradation
 
@@ -270,3 +300,40 @@ than introducing cache or resilience types into the web feature components.
 The first implementation task is M4.1. No Redis credentials, provider
 credentials, or production deployment are required to begin the contract and
 fake-based cache work.
+
+## 7. M4.1 decisions
+
+Labels: **engineering** decisions can change in a later increment with a
+documentation update; **owner** decisions change product behavior and were
+made by the owner; **release gate** items must be closed before the named
+beta and are not engineering work of this milestone.
+
+1. **Cache policy** — engineering. TTLs, stale windows, key shape, entry
+   envelope, and coalescing as in [architecture §7](architecture.md#7-caching).
+   Autocomplete is cached without a stale window.
+2. **Released-game rule** — owner, accepted on 2026-09-27. A past or same-day
+   global `first_release_date`, rather than a platform-specific date. Lands in
+   M4.3.
+3. **Rate-limit identity** — owner, accepted on 2026-09-27. The web server
+   forwards the visitor address with a shared edge token; the API uses a keyed
+   digest of it and ignores forwarded addresses without the token.
+4. **Budgets** — engineering. 60 requests and 20 provider-reaching misses per
+   client per minute, plus IGDB's four per second and eight in flight per
+   process ([architecture §8.1](architecture.md#81-rate-limiting)).
+5. **Circuit breaker** — engineering. Five consecutive counted failures, a
+   30-second open period doubling to five minutes, and a single half-open
+   probe ([architecture §8.2](architecture.md#82-circuit-breaker)).
+6. **Liveness and readiness** — engineering. Liveness stays I/O-free; readiness
+   reports cache and circuit state and returns `503` only when the provider is
+   not configured.
+7. **Analytics allow-list** — engineering, within FR-049 and FR-050
+   ([architecture §11a](architecture.md#11a-analytics)).
+8. **Log and monitoring destinations** — release gate for closed beta, open.
+   They depend on the deployment target, which the owner postponed on
+   2026-09-27; M4.7 emits structured events that any destination can ingest.
+9. **Secrets provisioning** — release gate for closed beta. The edge token and
+   HMAC key must exist in every deployed environment and must differ between
+   preview and production.
+10. **Privacy review** — release gate for public beta. The Privacy page must
+    name Umami, its six-month retention, and the digest-only handling of
+    visitor addresses in rate limiting.

@@ -8,10 +8,11 @@ This is not a bug list: everything here works as designed. Defects go to the
 milestone plans and their outcome notes. Items marked **blocking** must be
 resolved before the release gate that names them.
 
-Last reviewed: 2026-09-22, after the Milestone 3.10 documentation audit. No
-new product debt was introduced by the closeout; this pass corrected stale
-descriptions of caching, browser coverage, and failure tests. The existing
-mobile search INP finding remains open.
+Last reviewed: 2026-09-27, for the Milestone 4.1 operational decisions. The
+owner decided how “released” is enforced (1b), the rate-limiter design was
+fixed (4), the cache policy now targets entries 2, 2b, and 9, and one new
+deliberate compromise was recorded (17). The mobile search INP finding remains
+open.
 
 For the Milestone 4 handoff, the highest-impact open items are the cold-query
 costs (2 and 2b), missing public rate limiter (4), sequential search metadata
@@ -50,9 +51,15 @@ records, so they agree with one another but are broader than that word in the
 product requirements.
 
 This was made explicit while closing M3.1 instead of silently expanding an
-increment about content type into a release-state policy. Resolving it requires
-an owner decision about games with missing or platform-specific dates, then one
-shared rule across detail and every discovery path.
+increment about content type into a release-state policy.
+
+**Decided on 2026-09-27; implementation in M4.3.** The owner chose the global
+rule: `first_release_date` present and no later than the end of the current
+UTC day, applied with the `game_type` allow-list to detail and every discovery
+path ([architecture §8a](architecture.md#8a-released-game-eligibility)). The
+residual imprecision is accepted: a game first released on a platform outside
+the MVP scope counts as released. It lands in M4.3, before any entry is
+cached, so the change needs no cache invalidation.
 
 ### 2. A duration filter still costs seconds on a cold cache
 
@@ -63,7 +70,9 @@ bounding the smaller index first, but ~10 s is the floor for that shape of
 query against a provider allowing four requests per second.
 
 No Redis cache is active yet, so this cost can affect current live requests.
-Milestone 4 owns the first cache layer. Paying it off further would mean
+Milestone 4 owns the first cache layer: M4.3 caches a search page for an hour,
+so only the first identical request pays, and M4.3's acceptance requires a
+measured warm-path result for this shape. Paying it off further would mean
 caching the duration index itself — it is small enough (~9,300 rows) to hold
 whole — rather than re-reading it per request.
 
@@ -82,8 +91,9 @@ games and took 63.7–71.8 s in two cold live runs; an exact `totalItems` — wh
 pagination depends on — means resolving every one of them through the games
 endpoint to apply the rest of the filter: about fifty requests against a
 provider allowing four per second. Narrower ranges are proportionally better;
-Milestone 4 caching should improve repeated requests, but a cold range still
-has this cost.
+the M4.3 search cache serves repeated requests warm, but a cold range still
+has this cost, and while it runs it also holds the process-wide provider
+limiter that M4.5 adds.
 
 Paying off the rest means either giving up an exact total for this shape, or
 skipping the join when the platform is the only game-level criterion — the
@@ -112,6 +122,14 @@ architecture places rate limiting before provider access, and Milestone 4 owns
 it. The frontend's rate-limit copy and retry timing are covered by component
 tests and a fixture-backed game-detail Playwright scenario, but have not been
 verified against a live provider 429.
+
+**Design decided in M4.1; implementation in M4.5.** Because every API call
+comes from the Next.js server, the web server forwards the visitor's address
+with a shared edge token, and the API limits by a keyed digest of it
+([architecture §8.1](architecture.md#81-rate-limiting)). An accepted residual
+risk: visitors behind one carrier-grade NAT address, common on Brazilian
+mobile networks, share a budget. The budgets are configuration, so they can
+be raised if closed-beta logs show legitimate rejections.
 
 ## Web application
 
@@ -176,8 +194,8 @@ hardcoding the enums.
 Parsing the URL needs the published allow-lists and limits, so the games route
 awaits `GET /api/v1/filters` before it can parse criteria and only then queries
 results. That is one extra sequential round trip on every search page view.
-The seven-day Redis policy exists in the architecture plan but is not
-implemented yet.
+The seven-day Redis policy was confirmed in M4.1 and lands in M4.3; it
+removes the provider cost of that round trip but not the round trip itself.
 
 Removing it means either giving up URL validation against the published
 allow-list, or caching the metadata in the web application — the latter is a
@@ -326,3 +344,22 @@ Milestone 3.10 added an explicit `[browser-matrix]` push-commit trigger, which
 runs the quality gate and matrix as jobs of one push workflow. It lets a
 closeout request matrix verification without a competing manual dispatch, but
 does not remove this concurrency issue when someone does dispatch manually.
+
+## Resilience
+
+### 17. Resilience state is process-local
+
+Decided in M4.1. Miss coalescing, the circuit breaker, the global provider
+limiter, and the fallback rate limiter used while Redis is down all live in
+the API process. That is correct for the single API instance the MVP runs:
+one process sees every request, so it can coalesce them and count failures
+exactly.
+
+It stops being correct once more than one API instance runs. Each instance
+would coalesce only its own misses, open its own circuit, and allow IGDB's
+four requests per second on its own, so two instances could together exceed
+the provider's ceiling.
+
+Paying it off means moving the provider limiter and circuit state into Redis
+and adding a short Redis lock around cache fills. Do that before running a
+second instance, not before closed beta.

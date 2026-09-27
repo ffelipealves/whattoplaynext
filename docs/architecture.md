@@ -2,7 +2,7 @@
 
 Status: accepted MVP architecture baseline; implementation complete through
 Milestone 3, with the Milestone 4 infrastructure and operations marked below
-Last updated: 2026-09-22
+Last updated: 2026-09-27 (Milestone 4.1 operational decisions)
 
 ## 1. Context
 
@@ -221,37 +221,172 @@ documented in the [technical debt register](technical-debt.md).
 
 ## 7. Caching
 
-Redis is a disposable optimization, not a source of truth. Its client, cache
-keys, coalescing, and stale-if-error behavior are Milestone 4 work; through
-Milestone 3 the API does not read or write Redis. The popular-game endpoint
-sets a 24-hour HTTP cache policy and the Next.js sitemap revalidates daily.
+Redis is a disposable optimization, not a source of truth. Through Milestone 3
+the API does not read or write Redis. The popular-game endpoint sets a 24-hour
+HTTP cache policy and the Next.js sitemap revalidates daily. The policy below
+was decided in M4.1 on 2026-09-27; M4.2–M4.4 implement it.
 
-Planned configurable Redis TTLs:
+### 7.1 Where the cache sits
 
-| Resource                                      |           Fresh TTL |
-| --------------------------------------------- | ------------------: |
-| Search response                               |              1 hour |
-| Game detail                                   |            24 hours |
-| Genres, platforms, modes, and filter metadata |              7 days |
-| Empty/negative lookup                         | short, configurable |
-| Popular-game sitemap selection                |            24 hours |
+The cache wraps the `Catalog` port: a caching catalog implements the same
+interface and delegates to the IGDB catalog on a miss. Routes, domain models,
+and the web application do not see cache types. Every value is configuration
+with the defaults below, not hard-coded product behavior.
 
-Cache keys will be generated from a canonical serialization of validated
-criteria, API version, locale-sensitive presentation needs, and response
-schema version. Identical in-flight cache misses will share one upstream
-request.
+| Resource                       | Fresh TTL | Stale-if-error window after expiry |
+| ------------------------------ | --------: | ---------------------------------: |
+| Filter metadata                |    7 days |                            30 days |
+| Game detail                    |  24 hours |                             7 days |
+| Search page                    |    1 hour |                           24 hours |
+| Autocomplete suggestions       |    1 hour |                               none |
+| Popular-game sitemap selection |  24 hours |                             7 days |
+| `GAME_NOT_FOUND` (negative)    |    10 min |                               none |
 
-Expired cache entries may be retained for a bounded stale-if-error window. A
-cache outage should fall back to rate-limited IGDB access when Milestone 4
-implements this path.
+An empty search or autocomplete result is a successful response and uses its
+resource's ordinary TTL. Provider failures, validation failures, and rate-limit
+rejections are never cached. Autocomplete has no stale window because a failed
+suggestion request already degrades to a plain name field.
+
+### 7.2 Keys and entries
+
+Keys have the shape
+`wtpn:{environment}:cache:{apiVersion}:{resource}:s{schemaVersion}:{digest}`,
+for example `wtpn:production:cache:v1:search:s1:3f9a…`.
+
+- `digest` is the SHA-256 of a canonical JSON serialization of the validated
+  criteria: defaults materialized (an omitted sort equals the explicit
+  default), repeated values deduplicated and sorted, keys sorted, no
+  whitespace. Raw query text therefore never appears in a key, and key length
+  is bounded.
+- `schemaVersion` is an integer per resource, bumped whenever the response
+  shape or the eligibility rules change, so old entries are simply never read
+  again.
+- No locale dimension: every API response is locale-independent (stable IDs,
+  English source labels, and untranslated provider text). A future localized
+  field would add the locale to the digest input.
+
+An entry is a JSON envelope
+`{"v": 1, "storedAt": …, "freshUntil": …, "payload": …}`. The Redis TTL is the
+fresh TTL plus the stale window; freshness is decided by the application with
+an injectable clock. An entry that fails to decode is deleted, logged, and
+treated as a miss.
+
+### 7.3 Lookup order and coalescing
+
+1. Fresh entry: return it (`servedFrom: "cache"`).
+2. Otherwise ask the provider, subject to rate limiting (§8.1) and the circuit
+   (§8.2); store and return the result.
+3. If the provider fails, is short-circuited, or is over its global budget and
+   an expired entry is still inside its stale window: return it with
+   `dataMayBeStale: true`.
+4. Otherwise return the existing classified error. A failure never becomes an
+   empty result.
+
+Identical in-flight misses in one process share a single provider call and
+its outcome, including a failure. There is no distributed lock: the MVP runs
+one API instance (see [technical debt 17](technical-debt.md#17-resilience-state-is-process-local)).
+
+### 7.4 Redis failures
+
+Redis operations use a 200 ms timeout and a bounded pool of ten connections.
+After a Redis error the cache is bypassed for 30 seconds instead of paying the
+timeout on every request; requests then go to the provider under the normal
+rate limits and circuit. A process without Redis configured runs with the
+cache disabled. Upstash Redis Free is 256 MB, so the Redis instance runs with
+an `allkeys-lru` eviction policy; M4.3 measures entry sizes before compression
+is considered.
 
 ## 8. Resilience
 
 The IGDB transport already has bounded timeouts, one retry for eligible
 transient failures, jitter, and bounded `Retry-After` handling. The web
-application renders classified provider failures and retry timing. The public
-rate limiter, circuit breaker, and stale-if-error cache reads are Milestone 4
-work; the provider's own 429 can currently surface as `RATE_LIMITED`.
+application renders classified provider failures and retry timing. The
+following policies were decided in M4.1 on 2026-09-27; M4.5 and M4.6 implement
+them. Until then, the provider's own 429 can surface as `RATE_LIMITED`.
+
+### 8.1 Rate limiting
+
+Every API call comes from the Next.js server, including autocomplete through
+its route handler, so the API's socket peer is the web server rather than the
+visitor. Visitor identity is therefore forwarded:
+
+- the web server sends the visitor address in `X-WTPN-Client-Address` together
+  with a shared secret in `X-WTPN-Edge-Token`, on every server-side API call;
+- the API trusts the forwarded address only when the token matches in
+  constant time; otherwise it uses the socket peer, or the
+  `X-Forwarded-For` entry selected by a configured trusted-hop count when the
+  API itself sits behind a platform proxy;
+- IPv4 addresses are used whole and IPv6 addresses are reduced to their `/64`
+  prefix, then replaced by a keyed HMAC-SHA256 digest. Only the digest reaches
+  Redis, with a TTL equal to the window. Addresses are never logged.
+
+Budgets use a sliding-window counter per identity:
+
+| Budget                   | Default                   | Counted requests                                         |
+| ------------------------ | ------------------------- | -------------------------------------------------------- |
+| Public ceiling           | 60 per minute per client  | every catalog route                                      |
+| Provider-reaching budget | 20 per minute per client  | cache misses that would call the provider                |
+| Global provider limiter  | 4 per second, 8 in flight | every IGDB request from the process (IGDB's own ceiling) |
+
+Cache hits and coalesced followers do not consume the provider-reaching
+budget. Health endpoints are exempt. A client over either per-client budget
+receives `429 RATE_LIMITED` with `Retry-After` and `retryAfterSeconds`. A
+request that cannot obtain a global provider slot within its remaining
+operation deadline falls back to stale data, then to
+`503 UPSTREAM_UNAVAILABLE` with a short retry delay, because the visitor did
+not cause that pressure. When Redis is unavailable, per-client limits fall back
+to an in-process limiter with the same budgets.
+
+Success responses carry no `RateLimit-*` headers: the only caller is the web
+server, which has no use for them.
+
+### 8.2 Circuit breaker
+
+One process-local circuit protects IGDB access, including token requests.
+
+- Counted failures are the outcome of a transport operation after its own
+  retry: timeout, connection failure or `5xx`, and `429`. Validation, not
+  found, invalid provider requests, invalid provider responses, and rejected
+  authentication do not count; the last two are logged at error level instead,
+  because opening the circuit cannot fix them.
+- Five consecutive counted failures open the circuit for 30 seconds.
+- After that, the next provider call is a single half-open probe while other
+  callers keep the open behavior. Success closes the circuit and resets the
+  count; failure reopens it with the open duration doubled, capped at five
+  minutes.
+- While open, requests are served from fresh cache, then stale cache, and
+  otherwise receive `503 UPSTREAM_UNAVAILABLE` with `retryAfterSeconds` equal
+  to the remaining open time, rounded up.
+
+### 8.3 Degradation states
+
+| State         | Visitor sees                                                     | Operator sees                     |
+| ------------- | ---------------------------------------------------------------- | --------------------------------- |
+| Fresh         | normal page                                                      | cache hit or provider success     |
+| Stale         | results plus a localized notice with the time the data was saved | `stale` cache outcome, open cause |
+| Unavailable   | existing recoverable failure state with retry timing             | classified error, circuit state   |
+| Rate-limited  | existing rate-limit state                                        | per-budget rejection              |
+| Cache offline | normal page, possibly slower                                     | readiness `degraded`              |
+
+### 8.4 Liveness and readiness
+
+- `GET /api/v1/health` stays the liveness check: no I/O, always `200` while the
+  process serves requests. Platform health checks and restarts use only this
+  endpoint, so an IGDB outage never restarts the API.
+- `GET /api/v1/health/ready` reports dependency state for monitoring. It sends
+  at most one Redis `PING` with the 200 ms timeout, reads the in-memory circuit
+  state, and never calls IGDB. It exposes no host, port, or credential.
+
+## 8a. Released-game eligibility
+
+Decided by the owner on 2026-09-27: a game is released when its IGDB
+`first_release_date` is present and no later than the end of the current UTC
+day. The clause joins the existing `game_type` allow-list in every games query
+and count, in autocomplete and the popular selection, and in the detail check,
+which answers `GAME_NOT_FOUND` for an unreleased game. A game whose first
+release happened on a platform outside the MVP scope counts as released; that
+imprecision was accepted in exchange for a rule that needs no release-date
+join. M4.3 implements it before the first cache entry is written.
 
 ## 9. Security and privacy
 
@@ -267,6 +402,13 @@ files. Populated `.env` files remain untracked. Browser-visible configuration
 uses the `NEXT_PUBLIC_` prefix and never contains credentials; backend settings
 use `WTPN_`. Twitch credentials are validated as an all-or-nothing pair and the
 secret uses a redacting type in application configuration.
+
+Milestone 4 adds two secrets, both server-only and both using the redacting
+type: the edge token shared by the web server and the API (§8.1), and the key
+of the HMAC that replaces visitor addresses. The web server's copy of the edge
+token must never use the `NEXT_PUBLIC_` prefix. Because the browser never calls
+the API, the API emits no CORS allowance at all, and its public routes accept
+only `GET`.
 
 ## 10. Rendering and SEO
 
@@ -284,6 +426,56 @@ it in `X-Request-ID`, and includes it in the stable error envelope. End-to-end
 propagation through Next.js, future cache and provider operations, structured
 telemetry, dashboards, and retention remain Milestone 4 work under NFR-023 and
 NFR-025 through NFR-027.
+
+Decided in M4.1 for M4.7:
+
+- the web server creates one request ID per incoming page or route-handler
+  request and sends it as `X-Request-ID` on every API call it makes for that
+  request; the API carries it into cache and provider log events;
+- the API writes one JSON log line per request with the request ID, method,
+  route template (never the raw path or query string), status, duration, cache
+  outcome, provider call count and outcome, rate-limit decision, and circuit
+  state, plus separate events for circuit transitions and cache decode
+  failures;
+- logs never contain query values, visitor addresses or their digests, request
+  headers other than the request ID, provider payloads, or secrets, and
+  redaction tests enforce this;
+- the metrics required by NFR-026 are derived from those structured events
+  first. The log and monitoring destinations, and their 14-day retention, are
+  chosen together with the deployment target, which is still open.
+
+## 11a. Analytics
+
+Decided in M4.1 for M4.9. Umami Cloud receives cookieless events from the
+browser through one typed web module; nothing else calls Umami. Automatic
+tracking is off: page views are sent manually with the route template as the
+URL (for example `/pt-br/games/[game]`), no query string, and the referrer
+reduced to its host. Do Not Track is honored, and analytics is disabled
+whenever its website ID is not configured, including in tests.
+
+| Event                   | Allowed properties                                                                                          |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------- |
+| page view               | locale, route template                                                                                      |
+| `search-submitted`      | locale, filter categories used, sort, direction, result-count bucket, response-time bucket, refinement flag |
+| `sort-changed`          | locale, sort, direction                                                                                     |
+| `game-detail-viewed`    | locale, entry (`search-result`, `autocomplete`, `direct`), time-since-search bucket                         |
+| `external-link-clicked` | locale, link category from the external-link allow-list                                                     |
+| `failure-shown`         | locale, surface (`search`, `game`, `filters`), stable error code                                            |
+| `stale-data-shown`      | locale, surface                                                                                             |
+| `usefulness-answered`   | locale, answer (`yes`, `not-yet`) — only once the FR-047 prompt exists                                      |
+
+Buckets are fixed ranges, not raw values: result count `0`, `1–24`, `25–240`,
+`241–2,400`, `>2,400`; response time `<0.5 s`, `0.5–2.5 s`, `2.5–10 s`,
+`>10 s`; time since search `<30 s`, `30 s–2 min`, `2–10 min`, `>10 min`.
+Filter categories are names such as `platform` or `duration`, never the
+selected values.
+
+Prohibited in every event and property: search text, game titles, slugs, and
+IDs, full URLs and query strings, filter values, IP addresses, request IDs,
+provider text, error messages, and secrets. Umami itself receives the
+visitor's address to derive country and a daily session hash; that
+third-party processing, and the six-month retention of NFR-023, are
+public-beta privacy-review items.
 
 ## 12. Deployment
 

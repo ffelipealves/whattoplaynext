@@ -125,7 +125,8 @@ guardrails, and recorded decisions are defined in
 
 ## Milestone 4 — Cache, resilience, security, and operations
 
-Status: planned; see the [Milestone 4 plan](milestone-4-plan.md).
+Status: in progress; M4.1 operational decisions accepted on 2026-09-27. See
+the [Milestone 4 plan](milestone-4-plan.md).
 
 Deliverables:
 
