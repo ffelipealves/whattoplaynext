@@ -1,9 +1,13 @@
 import { NextIntlClientProvider } from "next-intl";
 import { fireEvent, render, screen } from "@testing-library/react";
-import axe, { type Result } from "axe-core";
 import { expect, test, vi } from "vitest";
 
 import enMessages from "../../../messages/en.json";
+import {
+  AXE_TEST_TIMEOUT_MS,
+  criticalViolations,
+  describeViolations,
+} from "../../../test/axe";
 import type {
   FilterMetadata,
   FilterMetadataResult,
@@ -12,6 +16,8 @@ import type {
 import { SearchPage } from "./search-page";
 import { readBrowseParams, type RawSearchParams } from "./browse-params";
 import type { GamePage, SearchResult } from "./get-search-results";
+
+vi.setConfig({ testTimeout: AXE_TEST_TIMEOUT_MS });
 
 vi.mock("next/navigation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("next/navigation")>()),
@@ -80,32 +86,6 @@ function renderPage(
       />
     </NextIntlClientProvider>,
   );
-}
-
-/**
- * jsdom has no layout or paint, so colour contrast cannot be evaluated here;
- * it is checked in a real browser instead. Everything else axe knows about
- * runs against the markup this page actually ships.
- */
-async function criticalViolations(container: HTMLElement): Promise<Result[]> {
-  const run = await axe.run(container, {
-    rules: { "color-contrast": { enabled: false } },
-  });
-  return run.violations.filter(
-    (violation) =>
-      violation.impact === "critical" || violation.impact === "serious",
-  );
-}
-
-function describeViolations(violations: Result[]): string {
-  return violations
-    .map(
-      (violation) =>
-        `${violation.id} (${violation.impact}): ${violation.nodes
-          .map((node) => node.html)
-          .join(" | ")}`,
-    )
-    .join("\n");
 }
 
 test("the desktop layout reports no critical or serious violations", async () => {

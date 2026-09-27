@@ -374,7 +374,7 @@ second instance, not before closed beta.
 
 ## Local verification
 
-### 18. The web unit suite times out under machine load
+### 18. The web unit suite times out under machine load — **resolved on 2026-09-27**
 
 Found on 2026-09-27 while verifying M4.4, on a WSL machine that was also
 running Docker Desktop and Redis (load average 5–9 on 12 cores). Under
@@ -387,8 +387,15 @@ changes stashed. Every affected file passes when run alone, and a 30-second
 test timeout clears the axe tests. The drawer test's `waitFor` still failed at
 that setting.
 
-Nothing is wrong with the product. The cost is a local gate that can fail for
-reasons unrelated to the change, which trains people to ignore it. Paying it
-off means giving the axe tests an explicit longer timeout and awaiting each
-run, and giving the drawer assertion a `waitFor` timeout that fits a loaded
-machine. CI has not shown the failure so far.
+Nothing was wrong with the product, but a local gate that fails for reasons
+unrelated to the change trains people to ignore it. The fix:
+
+- `test/axe.ts` now holds the axe helpers both files had copied. It chains each
+  run after the previous one, so a run abandoned by a timed-out test can no
+  longer fail the next test.
+- Both axe files set a 30-second test timeout with `vi.setConfig`.
+- The drawer assertion waits up to ten seconds, inside a 20-second test.
+
+Verified the same day: three consecutive `pnpm coverage:web` runs passed
+245/245 at load averages up to 6.8. Two concurrent full suites, one with
+coverage, at a load average of 8.6, also both passed 245/245.

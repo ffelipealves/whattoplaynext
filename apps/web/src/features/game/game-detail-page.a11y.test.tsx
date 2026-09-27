@@ -1,9 +1,13 @@
 import { NextIntlClientProvider } from "next-intl";
 import { fireEvent, render, screen } from "@testing-library/react";
-import axe, { type Result } from "axe-core";
 import { expect, test, vi } from "vitest";
 
 import enMessages from "../../../messages/en.json";
+import {
+  AXE_TEST_TIMEOUT_MS,
+  criticalViolations,
+  describeViolations,
+} from "../../../test/axe";
 import {
   completeGameDetail,
   sparseGameDetail,
@@ -12,26 +16,7 @@ import {
 import { GameDetailFailure } from "./game-detail-failure";
 import { GameDetailPage } from "./game-detail-page";
 
-async function criticalViolations(container: HTMLElement): Promise<Result[]> {
-  const run = await axe.run(container, {
-    rules: { "color-contrast": { enabled: false } },
-  });
-  return run.violations.filter(
-    (violation) =>
-      violation.impact === "critical" || violation.impact === "serious",
-  );
-}
-
-function describeViolations(violations: Result[]): string {
-  return violations
-    .map(
-      (violation) =>
-        `${violation.id} (${violation.impact}): ${violation.nodes
-          .map((node) => node.html)
-          .join(" | ")}`,
-    )
-    .join("\n");
-}
+vi.setConfig({ testTimeout: AXE_TEST_TIMEOUT_MS });
 
 function withMessages(children: React.ReactNode) {
   return (

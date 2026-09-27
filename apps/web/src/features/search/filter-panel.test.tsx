@@ -238,7 +238,10 @@ test("the drawer closes itself once its selection is applied", async () => {
   fireEvent.click(await screen.findByRole("checkbox", { name: "PC" }));
   fireEvent.click(screen.getByRole("button", { name: "Apply filters" }));
 
-  await waitFor(() =>
-    expect(screen.queryByRole("checkbox", { name: "PC" })).toBeNull(),
+  // Closing waits on a transition and the sheet's exit; on a loaded machine
+  // that outlasts waitFor's one-second default.
+  await waitFor(
+    () => expect(screen.queryByRole("checkbox", { name: "PC" })).toBeNull(),
+    { timeout: 10_000 },
   );
-});
+}, 20_000);
