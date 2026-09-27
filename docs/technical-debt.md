@@ -122,7 +122,7 @@ rows in the live Visits index; a regression test pins that page without the
 fallback. The fallback remains bounded in practice and correct for small or
 pathological filtered sets, which is why it stays.
 
-### 4. The API has no rate limiter of its own
+### 4. The API has no rate limiter of its own — **resolved in M4.5**
 
 `RATE_LIMITED` only ever surfaces when IGDB itself returns 429; nothing
 protects the provider from this service, or this service from a caller. The
@@ -131,7 +131,9 @@ it. The frontend's rate-limit copy and retry timing are covered by component
 tests and a fixture-backed game-detail Playwright scenario, but have not been
 verified against a live provider 429.
 
-**Design decided in M4.1; implementation in M4.5.** Because every API call
+**Decided in M4.1 and implemented in M4.5**, with a live check against the
+production composition ([Milestone 4 plan](milestone-4-plan.md#m45--public-and-upstream-aware-rate-limiting)).
+Because every API call
 comes from the Next.js server, the web server forwards the visitor's address
 with a shared edge token, and the API limits by a keyed digest of it
 ([architecture §8.1](architecture.md#81-rate-limiting)). An accepted residual

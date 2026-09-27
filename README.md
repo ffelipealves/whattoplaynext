@@ -95,7 +95,8 @@ recorded the cache, rate-limit, circuit-breaker, readiness, analytics, and
 released-game decisions, M4.2 delivered the Redis foundation, and M4.3
 cached catalog responses with request coalescing and excluded unreleased
 games, verified against live IGDB. M4.4 serves saved data with a localized
-warning when IGDB fails; M4.5 (rate limiting) is next. The
+warning when IGDB fails, and M4.5 limits each visitor and keeps IGDB under its
+own request ceiling; M4.6 (circuit breaker) is next. The
 [technical debt register](docs/technical-debt.md) tracks the known compromises.
 
 ## Local development

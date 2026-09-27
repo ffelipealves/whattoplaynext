@@ -1,6 +1,6 @@
 import type { components } from "@whattoplaynext/contracts";
 
-import { getApiClient } from "@/lib/api-client";
+import { getVisitorApiClient } from "@/lib/api-client";
 import {
   UNREACHABLE,
   classifyApiFailure,
@@ -20,8 +20,9 @@ export type FilterMetadataResult =
  */
 export async function getFilterMetadata(): Promise<FilterMetadataResult> {
   try {
-    const { data, error, response } =
-      await getApiClient().GET("/api/v1/filters");
+    const { data, error, response } = await (
+      await getVisitorApiClient()
+    ).GET("/api/v1/filters");
 
     if (error || !data) {
       return { ok: false, failure: classifyApiFailure(error, response) };

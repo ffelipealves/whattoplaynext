@@ -1,6 +1,6 @@
 import type { components } from "@whattoplaynext/contracts";
 
-import { getApiClient } from "@/lib/api-client";
+import { getVisitorApiClient } from "@/lib/api-client";
 import {
   UNREACHABLE,
   classifyApiFailure,
@@ -22,33 +22,32 @@ export async function getSearchResults(
   params: BrowseParams,
 ): Promise<SearchResult> {
   try {
-    const { data, error, response } = await getApiClient().GET(
-      "/api/v1/games",
-      {
-        params: {
-          query: {
-            name: params.name,
-            // Repeated params are how the API reads OR within one category;
-            // distinct params are AND across categories.
-            platform: selectedIds(params.platformIds),
-            genre: selectedIds(params.genreIds),
-            gameMode: selectedIds(params.gameModeIds),
-            releaseFrom: params.releaseFrom,
-            releaseTo: params.releaseTo,
-            minimumRating: params.minimumRating,
-            durationKind:
-              params.durationKind === DEFAULT_DURATION_KIND
-                ? undefined
-                : params.durationKind,
-            minimumDurationHours: params.minimumDurationHours,
-            maximumDurationHours: params.maximumDurationHours,
-            sort: params.sort,
-            direction: params.direction,
-            page: params.page,
-          },
+    const { data, error, response } = await (
+      await getVisitorApiClient()
+    ).GET("/api/v1/games", {
+      params: {
+        query: {
+          name: params.name,
+          // Repeated params are how the API reads OR within one category;
+          // distinct params are AND across categories.
+          platform: selectedIds(params.platformIds),
+          genre: selectedIds(params.genreIds),
+          gameMode: selectedIds(params.gameModeIds),
+          releaseFrom: params.releaseFrom,
+          releaseTo: params.releaseTo,
+          minimumRating: params.minimumRating,
+          durationKind:
+            params.durationKind === DEFAULT_DURATION_KIND
+              ? undefined
+              : params.durationKind,
+          minimumDurationHours: params.minimumDurationHours,
+          maximumDurationHours: params.maximumDurationHours,
+          sort: params.sort,
+          direction: params.direction,
+          page: params.page,
         },
       },
-    );
+    });
 
     if (error || !data) {
       return { ok: false, failure: classifyApiFailure(error, response) };

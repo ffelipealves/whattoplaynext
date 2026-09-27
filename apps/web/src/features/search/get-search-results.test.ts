@@ -1,7 +1,7 @@
 import { expect, test, vi } from "vitest";
 
 import type { ApiClient } from "@whattoplaynext/contracts";
-import { getApiClient } from "@/lib/api-client";
+import { getVisitorApiClient } from "@/lib/api-client";
 
 import { parseBrowseParams } from "./browse-params";
 import { getSearchResults } from "./get-search-results";
@@ -10,10 +10,10 @@ import type { GamePage } from "./get-search-results";
 const baselineParams = parseBrowseParams({});
 
 vi.mock("@/lib/api-client", () => ({
-  getApiClient: vi.fn(),
+  getVisitorApiClient: vi.fn(),
 }));
 
-const mockedGetApiClient = vi.mocked(getApiClient);
+const mockedGetApiClient = vi.mocked(getVisitorApiClient);
 
 function fakeClient(response: { data?: unknown; error?: unknown }): ApiClient {
   return { GET: vi.fn().mockResolvedValue(response) } as unknown as ApiClient;
@@ -31,7 +31,7 @@ const samplePage: GamePage = {
 };
 
 test("returns the page on a successful response", async () => {
-  mockedGetApiClient.mockReturnValue(fakeClient({ data: samplePage }));
+  mockedGetApiClient.mockResolvedValue(fakeClient({ data: samplePage }));
 
   const result = await getSearchResults(baselineParams);
 
@@ -39,7 +39,7 @@ test("returns the page on a successful response", async () => {
 });
 
 test("reports failure when the API returns a classified error", async () => {
-  mockedGetApiClient.mockReturnValue(
+  mockedGetApiClient.mockResolvedValue(
     fakeClient({
       error: {
         error: {
@@ -65,7 +65,7 @@ test("reports failure when the API returns a classified error", async () => {
 });
 
 test("reports failure when the request itself fails (API process down)", async () => {
-  mockedGetApiClient.mockReturnValue({
+  mockedGetApiClient.mockResolvedValue({
     GET: vi.fn().mockRejectedValue(new TypeError("fetch failed")),
   } as unknown as ApiClient);
 
@@ -76,7 +76,7 @@ test("reports failure when the request itself fails (API process down)", async (
 
 test("forwards name, sort, direction, and page as the query", async () => {
   const client = fakeClient({ data: samplePage });
-  mockedGetApiClient.mockReturnValue(client);
+  mockedGetApiClient.mockResolvedValue(client);
 
   await getSearchResults({
     ...baselineParams,
@@ -100,7 +100,7 @@ test("forwards name, sort, direction, and page as the query", async () => {
 
 test("forwards every structured filter as the API's own query params", async () => {
   const client = fakeClient({ data: samplePage });
-  mockedGetApiClient.mockReturnValue(client);
+  mockedGetApiClient.mockResolvedValue(client);
 
   await getSearchResults(
     parseBrowseParams({
@@ -139,7 +139,7 @@ test("forwards every structured filter as the API's own query params", async () 
 
 test("omits empty filter categories instead of sending blank params", async () => {
   const client = fakeClient({ data: samplePage });
-  mockedGetApiClient.mockReturnValue(client);
+  mockedGetApiClient.mockResolvedValue(client);
 
   await getSearchResults(baselineParams);
 

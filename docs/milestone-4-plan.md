@@ -1,6 +1,6 @@
 # Milestone 4 Plan
 
-Status: in progress — M4.1 through M4.4 accepted on 2026-09-27; M4.5 through M4.9 not started
+Status: in progress — M4.1 through M4.5 accepted on 2026-09-27; M4.6 through M4.9 not started
 
 Prepared: 2026-09-22
 
@@ -278,7 +278,7 @@ that also fail without this change; see
 
 ### M4.5 — Public and upstream-aware rate limiting
 
-Status: planned.
+Status: completed on 2026-09-27.
 
 Deliver:
 
@@ -294,6 +294,52 @@ Acceptance:
 - a client cannot exhaust the provider budget through repeated uncached calls;
 - cache hits do not consume the upstream budget unnecessarily;
 - rate-limit state is visible and localized in the web application.
+
+Outcome: delivered in three API commits and one web commit.
+
+- **Identity** (`ratelimit/identity.py`): a forwarded
+  `X-WTPN-Client-Address` counts only with a constant-time match of
+  `X-WTPN-Edge-Token`. Otherwise the socket peer, or the `X-Forwarded-For`
+  entry chosen by `WTPN_TRUSTED_PROXY_HOPS`, is used. IPv6 is reduced to its
+  `/64`, and IPv4-mapped IPv6 to its IPv4 address. Every address is replaced
+  by a 32-character HMAC-SHA256 digest, keyed by `WTPN_IDENTITY_HMAC_KEY` or
+  a random per-process key.
+- **Budgets** (`ratelimit/limiter.py`): a sliding-window counter built from two
+  fixed windows. Redis does `INCR`, `EXPIRE`, and `GET` in one pipeline, and an
+  in-process store takes over while Redis is down. Rejected requests count
+  too, so a hammering client stays limited. `Retry-After` is the computed
+  wait until one more request fits.
+- **Public ceiling**: a router dependency on the filters and games routes
+  applies 60 per minute; health is exempt. A rejection returns the existing
+  `429 RATE_LIMITED` envelope with `Retry-After` and `retryAfterSeconds`.
+- **Provider-reaching budget**: `CachingCatalog` charges 20 per minute only to
+  a caller that would start a provider call. Hits and coalesced followers pay
+  nothing. One refinement to the M4.1 decision: a caller over this budget gets
+  stale data when an entry is still in its window, and `429` only otherwise.
+  The provider stays protected either way.
+- **Global provider ceiling** (`adapters/igdb/throttle.py`): every IGDB
+  attempt, retries included, takes a turn from a process-wide throttle. Turns
+  start 0.25 s apart, with at most eight open, and settings cannot exceed
+  IGDB's four per second and eight open. A turn that cannot start within the
+  remaining operation deadline is refused as `UNAVAILABLE`, which falls back
+  to stale data or `503`, never `429`.
+- **Web**: `getVisitorApiClient()` forwards the first `X-Forwarded-For` entry
+  with `WTPN_API_EDGE_TOKEN` on every call made for a visitor (search,
+  filters, detail, and autocomplete through its route handler). It never
+  trusts `X-Real-IP`. The sitemap keeps the header-free client because it
+  renders outside any request. The existing localized rate-limit states
+  cover the visible side.
+
+Verification: 324 API tests passed with the opt-in Redis test skipped; the
+Redis store tests also passed against the local Redis 8.2. The web suite
+passed 249 tests, all 28 Playwright journeys passed, and the full
+`pnpm quality` gate was green. A live check ran against the production
+composition with local Redis and IGDB credentials. A direct caller got 60
+responses of 200, then 429 with `Retry-After: 50`. Two token-forwarded
+visitors each got 200 from their own budgets. A wrong token was charged to
+the caller's exhausted budget and got 429. Redis held only
+`wtpn:ratelimit:v1:{budget}:{digest}:{window}` keys, with no address in any
+key.
 
 ### M4.6 — Circuit breaker and request-storm protection
 

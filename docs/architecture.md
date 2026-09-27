@@ -312,7 +312,10 @@ its route handler, so the API's socket peer is the web server rather than the
 visitor. Visitor identity is therefore forwarded:
 
 - the web server sends the visitor address in `X-WTPN-Client-Address` together
-  with a shared secret in `X-WTPN-Edge-Token`, on every server-side API call;
+  with a shared secret in `X-WTPN-Edge-Token`, on every API call it makes for
+  a visitor. It reads the first `X-Forwarded-For` entry, so the proxy in front
+  of it must overwrite that header: Vercel does, Caddy does for untrusted
+  clients, and Nginx needs `proxy_set_header X-Forwarded-For $remote_addr`;
 - the API trusts the forwarded address only when the token matches in
   constant time; otherwise it uses the socket peer, or the
   `X-Forwarded-For` entry selected by a configured trusted-hop count when the
@@ -330,8 +333,10 @@ Budgets use a sliding-window counter per identity:
 | Global provider limiter  | 4 per second, 8 in flight | every IGDB request from the process (IGDB's own ceiling) |
 
 Cache hits and coalesced followers do not consume the provider-reaching
-budget. Health endpoints are exempt. A client over either per-client budget
-receives `429 RATE_LIMITED` with `Retry-After` and `retryAfterSeconds`. A
+budget. Health endpoints are exempt. A client over the public ceiling receives
+`429 RATE_LIMITED` with `Retry-After` and `retryAfterSeconds`; a client over
+the provider-reaching budget receives stale data when an entry is still in its
+window, and the same `429` otherwise (refined in M4.5). A
 request that cannot obtain a global provider slot within its remaining
 operation deadline falls back to stale data, then to
 `503 UPSTREAM_UNAVAILABLE` with a short retry delay, because the visitor did

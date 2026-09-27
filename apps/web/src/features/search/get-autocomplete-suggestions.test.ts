@@ -1,7 +1,7 @@
 import { expect, test, vi } from "vitest";
 
 import type { ApiClient } from "@whattoplaynext/contracts";
-import { getApiClient } from "@/lib/api-client";
+import { getVisitorApiClient } from "@/lib/api-client";
 
 import {
   getAutocompleteSuggestions,
@@ -9,10 +9,10 @@ import {
 } from "./get-autocomplete-suggestions";
 
 vi.mock("@/lib/api-client", () => ({
-  getApiClient: vi.fn(),
+  getVisitorApiClient: vi.fn(),
 }));
 
-const mockedGetApiClient = vi.mocked(getApiClient);
+const mockedGetApiClient = vi.mocked(getVisitorApiClient);
 
 const suggestion: AutocompleteSuggestion = {
   id: 1942,
@@ -30,7 +30,7 @@ test("returns the published suggestions on a successful response", async () => {
   const client = fakeClient({
     data: { items: [suggestion], meta: { servedFrom: "provider" } },
   });
-  mockedGetApiClient.mockReturnValue(client);
+  mockedGetApiClient.mockResolvedValue(client);
 
   await expect(getAutocompleteSuggestions("hollow", [])).resolves.toEqual({
     ok: true,
@@ -43,7 +43,7 @@ test("returns the published suggestions on a successful response", async () => {
 
 test("narrows suggestions by the platforms already applied", async () => {
   const client = fakeClient({ data: { items: [], meta: {} } });
-  mockedGetApiClient.mockReturnValue(client);
+  mockedGetApiClient.mockResolvedValue(client);
 
   await getAutocompleteSuggestions("hollow", ["pc", "nintendo-switch"]);
 
@@ -55,7 +55,7 @@ test("narrows suggestions by the platforms already applied", async () => {
 });
 
 test("reports failure when the API returns a classified error", async () => {
-  mockedGetApiClient.mockReturnValue(
+  mockedGetApiClient.mockResolvedValue(
     fakeClient({ error: { error: { code: "RATE_LIMITED" } } }),
   );
 
@@ -65,7 +65,7 @@ test("reports failure when the API returns a classified error", async () => {
 });
 
 test("reports failure when the request itself fails (API process down)", async () => {
-  mockedGetApiClient.mockReturnValue({
+  mockedGetApiClient.mockResolvedValue({
     GET: vi.fn().mockRejectedValue(new TypeError("fetch failed")),
   } as unknown as ApiClient);
 

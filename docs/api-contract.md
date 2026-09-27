@@ -403,17 +403,19 @@ Error messages are localized by the web application using the stable code. The
 API message is a safe English fallback and never includes provider payloads or
 stack traces.
 
-## 6. Rate limiting (Milestone 4.5 target)
+## 6. Rate limiting (implemented in M4.5)
 
-Today an HTTP 429 can only come from the provider; it is classified as
-`RATE_LIMITED` with `Retry-After` and `retryAfterSeconds` when available.
-Decided in M4.1, with every number configurable:
+A `429 RATE_LIMITED` comes from this API's own budgets, or rarely from the
+provider; both carry `Retry-After` and `retryAfterSeconds`. Every number
+below is configuration:
 
 - each client may make 60 catalog requests per minute, of which at most 20 may
   be cache misses that reach the provider; cache hits do not count toward the
   second budget;
-- exceeding either budget returns `429 RATE_LIMITED` with `Retry-After` and
-  `retryAfterSeconds` set to the wait until a request would be allowed;
+- exceeding the public ceiling returns `429 RATE_LIMITED` with `Retry-After`
+  and `retryAfterSeconds` set to the wait until a request would be allowed;
+  exceeding the provider-reaching budget returns stale data when an entry is
+  still in its window, and the same `429` otherwise;
 - when the process-wide provider limit (IGDB's four requests per second and
   eight in flight) cannot be met within the operation deadline, the response
   is stale data or `503 UPSTREAM_UNAVAILABLE` with a short retry delay, not

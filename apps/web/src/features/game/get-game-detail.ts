@@ -1,6 +1,6 @@
 import type { components } from "@whattoplaynext/contracts";
 
-import { getApiClient } from "@/lib/api-client";
+import { getVisitorApiClient } from "@/lib/api-client";
 import {
   UNREACHABLE,
   classifyApiFailure,
@@ -14,10 +14,9 @@ export type GameDetailResult =
 
 export async function getGameDetail(gameId: number): Promise<GameDetailResult> {
   try {
-    const { data, error, response } = await getApiClient().GET(
-      "/api/v1/games/{gameId}",
-      { params: { path: { gameId } } },
-    );
+    const { data, error, response } = await (
+      await getVisitorApiClient()
+    ).GET("/api/v1/games/{gameId}", { params: { path: { gameId } } });
 
     if (error || !data) {
       return { ok: false, failure: classifyApiFailure(error, response) };

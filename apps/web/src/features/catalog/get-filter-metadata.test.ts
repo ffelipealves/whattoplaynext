@@ -1,15 +1,15 @@
 import { expect, test, vi } from "vitest";
 
 import type { ApiClient } from "@whattoplaynext/contracts";
-import { getApiClient } from "@/lib/api-client";
+import { getVisitorApiClient } from "@/lib/api-client";
 
 import { getFilterMetadata, type FilterMetadata } from "./get-filter-metadata";
 
 vi.mock("@/lib/api-client", () => ({
-  getApiClient: vi.fn(),
+  getVisitorApiClient: vi.fn(),
 }));
 
-const mockedGetApiClient = vi.mocked(getApiClient);
+const mockedGetApiClient = vi.mocked(getVisitorApiClient);
 
 const sampleMetadata: FilterMetadata = {
   platforms: [{ id: "pc", label: "PC" }],
@@ -33,7 +33,7 @@ function fakeClient(response: { data?: unknown; error?: unknown }): ApiClient {
 
 test("returns the published metadata on a successful response", async () => {
   const client = fakeClient({ data: sampleMetadata });
-  mockedGetApiClient.mockReturnValue(client);
+  mockedGetApiClient.mockResolvedValue(client);
 
   await expect(getFilterMetadata()).resolves.toEqual({
     ok: true,
@@ -43,7 +43,7 @@ test("returns the published metadata on a successful response", async () => {
 });
 
 test("reports failure when the API returns a classified error", async () => {
-  mockedGetApiClient.mockReturnValue(
+  mockedGetApiClient.mockResolvedValue(
     fakeClient({ error: { error: { code: "UPSTREAM_UNAVAILABLE" } } }),
   );
 
@@ -54,7 +54,7 @@ test("reports failure when the API returns a classified error", async () => {
 });
 
 test("reports failure when the request itself fails (API process down)", async () => {
-  mockedGetApiClient.mockReturnValue({
+  mockedGetApiClient.mockResolvedValue({
     GET: vi.fn().mockRejectedValue(new TypeError("fetch failed")),
   } as unknown as ApiClient);
 
@@ -65,7 +65,7 @@ test("reports failure when the request itself fails (API process down)", async (
 });
 
 test("keeps rate-limit retry timing and the request id", async () => {
-  mockedGetApiClient.mockReturnValue(
+  mockedGetApiClient.mockResolvedValue(
     fakeClient({
       error: {
         error: {

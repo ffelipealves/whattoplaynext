@@ -1,15 +1,15 @@
 import { expect, test, vi } from "vitest";
 
 import type { ApiClient } from "@whattoplaynext/contracts";
-import { getApiClient } from "@/lib/api-client";
+import { getVisitorApiClient } from "@/lib/api-client";
 
 import { getGameDetail, type GameDetail } from "./get-game-detail";
 
 vi.mock("@/lib/api-client", () => ({
-  getApiClient: vi.fn(),
+  getVisitorApiClient: vi.fn(),
 }));
 
-const mockedGetApiClient = vi.mocked(getApiClient);
+const mockedGetApiClient = vi.mocked(getVisitorApiClient);
 
 function fakeClient(response: {
   data?: unknown;
@@ -27,7 +27,7 @@ const detail = {
 
 test("returns normalized detail from the generated client", async () => {
   const client = fakeClient({ data: detail });
-  mockedGetApiClient.mockReturnValue(client);
+  mockedGetApiClient.mockResolvedValue(client);
 
   const result = await getGameDetail(1942);
 
@@ -38,7 +38,7 @@ test("returns normalized detail from the generated client", async () => {
 });
 
 test("keeps GAME_NOT_FOUND distinct for the route to render a 404", async () => {
-  mockedGetApiClient.mockReturnValue(
+  mockedGetApiClient.mockResolvedValue(
     fakeClient({
       error: {
         error: {
@@ -57,7 +57,7 @@ test("keeps GAME_NOT_FOUND distinct for the route to render a 404", async () => 
 });
 
 test("keeps an upstream failure distinct from a missing game", async () => {
-  mockedGetApiClient.mockReturnValue(
+  mockedGetApiClient.mockResolvedValue(
     fakeClient({
       error: {
         error: {
@@ -76,7 +76,7 @@ test("keeps an upstream failure distinct from a missing game", async () => {
 });
 
 test("reports a request that never reached the API", async () => {
-  mockedGetApiClient.mockReturnValue({
+  mockedGetApiClient.mockResolvedValue({
     GET: vi.fn().mockRejectedValue(new TypeError("fetch failed")),
   } as unknown as ApiClient);
 

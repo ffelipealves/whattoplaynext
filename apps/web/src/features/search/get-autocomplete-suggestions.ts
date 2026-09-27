@@ -1,6 +1,6 @@
 import type { components } from "@whattoplaynext/contracts";
 
-import { getApiClient } from "@/lib/api-client";
+import { getVisitorApiClient } from "@/lib/api-client";
 
 import { selectedIds } from "./selected-ids";
 
@@ -23,18 +23,17 @@ export async function getAutocompleteSuggestions(
   platformIds: string[],
 ): Promise<AutocompleteResult> {
   try {
-    const { data, error } = await getApiClient().GET(
-      "/api/v1/games/autocomplete",
-      {
-        params: {
-          query: {
-            q: query,
-            // The API narrows suggestions to the platforms in play.
-            platform: selectedIds(platformIds),
-          },
+    const { data, error } = await (
+      await getVisitorApiClient()
+    ).GET("/api/v1/games/autocomplete", {
+      params: {
+        query: {
+          q: query,
+          // The API narrows suggestions to the platforms in play.
+          platform: selectedIds(platformIds),
         },
       },
-    );
+    });
 
     if (error || !data) {
       return { ok: false };

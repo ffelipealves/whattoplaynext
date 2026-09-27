@@ -1,22 +1,22 @@
 import { expect, test, vi } from "vitest";
 
 import type { ApiClient } from "@whattoplaynext/contracts";
-import { getApiClient } from "@/lib/api-client";
+import { getVisitorApiClient } from "@/lib/api-client";
 
 import { getCatalogStatus } from "./get-catalog-status";
 
 vi.mock("@/lib/api-client", () => ({
-  getApiClient: vi.fn(),
+  getVisitorApiClient: vi.fn(),
 }));
 
-const mockedGetApiClient = vi.mocked(getApiClient);
+const mockedGetApiClient = vi.mocked(getVisitorApiClient);
 
 function fakeClient(response: { data?: unknown; error?: unknown }): ApiClient {
   return { GET: vi.fn().mockResolvedValue(response) } as unknown as ApiClient;
 }
 
 test("reports reachable with normalized counts on a successful response", async () => {
-  mockedGetApiClient.mockReturnValue(
+  mockedGetApiClient.mockResolvedValue(
     fakeClient({
       data: {
         platforms: [{ id: "pc", label: "PC" }],
@@ -40,7 +40,7 @@ test("reports reachable with normalized counts on a successful response", async 
 });
 
 test("reports unreachable when the API returns a classified error", async () => {
-  mockedGetApiClient.mockReturnValue(
+  mockedGetApiClient.mockResolvedValue(
     fakeClient({ error: { error: { code: "UPSTREAM_UNAVAILABLE" } } }),
   );
 
@@ -50,7 +50,7 @@ test("reports unreachable when the API returns a classified error", async () => 
 });
 
 test("reports unreachable when the request itself fails (API process down)", async () => {
-  mockedGetApiClient.mockReturnValue({
+  mockedGetApiClient.mockResolvedValue({
     GET: vi.fn().mockRejectedValue(new TypeError("fetch failed")),
   } as unknown as ApiClient);
 
