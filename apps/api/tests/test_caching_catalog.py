@@ -543,3 +543,75 @@ async def test_serving_stale_data_is_logged_with_its_cause_only(
     assert record.__dict__["resource"] == "search"
     assert record.__dict__["error_code"] == "UPSTREAM_TIMEOUT"
     assert "Hollow" not in caplog.text
+
+
+class Admission:
+    """Admits a fixed number of provider calls, then rejects like the limiter."""
+
+    def __init__(self, allowed: int) -> None:
+        self.remaining = allowed
+        self.calls = 0
+
+    async def __call__(self) -> None:
+        self.calls += 1
+        if self.remaining <= 0:
+            raise ApplicationError(ErrorCode.RATE_LIMITED, retry_after_seconds=12)
+        self.remaining -= 1
+
+
+def build_admitted(
+    allowed: int,
+) -> tuple[CachingCatalog, CountingCatalog, ManualClock, Admission]:
+    clock = ManualClock()
+    provider = CountingCatalog()
+    admission = Admission(allowed)
+    catalog = CachingCatalog(
+        provider,
+        Cache(InMemoryCacheStore(clock), clock=clock),
+        environment="test",
+        api_version="v1",
+        clock=clock,
+        admit_provider_call=admission,
+    )
+    return catalog, provider, clock, admission
+
+
+@pytest.mark.anyio
+async def test_only_a_caller_that_starts_a_provider_call_is_charged() -> None:
+    catalog, provider, _, admission = build_admitted(allowed=1)
+    provider.release.clear()
+
+    pending = [
+        asyncio.ensure_future(catalog.browse_games(criteria())) for _ in range(5)
+    ]
+    await asyncio.sleep(0)
+    provider.release.set()
+    await asyncio.gather(*pending)
+    await catalog.browse_games(criteria())
+
+    assert admission.calls == 1
+    assert provider.calls["search"] == 1
+
+
+@pytest.mark.anyio
+async def test_a_rejected_admission_never_reaches_the_provider() -> None:
+    catalog, provider, _, _ = build_admitted(allowed=0)
+
+    with pytest.raises(ApplicationError) as raised:
+        await catalog.browse_games(criteria())
+
+    assert raised.value.code is ErrorCode.RATE_LIMITED
+    assert raised.value.retry_after_seconds == 12
+    assert provider.calls["search"] == 0
+
+
+@pytest.mark.anyio
+async def test_a_rejected_admission_serves_stale_data_when_it_has_some() -> None:
+    catalog, provider, clock, _ = build_admitted(allowed=1)
+    await catalog.browse_games(criteria())
+    clock.advance(hours=2)
+
+    stale = await catalog.browse_games(criteria())
+
+    assert stale.meta.data_may_be_stale is True
+    assert provider.calls["search"] == 1

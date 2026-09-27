@@ -47,6 +47,40 @@ class StubRedis:
     async def aclose(self) -> None:
         self._run("aclose")
 
+    def pipeline(self, transaction: bool = True) -> StubPipeline:
+        return StubPipeline(self, transaction)
+
+
+class StubPipeline:
+    def __init__(self, client: StubRedis, transaction: bool) -> None:
+        self.client = client
+        self.transaction = transaction
+        self.queued: list[tuple[object, ...]] = []
+
+    def incr(self, name: str) -> None:
+        self.queued.append(("incr", name))
+
+    def expire(self, name: str, seconds: int) -> None:
+        self.queued.append(("expire", name, seconds))
+
+    def get(self, name: str) -> None:
+        self.queued.append(("get", name))
+
+    async def execute(self) -> list[object]:
+        self.client._run("pipeline", self.transaction, *self.queued)
+        results: list[object] = []
+        for command in self.queued:
+            if command[0] == "incr":
+                name = str(command[1])
+                count = int(self.client.values.get(name, b"0")) + 1
+                self.client.values[name] = str(count).encode()
+                results.append(count)
+            elif command[0] == "expire":
+                results.append(True)
+            else:
+                results.append(self.client.values.get(str(command[1])))
+        return results
+
 
 @pytest.mark.anyio
 async def test_writes_with_an_expiry_and_reads_the_bytes_back() -> None:
@@ -153,6 +187,43 @@ async def test_a_server_that_never_answers_times_out_within_the_bound(
     assert loop.time() - started < 1.0
 
 
+@pytest.mark.anyio
+async def test_counts_a_hit_and_reads_the_previous_window_in_one_pipeline() -> None:
+    client = StubRedis()
+    client.values["previous"] = b"7"
+    store = RedisCacheStore(client, operation_timeout_seconds=0.2)
+
+    first = await store.hit("current", "previous", 120)
+    second = await store.hit("current", "previous", 120)
+
+    assert (first, second) == ((1, 7), (2, 7))
+    assert client.commands[0] == (
+        "pipeline",
+        False,
+        ("incr", "current"),
+        ("expire", "current", 120),
+        ("get", "previous"),
+    )
+
+
+@pytest.mark.anyio
+async def test_a_missing_previous_window_counts_as_zero() -> None:
+    store = RedisCacheStore(StubRedis(), operation_timeout_seconds=0.2)
+
+    assert await store.hit("current", "previous", 120) == (1, 0)
+
+
+@pytest.mark.anyio
+async def test_a_failed_hit_is_an_unavailable_store() -> None:
+    store = RedisCacheStore(
+        StubRedis(failure=RedisConnectionError("down")),
+        operation_timeout_seconds=0.2,
+    )
+
+    with pytest.raises(CacheUnavailableError):
+        await store.hit("current", "previous", 120)
+
+
 REDIS_URL = os.environ.get("WTPN_TEST_REDIS_URL")
 
 
@@ -178,6 +249,11 @@ async def test_round_trips_and_expires_against_a_real_redis() -> None:
         await store.set(key, b"payload", 60)
         await store.delete(key)
         assert await store.get(key) is None
+
+        counter = f"{key}:counter"
+        assert await store.hit(counter, f"{key}:previous", 60) == (1, 0)
+        assert await store.hit(counter, f"{key}:previous", 60) == (2, 0)
     finally:
         await store.delete(key)
+        await store.delete(f"{key}:counter")
         await store.aclose()

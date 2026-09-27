@@ -126,6 +126,7 @@ class CachingCatalog:
         api_version: str,
         policy: CachePolicy | None = None,
         clock: Callable[[], datetime] = _utc_now,
+        admit_provider_call: Callable[[], Awaitable[None]] | None = None,
     ) -> None:
         self._provider = provider
         self._cache = cache
@@ -134,6 +135,7 @@ class CachingCatalog:
         self._policy = policy or CachePolicy()
         self._clock = clock
         self._in_flight: dict[str, asyncio.Future[Any]] = {}
+        self._admit_provider_call = admit_provider_call
 
     async def get_filter_metadata(self) -> FilterMetadata:
         policy = self._policy
@@ -234,15 +236,22 @@ class CachingCatalog:
             _record(CacheOutcome.HIT)
             return _with_origin(cached.value, ServedFrom.CACHE)
 
-        shared = self._in_flight.get(key)
-        outcome = CacheOutcome.COALESCED if shared is not None else CacheOutcome.MISS
-        if shared is None:
-            shared = asyncio.ensure_future(
-                self._fill(key, fetch, fresh=fresh, stale=stale)
-            )
-            self._in_flight[key] = shared
-            shared.add_done_callback(lambda done: self._settle(key, done))
+        outcome = CacheOutcome.MISS
         try:
+            shared = self._in_flight.get(key)
+            if shared is None and self._admit_provider_call is not None:
+                # Only a caller that would start a provider call pays for it;
+                # hits and coalesced followers draw nothing from this budget.
+                await self._admit_provider_call()
+                shared = self._in_flight.get(key)
+            if shared is not None:
+                outcome = CacheOutcome.COALESCED
+            else:
+                shared = asyncio.ensure_future(
+                    self._fill(key, fetch, fresh=fresh, stale=stale)
+                )
+                self._in_flight[key] = shared
+                shared.add_done_callback(lambda done: self._settle(key, done))
             # Shielded: a caller that disconnects must not cancel the provider
             # call the other callers are waiting for.
             value: T = await asyncio.shield(shared)

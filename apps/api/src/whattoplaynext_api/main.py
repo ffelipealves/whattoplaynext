@@ -3,6 +3,7 @@
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from datetime import timedelta
+from secrets import token_bytes
 
 import httpx
 from fastapi import FastAPI
@@ -23,6 +24,13 @@ from whattoplaynext_api.catalog.unavailable import UnavailableCatalog
 from whattoplaynext_api.core.settings import Settings, get_settings
 from whattoplaynext_api.http.errors import install_http_boundary
 from whattoplaynext_api.http.router import api_router
+from whattoplaynext_api.ratelimit.identity import IdentityDigester
+from whattoplaynext_api.ratelimit.limiter import (
+    CounterStore,
+    InMemoryCounterStore,
+    SlidingWindowLimiter,
+)
+from whattoplaynext_api.ratelimit.policy import ProviderAdmission, RateLimiting
 
 
 def build_catalog(settings: Settings) -> tuple[Catalog, httpx.AsyncClient | None]:
@@ -69,6 +77,46 @@ def _cache(settings: Settings, store: CacheStore | None) -> Cache:
     return Cache(store, bypass_for=timedelta(seconds=settings.cache_bypass_seconds))
 
 
+def build_rate_limiting(
+    settings: Settings, store: CounterStore | None = None
+) -> RateLimiting:
+    """Compose per-visitor budgets over Redis counters, or process-local ones.
+
+    Without a configured key, addresses are digested with a random per-process
+    key: digests only need to agree within one rate-limit window.
+    """
+    fallback = InMemoryCounterStore()
+    primary = store or fallback
+    key = (
+        settings.identity_hmac_key.get_secret_value().encode()
+        if settings.identity_hmac_key is not None
+        else token_bytes(32)
+    )
+    return RateLimiting(
+        public=SlidingWindowLimiter(
+            primary,
+            fallback=fallback,
+            name="public",
+            limit=settings.rate_limit_public_per_minute,
+            window_seconds=60,
+        ),
+        provider=SlidingWindowLimiter(
+            primary,
+            fallback=fallback,
+            name="provider",
+            limit=settings.rate_limit_provider_per_minute,
+            window_seconds=60,
+        ),
+        digester=IdentityDigester(key),
+        edge_token=(
+            settings.edge_token.get_secret_value()
+            if settings.edge_token is not None
+            else None
+        ),
+        trusted_proxy_hops=settings.trusted_proxy_hops,
+    )
+
+
 def _lifespan(
     closers: list[Callable[[], Awaitable[None]]],
 ) -> Callable[[FastAPI], AbstractAsyncContextManager[None]]:
@@ -88,12 +136,14 @@ def create_app(
     *,
     catalog: Catalog | None = None,
     cache_store: CacheStore | None = None,
+    rate_limiting: RateLimiting | None = None,
 ) -> FastAPI:
     """Build the HTTP adapter with explicit, testable configuration.
 
-    Without injected dependencies, the catalog and cache come from settings.
-    An injected catalog gets only an injected cache store (or none), so tests
-    and the browser fixture server never reach a developer's configured Redis.
+    Without injected dependencies, the catalog, cache, and rate limits come
+    from settings. An injected catalog gets only an injected cache store and
+    rate limits (or none), so tests and the browser fixture server never reach
+    a developer's configured Redis or share one visitor's budget.
     """
     resolved_settings = settings or get_settings()
     closers: list[Callable[[], Awaitable[None]]] = []
@@ -108,6 +158,9 @@ def create_app(
         cache, redis_store = build_cache(resolved_settings)
         if redis_store is not None:
             closers.append(redis_store.aclose)
+        rate_limiting = rate_limiting or build_rate_limiting(
+            resolved_settings, redis_store
+        )
     if cache_store is not None or catalog is None:
         resolved_catalog = CachingCatalog(
             resolved_catalog,
@@ -115,6 +168,11 @@ def create_app(
             environment=resolved_settings.environment,
             api_version=resolved_settings.api_prefix.rsplit("/", 1)[-1],
             policy=resolved_settings.cache_ttl,
+            admit_provider_call=(
+                ProviderAdmission(rate_limiting.provider)
+                if rate_limiting is not None
+                else None
+            ),
         )
     application = FastAPI(
         debug=resolved_settings.debug,
@@ -126,6 +184,7 @@ def create_app(
     install_http_boundary(application)
     application.state.catalog = resolved_catalog
     application.state.cache = cache
+    application.state.rate_limiting = rate_limiting
     application.include_router(api_router, prefix=resolved_settings.api_prefix)
     return application
 

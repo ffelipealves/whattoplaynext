@@ -1,4 +1,4 @@
-"""Redis implementation of the cache-store port."""
+"""Redis implementation of the cache-store and counter-store ports."""
 
 import asyncio
 from collections.abc import AsyncIterator, Awaitable
@@ -23,6 +23,8 @@ class RedisCommands(Protocol):
     def delete(self, *names: str) -> Awaitable[Any]: ...
 
     def ping(self) -> Awaitable[Any]: ...
+
+    def pipeline(self, transaction: bool = True) -> Any: ...
 
     def aclose(self) -> Awaitable[None]: ...
 
@@ -73,6 +75,18 @@ class RedisCacheStore:
     async def ping(self) -> None:
         async with self._bounded():
             await self._client.ping()
+
+    async def hit(
+        self, current_key: str, previous_key: str, ttl_seconds: int
+    ) -> tuple[int, int]:
+        """Count one request and read the previous window, in one round trip."""
+        async with self._bounded():
+            pipe = self._client.pipeline(transaction=False)
+            pipe.incr(current_key)
+            pipe.expire(current_key, ttl_seconds)
+            pipe.get(previous_key)
+            current, _, previous = await pipe.execute()
+        return int(current), int(previous or 0)
 
     async def aclose(self) -> None:
         """Release the connection pool."""

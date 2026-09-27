@@ -30,11 +30,18 @@ class Settings(BaseSettings):
     cache_max_connections: int = Field(default=10, ge=1, le=100)
     cache_bypass_seconds: float = Field(default=30, ge=0, le=3600)
     cache_ttl: CachePolicy = Field(default_factory=CachePolicy)
+    rate_limit_public_per_minute: int = Field(default=60, ge=1, le=10_000)
+    rate_limit_provider_per_minute: int = Field(default=20, ge=1, le=10_000)
+    edge_token: SecretStr | None = None
+    identity_hmac_key: SecretStr | None = None
+    trusted_proxy_hops: int = Field(default=0, ge=0, le=5)
     twitch_client_id: str | None = None
     twitch_client_secret: SecretStr | None = None
 
     @field_validator(
         "redis_url",
+        "edge_token",
+        "identity_hmac_key",
         "twitch_client_id",
         "twitch_client_secret",
         mode="before",
