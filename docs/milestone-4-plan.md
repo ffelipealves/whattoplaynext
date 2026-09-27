@@ -202,9 +202,8 @@ Verification: 261 API tests passed with one opt-in skip at 94% coverage (98% for
 misses making one call, key equivalence and separation, every lifetime, the
 negative marker, and an unavailable Redis. The contract check, formatting,
 lint, type checks, web and contracts unit coverage (237 web tests), and the
-production build passed. The Playwright journeys did not run on the
-development machine: the Chromium shell lacks system libraries (`libnspr4`),
-and installing them needs administrator rights. CI runs them.
+production build passed. After the owner installed Chromium's system
+libraries in WSL, `pnpm e2e` passed all 27 Playwright journeys locally.
 
 Live IGDB verification ran on 2026-09-27 with owner-configured credentials.
 `pnpm smoke:api` passed all four capabilities. The eligible total fell from
