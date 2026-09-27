@@ -35,6 +35,8 @@ approximate matching.
   browser matrix, Web Vitals spot checks, and the Milestone 4 handoff.
 - [Milestone 4 plan](docs/milestone-4-plan.md) — cache, resilience, security,
   operations, analytics, increments, and exit criteria.
+- [Security review](docs/security-review.md) — trust boundaries, verified
+  controls, and accepted residual risks.
 - [Technical debt](docs/technical-debt.md) — deliberate compromises, what each
   costs, and the release gates that depend on them.
 - [MVP roadmap](docs/roadmap.md) — delivery sequence and milestone exit checks.
@@ -98,7 +100,9 @@ games, verified against live IGDB. M4.4 serves saved data with a localized
 warning when IGDB fails, and M4.5 limits each visitor and keeps IGDB under its
 own request ceiling. M4.6 stops calling IGDB during an outage and probes it
 before resuming. M4.7 adds redacted JSON logs, one request ID from web to
-IGDB, and a readiness endpoint; M4.8 (security hardening) is next. The
+IGDB, and a readiness endpoint. M4.8 hardens both surfaces and records a
+[security review](docs/security-review.md); M4.9 (analytics and closeout) is
+next. The
 [technical debt register](docs/technical-debt.md) tracks the known compromises.
 
 ## Local development

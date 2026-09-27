@@ -6,3 +6,8 @@ allowBuilds:
   "@parcel/watcher": true
   "@swc/core": true
   unrs-resolver: true
+
+# GHSA-2883-xcg3-v3hh: openapi-typescript still resolves js-yaml 4.3.1. It only
+# parses this repository's own contract, but the patched release is a drop-in.
+overrides:
+  js-yaml@<4.3.2: ^4.3.2

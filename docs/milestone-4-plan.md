@@ -1,6 +1,6 @@
 # Milestone 4 Plan
 
-Status: in progress — M4.1 through M4.7 accepted on 2026-09-27; M4.8 and M4.9 not started
+Status: in progress — M4.1 through M4.8 accepted on 2026-09-27; M4.9 not started
 
 Prepared: 2026-09-22
 
@@ -476,7 +476,7 @@ or token; the only `127.0.0.1` was Uvicorn's own bind address.
 
 ### M4.8 — Security boundary hardening
 
-Status: planned.
+Status: completed on 2026-09-27.
 
 Deliver:
 
@@ -493,6 +493,27 @@ Acceptance:
 - unexpected origins and methods are rejected according to policy;
 - secrets do not appear in responses, logs, bundles, or error pages;
 - the security review records accepted residual risks.
+
+Outcome: the [security review](security-review.md) records the boundary,
+every verified control with its evidence, and eight accepted residual risks.
+
+- **API**: a security-header middleware, with the headers also set by the
+  `500` handler, which runs outside every middleware. Settings refuse debug
+  mode in production, production switches off the interactive documentation,
+  and each repeated filter is capped at 50 values.
+- **Policy**: CORS and method rejection already held and are now tested.
+- **Web**: `security-headers.ts` builds a CSP plus `nosniff`, `DENY`,
+  `Referrer-Policy`, `Cross-Origin-Opener-Policy`, and `Permissions-Policy`,
+  with HSTS only for an HTTPS origin. `X-Powered-By` is switched off.
+- **Browser checks**: a new Playwright spec checks the headers and fails on
+  any CSP violation across five pages. Its ability to fail was demonstrated.
+- **Secrets**: a sentinel-token build found the edge token nowhere in the
+  build output.
+- **Dependencies**: `pnpm audit` found `js-yaml` 4.3.1 in a development-only
+  path, fixed with a workspace override; `pip-audit` was clean.
+
+Verification: the API passed 387 tests with the opt-in Redis test skipped, the
+web 255, and the Playwright suite 34 journeys; `pnpm quality` was green.
 
 ### M4.9 — Analytics and milestone closeout
 

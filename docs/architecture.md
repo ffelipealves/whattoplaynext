@@ -401,8 +401,10 @@ join. M4.3 implemented it before the first cache entry is written:
 The browser is untrusted, the FastAPI service is the only credential-bearing
 component, and IGDB and analytics are third-party trust boundaries. Strict
 validation runs before provider access, and public errors expose only stable
-codes and a correlation ID. Public rate limiting, structured log redaction,
-and analytics allow-lists remain Milestone 4 work. The binding requirements
+codes and a correlation ID. Rate limiting (M4.5), log redaction (M4.7), and
+the security headers and policies of M4.8 are in place; the
+[security review](security-review.md) records the controls and accepted
+residual risks. Analytics allow-lists are M4.9 work. The binding requirements
 are NFR-015 through NFR-023.
 
 Supported environment-variable names are committed only in `.env.example`
