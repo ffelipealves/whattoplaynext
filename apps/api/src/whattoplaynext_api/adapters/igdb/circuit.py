@@ -11,6 +11,7 @@ from whattoplaynext_api.adapters.igdb.transport import (
     IgdbErrorReason,
     IgdbTransportError,
 )
+from whattoplaynext_api.core.telemetry import record_provider_attempt
 
 logger = logging.getLogger("whattoplaynext_api.provider")
 
@@ -102,11 +103,13 @@ class ProviderCircuit:
             return False
         now = self._clock()
         if now < self._open_until:
+            record_provider_attempt("circuit-open")
             raise IgdbTransportError(
                 IgdbErrorReason.UNAVAILABLE,
                 retry_after_seconds=max(1, ceil(self._open_until - now)),
             )
         if self._probing:
+            record_provider_attempt("circuit-open")
             raise IgdbTransportError(IgdbErrorReason.UNAVAILABLE, retry_after_seconds=1)
         self._probing = True
         logger.info("circuit.half_open")

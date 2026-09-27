@@ -2,6 +2,7 @@
 
 from fastapi import Request
 
+from whattoplaynext_api.core.telemetry import record_rate_limit
 from whattoplaynext_api.ratelimit.identity import client_address
 from whattoplaynext_api.ratelimit.policy import RateLimiting, charge_public_request
 
@@ -10,6 +11,7 @@ async def enforce_rate_limit(request: Request) -> None:
     """Reject a catalog request once its visitor exceeds the public ceiling."""
     limits: RateLimiting | None = request.app.state.rate_limiting
     if limits is None:
+        record_rate_limit("disabled")
         return
     address = client_address(
         request.headers,
@@ -17,5 +19,7 @@ async def enforce_rate_limit(request: Request) -> None:
         edge_token=limits.edge_token,
         trusted_proxy_hops=limits.trusted_proxy_hops,
     )
-    if address is not None:
-        await charge_public_request(limits, address)
+    if address is None:
+        record_rate_limit("unidentified")
+        return
+    await charge_public_request(limits, address)

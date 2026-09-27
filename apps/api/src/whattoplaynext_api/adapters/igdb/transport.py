@@ -12,6 +12,7 @@ from typing import Protocol, cast
 import httpx
 
 from whattoplaynext_api.adapters.igdb.token import TwitchTokenError
+from whattoplaynext_api.core.telemetry import record_provider_attempt
 
 IGDB_API_BASE_URL = "https://api.igdb.com/v4"
 
@@ -111,6 +112,7 @@ class IgdbTransport:
         except TwitchTokenError as error:
             # The token is part of reaching IGDB: its failures are the
             # provider's failures, classified the same way.
+            record_provider_attempt(f"token-{error.reason.value}")
             raise IgdbTransportError(IgdbErrorReason(error.reason.value)) from None
         started_at = self._clock()
         last_reason: IgdbErrorReason | None = None
@@ -136,6 +138,7 @@ class IgdbTransport:
                         },
                         timeout=min(self._request_timeout_seconds, remaining),
                     )
+                record_provider_attempt(_attempt_outcome(response.status_code))
                 if response.status_code == 429:
                     retry_after = self._bounded_retry_after(response)
                     if attempt == 1 or not self._has_retry_budget(
@@ -169,6 +172,7 @@ class IgdbTransport:
                     raise IgdbTransportError(IgdbErrorReason.INVALID_RESPONSE) from None
                 return payload
             except httpx.TimeoutException:
+                record_provider_attempt("timeout")
                 retry_delay = self._jitter(self._retry_delay_seconds)
                 if attempt == 1 or not self._has_retry_budget(
                     started_at,
@@ -178,6 +182,7 @@ class IgdbTransport:
                 last_reason = IgdbErrorReason.TIMEOUT
                 await self._sleeper(retry_delay)
             except httpx.RequestError:
+                record_provider_attempt("network-error")
                 retry_delay = self._jitter(self._retry_delay_seconds)
                 if attempt == 1 or not self._has_retry_budget(
                     started_at,
@@ -198,3 +203,16 @@ class IgdbTransport:
 
     def _has_retry_budget(self, started_at: float, delay: float) -> bool:
         return self._clock() + delay < started_at + self._retry_deadline_seconds
+
+
+def _attempt_outcome(status_code: int) -> str:
+    """Classify one provider response for request telemetry."""
+    if status_code == 429:
+        return "rate-limited"
+    if status_code >= 500:
+        return "server-error"
+    if status_code in {401, 403}:
+        return "auth-rejected"
+    if status_code >= 400:
+        return "rejected-request"
+    return "ok"

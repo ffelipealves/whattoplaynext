@@ -933,6 +933,46 @@
         "title": "PopularGameSelection",
         "type": "object"
       },
+      "ReadinessResponse": {
+        "description": "Dependency state for monitoring, without hosts, ports, or error text.",
+        "properties": {
+          "cache": {
+            "enum": [
+              "up",
+              "down",
+              "disabled"
+            ],
+            "title": "Cache",
+            "type": "string"
+          },
+          "provider": {
+            "enum": [
+              "closed",
+              "half-open",
+              "open",
+              "not-configured"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ready",
+              "degraded",
+              "unavailable"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "cache",
+          "provider"
+        ],
+        "title": "ReadinessResponse",
+        "type": "object"
+      },
       "ResponseMeta": {
         "description": "Freshness and processing metadata for one catalog response.",
         "properties": {
@@ -2086,6 +2126,90 @@
           }
         },
         "summary": "Check process health",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/v1/health/ready": {
+      "get": {
+        "description": "Report cache and provider-circuit state without calling IGDB.\n\nAt most one Redis ``PING``. Degraded dependencies still answer ``200``:\nthe API keeps serving through them, and restarting it would not help.",
+        "operationId": "getReadiness",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            },
+            "description": "Successful Response",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Method not allowed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "An unexpected error occurred.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            },
+            "description": "No catalog provider is configured.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Identifier used to correlate this response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Report dependency readiness",
         "tags": [
           "system"
         ]

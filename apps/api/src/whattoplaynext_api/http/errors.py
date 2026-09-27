@@ -1,5 +1,6 @@
 """Stable error responses for the public HTTP adapter."""
 
+import logging
 from dataclasses import dataclass
 from typing import Any, cast
 
@@ -13,6 +14,8 @@ from whattoplaynext_api.http.correlation import (
     REQUEST_ID_HEADER,
     RequestCorrelationMiddleware,
 )
+
+logger = logging.getLogger("whattoplaynext_api.http")
 
 
 class ErrorDetail(BaseModel):
@@ -130,9 +133,20 @@ async def handle_validation_error(
 
 async def handle_unexpected_error(
     request: Request,
-    _error: Exception,
+    error: Exception,
 ) -> JSONResponse:
-    """Return a safe fallback without exposing the original exception."""
+    """Return a safe fallback without exposing the original exception.
+
+    The log keeps the exception type and stack for the operator; the JSON
+    formatter drops its message, which may quote request or provider data.
+    """
+    # This handler runs outside the request's telemetry scope, so the
+    # identifier is passed explicitly.
+    logger.error(
+        "http.unhandled_error",
+        exc_info=error,
+        extra={"request_id": request.state.request_id},
+    )
     return build_error_response(request, ErrorCode.INTERNAL_ERROR)
 
 

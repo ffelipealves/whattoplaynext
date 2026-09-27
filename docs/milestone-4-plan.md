@@ -1,6 +1,6 @@
 # Milestone 4 Plan
 
-Status: in progress — M4.1 through M4.6 accepted on 2026-09-27; M4.7 through M4.9 not started
+Status: in progress — M4.1 through M4.7 accepted on 2026-09-27; M4.8 and M4.9 not started
 
 Prepared: 2026-09-22
 
@@ -401,7 +401,7 @@ Redis test skipped (98% coverage for the circuit module), and the full
 
 ### M4.7 — Correlation, logs, health, and metrics
 
-Status: planned.
+Status: completed on 2026-09-27.
 
 Deliver:
 
@@ -420,6 +420,59 @@ Acceptance:
 - logs contain no secret or full IP address;
 - health checks distinguish process failure from dependency degradation;
 - representative performance measurements are reproducible.
+
+Outcome:
+
+- **Logs** (`core/structured_logging.py`): every log is one JSON object
+  carrying the time, level, logger, event, request ID, and only allow-listed
+  fields. Any other `extra` is dropped, so a call site cannot leak a value.
+  Exceptions keep their type and a `file:line:function` stack, never their
+  message.
+- **Third-party loggers**: `configure_logging()` routes Uvicorn's own
+  messages through the same formatter. It switches off Uvicorn's access log,
+  which printed the client address and the full URL with its query string,
+  and holds HTTPX at `WARNING`.
+- **Request telemetry** (`core/telemetry.py`): a per-request context
+  collects every provider attempt (`ok`, `server-error`, `rate-limited`,
+  `timeout`, `network-error`, `token-*`, `throttled`, `circuit-open`), the
+  time spent waiting on the provider throttle, and the rate-limit decision.
+- **`http.request`**: one line per request, 500s included, with the method,
+  route template, status, duration, cache outcomes, provider attempts, wait,
+  rate-limit decision, and circuit state. The template is the API prefix
+  plus the route as declared, never the raw path or query string.
+  Unexpected errors, which were previously silent, now also log
+  `http.unhandled_error`.
+- **Request ID**: the web sends one per page render (React `cache`) as
+  `X-Request-ID` on every API call, so a visitor-facing error reference
+  matches the API's log line.
+- **Readiness**: `GET /api/v1/health/ready` reports `cache` and `provider`.
+  It returns `200` when ready or degraded and `503` without a configured
+  provider, is never rate-limited, and never calls IGDB.
+- **Metrics**: derived from the `http.request` fields and the `circuit.*`,
+  `cache.stale_served`, and `ratelimit.store_unavailable` events, as decided
+  in M4.1. The metrics destination remains a deployment release gate.
+- **Measurements**: `pnpm measure:api` reproduces the cold and warm profile
+  against live IGDB, through memory or with `--redis` through the configured
+  Redis, deleting the keys it wrote.
+
+Verification: redaction tests send a distinctive search phrase, a forwarded
+address, a forged `X-Forwarded-For`, and the edge token, and find none of them
+(nor `127.0.0.1` or a `?`) anywhere in the captured log output. The API passed
+363 tests, the web 250, and all 28 Playwright journeys, and `pnpm quality` was
+green.
+
+A live run of the served app produced only JSON lines, with no access log. It
+carried the web's `live-probe-1` request ID, `cache: ["miss"]`,
+`providerAttempts: ["ok"]`, `rateLimit: "allowed"`, `circuit: "closed"`, and
+the template `/api/v1/games`. It contained no search text, visitor address,
+or token; the only `127.0.0.1` was Uvicorn's own bind address.
+`pnpm measure:api --redis` then measured, through the real Redis:
+
+| Query                            | Cold    | Warm p50 | Warm p95 |
+| -------------------------------- | ------- | -------- | -------- |
+| unfiltered, sorted by rating     | 1.74 s  | 0.91 ms  | 1.18 ms  |
+| Switch + indie + 2–10 h (debt 2) | 10.81 s | 1.19 ms  | 1.45 ms  |
+| PC + all of 2020 (debt 2b)       | 67.68 s | 1.01 ms  | 1.37 ms  |
 
 ### M4.8 — Security boundary hardening
 

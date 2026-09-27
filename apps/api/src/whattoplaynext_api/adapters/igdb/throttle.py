@@ -10,6 +10,10 @@ from whattoplaynext_api.adapters.igdb.transport import (
     IgdbErrorReason,
     IgdbTransportError,
 )
+from whattoplaynext_api.core.telemetry import (
+    record_provider_attempt,
+    record_provider_wait,
+)
 
 
 class ProviderThrottle:
@@ -42,6 +46,7 @@ class ProviderThrottle:
         start_at = max(started, self._next_start)
         delay = start_at - started
         if delay > max_wait:
+            record_provider_attempt("throttled")
             raise IgdbTransportError(
                 IgdbErrorReason.UNAVAILABLE,
                 retry_after_seconds=max(1, ceil(delay)),
@@ -55,11 +60,13 @@ class ProviderThrottle:
                 async with asyncio.timeout(max(remaining, 0)):
                     await self._in_flight.acquire()
             except TimeoutError:
+                record_provider_attempt("throttled")
                 raise IgdbTransportError(
                     IgdbErrorReason.UNAVAILABLE, retry_after_seconds=1
                 ) from None
         else:
             await self._in_flight.acquire()
+        record_provider_wait(self._clock() - started)
         try:
             yield
         finally:

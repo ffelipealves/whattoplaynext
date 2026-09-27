@@ -119,6 +119,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/health/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Report dependency readiness
+         * @description Report cache and provider-circuit state without calling IGDB.
+         *
+         *     At most one Redis ``PING``. Degraded dependencies still answer ``200``:
+         *     the API keeps serving through them, and restarting it would not help.
+         */
+        get: operations["getReadiness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -460,6 +483,27 @@ export interface components {
             /** Items */
             items: components["schemas"]["PopularGame"][];
             meta: components["schemas"]["ResponseMeta"];
+        };
+        /**
+         * ReadinessResponse
+         * @description Dependency state for monitoring, without hosts, ports, or error text.
+         */
+        ReadinessResponse: {
+            /**
+             * Cache
+             * @enum {string}
+             */
+            cache: "up" | "down" | "disabled";
+            /**
+             * Provider
+             * @enum {string}
+             */
+            provider: "closed" | "half-open" | "open" | "not-configured";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "degraded" | "unavailable";
         };
         /**
          * ResponseMeta
@@ -1066,6 +1110,61 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getReadiness: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Identifier used to correlate this response. */
+                    "X-Request-ID"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessResponse"];
+                };
+            };
+            /** @description Method not allowed. */
+            405: {
+                headers: {
+                    /** @description Identifier used to correlate this response. */
+                    "X-Request-ID"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description An unexpected error occurred. */
+            500: {
+                headers: {
+                    /** @description Identifier used to correlate this response. */
+                    "X-Request-ID"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No catalog provider is configured. */
+            503: {
+                headers: {
+                    /** @description Identifier used to correlate this response. */
+                    "X-Request-ID"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessResponse"];
                 };
             };
         };

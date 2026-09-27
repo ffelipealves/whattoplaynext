@@ -430,10 +430,11 @@ through NFR-032 for expected behavior.
 ## 11. Observability
 
 FastAPI accepts a bounded safe caller identifier or generates a UUID, returns
-it in `X-Request-ID`, and includes it in the stable error envelope. End-to-end
-propagation through Next.js, future cache and provider operations, structured
-telemetry, dashboards, and retention remain Milestone 4 work under NFR-023 and
-NFR-025 through NFR-027.
+it in `X-Request-ID`, and includes it in the stable error envelope. Since
+M4.7 the web sends one identifier per page render, and the API writes
+allow-listed JSON logs with one `http.request` line per request. The log and
+monitoring destinations, and their 14-day retention (NFR-023), remain
+deployment decisions.
 
 Decided in M4.1 for M4.7:
 

@@ -4,6 +4,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 
 from whattoplaynext_api.core.errors import ApplicationError, ErrorCode
+from whattoplaynext_api.core.telemetry import record_rate_limit
 from whattoplaynext_api.ratelimit.identity import IdentityDigester
 from whattoplaynext_api.ratelimit.limiter import SlidingWindowLimiter
 
@@ -27,10 +28,12 @@ async def charge_public_request(limits: RateLimiting, address: str) -> None:
     Also remembers the visitor for the rest of the request, so a cache miss
     can later be charged to the same budget holder.
     """
+    record_rate_limit("allowed")
     identity = limits.digester.digest(address)
     _current_client.set(identity)
     decision = await limits.public.acquire(identity)
     if not decision.allowed:
+        record_rate_limit("rejected-public")
         raise ApplicationError(
             ErrorCode.RATE_LIMITED,
             retry_after_seconds=decision.retry_after_seconds,
@@ -49,6 +52,7 @@ class ProviderAdmission:
             return
         decision = await self._limiter.acquire(identity)
         if not decision.allowed:
+            record_rate_limit("rejected-provider")
             raise ApplicationError(
                 ErrorCode.RATE_LIMITED,
                 retry_after_seconds=decision.retry_after_seconds,

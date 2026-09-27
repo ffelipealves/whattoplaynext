@@ -322,7 +322,7 @@ way. Upstream failures keep their own distinct codes.
 Liveness. Returns `{"status": "ok"}` without I/O: no IGDB request and no Redis
 command. Platform health checks use only this endpoint.
 
-### `GET /api/v1/health/ready` (Milestone 4.7 target)
+### `GET /api/v1/health/ready`
 
 Readiness for monitoring. It sends at most one Redis `PING`, reads the
 in-memory circuit state, and never calls IGDB.

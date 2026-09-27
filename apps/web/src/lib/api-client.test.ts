@@ -92,3 +92,13 @@ test("reads only the first X-Forwarded-For entry, never X-Real-IP", () => {
     visitorAddress(new Headers({ "x-forwarded-for": " , " })),
   ).toBeUndefined();
 });
+
+test("sends a request identifier the API accepts, with or without a token", async () => {
+  vi.stubEnv("WTPN_API_EDGE_TOKEN", "");
+
+  const sent = await sentHeaders();
+
+  expect(sent.get("x-request-id")).toMatch(
+    /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/,
+  );
+});

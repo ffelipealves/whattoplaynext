@@ -27,6 +27,7 @@ from whattoplaynext_api.cache.store import CacheStore
 from whattoplaynext_api.catalog.ports import Catalog
 from whattoplaynext_api.catalog.unavailable import UnavailableCatalog
 from whattoplaynext_api.core.settings import Settings, get_settings
+from whattoplaynext_api.core.structured_logging import configure_logging
 from whattoplaynext_api.http.errors import install_http_boundary
 from whattoplaynext_api.http.router import api_router
 from whattoplaynext_api.ratelimit.identity import IdentityDigester
@@ -217,8 +218,12 @@ def create_app(
     application.state.rate_limiting = rate_limiting
     # Read by the readiness endpoint; None when no production provider exists.
     application.state.provider_circuit = circuit
+    application.state.api_prefix = resolved_settings.api_prefix
     application.include_router(api_router, prefix=resolved_settings.api_prefix)
     return application
 
 
+# Configured at import so the served process logs JSON from its first line.
+# Tests import this module too; pytest's output capture absorbs those lines.
+configure_logging()
 app = create_app()

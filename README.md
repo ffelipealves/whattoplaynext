@@ -97,7 +97,8 @@ cached catalog responses with request coalescing and excluded unreleased
 games, verified against live IGDB. M4.4 serves saved data with a localized
 warning when IGDB fails, and M4.5 limits each visitor and keeps IGDB under its
 own request ceiling. M4.6 stops calling IGDB during an outage and probes it
-before resuming; M4.7 (observability) is next. The
+before resuming. M4.7 adds redacted JSON logs, one request ID from web to
+IGDB, and a readiness endpoint; M4.8 (security hardening) is next. The
 [technical debt register](docs/technical-debt.md) tracks the known compromises.
 
 ## Local development
