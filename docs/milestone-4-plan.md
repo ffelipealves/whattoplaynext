@@ -1,6 +1,6 @@
 # Milestone 4 Plan
 
-Status: in progress — M4.1 accepted on 2026-09-27; M4.2 through M4.9 not started
+Status: in progress — M4.1 and M4.2 accepted on 2026-09-27; M4.3 through M4.9 not started
 
 Prepared: 2026-09-22
 
@@ -106,7 +106,7 @@ use. No test needs Redis or IGDB credentials unless marked opt-in.
 
 ### M4.2 — Redis foundation
 
-Status: planned.
+Status: completed on 2026-09-27.
 
 Deliver:
 
@@ -122,6 +122,29 @@ Acceptance:
   are tested;
 - the API remains usable when Redis is absent;
 - no provider call is made synchronously by the liveness endpoint.
+
+Outcome: `CacheStore` is the application-owned port, `RedisCacheStore` its
+Redis adapter (`redis` 8.1 asyncio, ten pooled connections, one 200 ms deadline
+per operation, client retries disabled), and `Cache` the typed facade that
+writes `{v, storedAt, freshUntil, payload}` envelopes with a Redis TTL of the
+fresh lifetime plus the stale window. `cache_key()` implements the M4.1 key
+shape. A store failure becomes a miss or a skipped write and starts a
+30-second bypass; an undecodable entry is deleted and logged as
+`cache.decode_failed` without its contents; errors never carry Redis hosts or
+ports. `Cache.health()` reports `up`, `down`, or `disabled` for the M4.7
+readiness endpoint. A blank `WTPN_REDIS_URL` disables the cache, and timeout,
+pool size, and bypass length are bounded settings.
+
+The composition root builds the cache from settings only alongside the
+production catalog; an injected catalog receives only an injected store, so
+tests and the browser fixture server cannot reach a developer's Redis. Tests
+cover the fakes-based behavior, a refused connection, and a server that
+accepts connections but never answers (it fails within the deadline). An
+opt-in test runs against a real Redis when `WTPN_TEST_REDIS_URL` is set; it
+was not run for this increment because no Redis or Docker was available on
+the development machine. The API suite passed 231 tests with one opt-in skip
+at 94% coverage (100% for the new modules), with ruff and strict mypy clean and
+the committed OpenAPI contract unchanged. No catalog route uses the cache yet.
 
 ### M4.3 — Catalog cache and request coalescing
 

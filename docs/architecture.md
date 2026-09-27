@@ -70,7 +70,7 @@ search state lives in the URL; transient form state remains local to the form.
 - FastAPI;
 - Pydantic models and settings;
 - asynchronous HTTPX client;
-- asynchronous Redis-compatible client (Milestone 4);
+- asynchronous Redis-compatible client (`redis` asyncio, since M4.2);
 - structured JSON logging (Milestone 4);
 - Poetry dependency management;
 - Ruff, mypy, and pytest.
@@ -221,8 +221,9 @@ documented in the [technical debt register](technical-debt.md).
 
 ## 7. Caching
 
-Redis is a disposable optimization, not a source of truth. Through Milestone 3
-the API does not read or write Redis. The popular-game endpoint sets a 24-hour
+Redis is a disposable optimization, not a source of truth. M4.2 added the
+`CacheStore` port, its Redis adapter, and the typed `Cache`; no catalog
+response is cached until M4.3. The popular-game endpoint sets a 24-hour
 HTTP cache policy and the Next.js sitemap revalidates daily. The policy below
 was decided in M4.1 on 2026-09-27; M4.2–M4.4 implement it.
 

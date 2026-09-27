@@ -44,8 +44,8 @@ approximate matching.
 - Next.js and TypeScript frontend
 - FastAPI and Pydantic backend
 - IGDB as the sole game-data provider for the MVP
-- Redis-compatible distributed cache planned for Milestone 4; only the local
-  Compose service and configuration exist so far
+- Redis-compatible cache: the adapter and typed cache exist since Milestone
+  4.2; catalog responses are cached from Milestone 4.3
 - OpenAPI-generated TypeScript client
 - English as the default UI language and Brazilian Portuguese as secondary
 
@@ -92,7 +92,8 @@ selection are implemented. The [Milestone 3 review](docs/milestone-3-review.md)
 records the 135/135 browser-matrix pass and the one open Web Vitals finding:
 mobile search INP exceeds its lab target. Milestone 4 is in progress: M4.1
 recorded the cache, rate-limit, circuit-breaker, readiness, analytics, and
-released-game decisions, and M4.2 (Redis foundation) is next. The
+released-game decisions, M4.2 delivered the Redis foundation, and M4.3
+(catalog cache and request coalescing) is next. The
 [technical debt register](docs/technical-debt.md) tracks the known compromises.
 
 ## Local development

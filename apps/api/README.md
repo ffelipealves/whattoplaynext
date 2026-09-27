@@ -43,7 +43,8 @@ in `error.requestId`, and never expose framework or provider details.
 
 ## Environment
 
-Copy `.env.example` to `.env`. `WTPN_REDIS_URL` has a safe local default;
+Copy `.env.example` to `.env`. `WTPN_REDIS_URL` has a safe local default and a
+blank value disables the cache; an unreachable Redis never blocks startup.
 `WTPN_TWITCH_CLIENT_ID` and `WTPN_TWITCH_CLIENT_SECRET` are optional until live
 IGDB access is implemented, but must always be provided together. The settings
 loader treats blank example credentials as absent and masks the secret in model
@@ -201,6 +202,27 @@ through the exact same `Catalog` interface the HTTP routes use, and prints
 only counts and titles — never credentials or raw provider payloads. It is
 intentionally excluded from `pnpm quality` and CI, which must stay
 deterministic and credential-free.
+
+## Response cache
+
+`Cache` (`cache/cache.py`) stores versioned JSON envelopes through the small
+`CacheStore` port, and `RedisCacheStore` implements that port with a bounded
+pool, one 200 ms deadline per operation, and no client retries. Any Redis
+failure becomes a miss or a skipped write, followed by a 30-second bypass so an
+outage does not add a timeout to every request. `cache_key()` builds namespaced,
+schema-versioned keys from a SHA-256 digest of canonical criteria. The policy
+behind these values is in [architecture §7](../../docs/architecture.md#7-caching).
+
+The composition root builds the cache from settings only when it also builds
+the catalog. A test or the browser fixture server that injects a catalog gets
+no cache unless it injects a store as well, so it can never reach a developer's
+configured Redis. Tests use `tests/cache_fakes.py`. An opt-in test exercises a
+real Redis:
+
+```bash
+pnpm infra:up
+WTPN_TEST_REDIS_URL=redis://localhost:6379/15 pnpm test:api
+```
 
 ## Checks
 

@@ -86,3 +86,40 @@ def test_settings_loads_the_local_dotenv_file(
 
     assert settings.environment == "test"
     assert str(settings.redis_url) == "redis://dotenv-cache:6379/3"
+
+
+def test_settings_treats_a_blank_redis_url_as_a_disabled_cache(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("WTPN_REDIS_URL", "")
+
+    settings = Settings()
+
+    assert settings.redis_url is None
+
+
+def test_settings_bound_the_cache_connection_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    settings = Settings()
+
+    assert settings.cache_operation_timeout_seconds == 0.2
+    assert settings.cache_max_connections == 10
+    assert settings.cache_bypass_seconds == 30
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("cache_operation_timeout_seconds", 0),
+        ("cache_operation_timeout_seconds", 10),
+        ("cache_max_connections", 0),
+        ("cache_bypass_seconds", -1),
+    ],
+)
+def test_settings_reject_unbounded_cache_values(field: str, value: float) -> None:
+    with pytest.raises(ValidationError):
+        Settings.model_validate({field: value})

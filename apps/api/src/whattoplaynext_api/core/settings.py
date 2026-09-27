@@ -22,14 +22,22 @@ class Settings(BaseSettings):
     api_prefix: str = Field(default="/api/v1", pattern=r"^/[a-z0-9/-]+$")
     debug: bool = False
     environment: Literal["local", "test", "production"] = "local"
-    redis_url: RedisDsn = RedisDsn("redis://localhost:6379/0")
+    redis_url: RedisDsn | None = RedisDsn("redis://localhost:6379/0")
+    cache_operation_timeout_seconds: float = Field(default=0.2, gt=0, le=5)
+    cache_max_connections: int = Field(default=10, ge=1, le=100)
+    cache_bypass_seconds: float = Field(default=30, ge=0, le=3600)
     twitch_client_id: str | None = None
     twitch_client_secret: SecretStr | None = None
 
-    @field_validator("twitch_client_id", "twitch_client_secret", mode="before")
+    @field_validator(
+        "redis_url",
+        "twitch_client_id",
+        "twitch_client_secret",
+        mode="before",
+    )
     @classmethod
-    def normalize_blank_credentials(cls, value: object) -> object:
-        """Let checked-in example files leave optional credentials blank."""
+    def normalize_blank_values(cls, value: object) -> object:
+        """Let example files leave optional infrastructure and credentials blank."""
         if isinstance(value, str) and not value.strip():
             return None
         return value
