@@ -2,6 +2,7 @@
 
 import asyncio
 from collections.abc import Awaitable, Callable
+from contextlib import AbstractAsyncContextManager, nullcontext
 from enum import StrEnum
 from math import ceil
 from random import uniform
@@ -46,6 +47,12 @@ class AccessTokenProvider(Protocol):
         ...
 
 
+class RequestThrottle(Protocol):
+    """Grants a turn to send one request, or refuses within ``max_wait``."""
+
+    def slot(self, max_wait: float) -> AbstractAsyncContextManager[None]: ...
+
+
 class IgdbTransport:
     """Execute authenticated IGDB queries and return provider records."""
 
@@ -62,8 +69,10 @@ class IgdbTransport:
         jitter: Callable[[float], float] = lambda delay: uniform(0, delay),
         sleeper: Callable[[float], Awaitable[None]] = asyncio.sleep,
         clock: Callable[[], float] = monotonic,
+        throttle: RequestThrottle | None = None,
     ) -> None:
         self._client = client
+        self._throttle = throttle
         self._client_id = client_id
         self._token_provider = token_provider
         self._request_timeout_seconds = request_timeout_seconds
@@ -102,17 +111,24 @@ class IgdbTransport:
             remaining = self._retry_deadline_seconds - (self._clock() - started_at)
             if remaining <= 0:
                 raise IgdbTransportError(last_reason or IgdbErrorReason.UNAVAILABLE)
+            # Every attempt, retries included, takes its own throttled turn.
+            turn: AbstractAsyncContextManager[None] = (
+                self._throttle.slot(remaining)
+                if self._throttle is not None
+                else nullcontext()
+            )
             try:
-                response = await self._client.post(
-                    f"{IGDB_API_BASE_URL}/{endpoint}",
-                    content=query,
-                    headers={
-                        "Accept": "application/json",
-                        "Authorization": f"Bearer {access_token}",
-                        "Client-ID": self._client_id,
-                    },
-                    timeout=min(self._request_timeout_seconds, remaining),
-                )
+                async with turn:
+                    response = await self._client.post(
+                        f"{IGDB_API_BASE_URL}/{endpoint}",
+                        content=query,
+                        headers={
+                            "Accept": "application/json",
+                            "Authorization": f"Bearer {access_token}",
+                            "Client-ID": self._client_id,
+                        },
+                        timeout=min(self._request_timeout_seconds, remaining),
+                    )
                 if response.status_code == 429:
                     retry_after = self._bounded_retry_after(response)
                     if attempt == 1 or not self._has_retry_budget(

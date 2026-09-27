@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     edge_token: SecretStr | None = None
     identity_hmac_key: SecretStr | None = None
     trusted_proxy_hops: int = Field(default=0, ge=0, le=5)
+    # IGDB's own ceiling; lower it if the provider starts answering 429.
+    provider_requests_per_second: float = Field(default=4, gt=0, le=4)
+    provider_max_in_flight: int = Field(default=8, ge=1, le=8)
     twitch_client_id: str | None = None
     twitch_client_secret: SecretStr | None = None
 

@@ -10,6 +10,7 @@ from fastapi import FastAPI
 
 from whattoplaynext_api import __version__
 from whattoplaynext_api.adapters.igdb.catalog import IgdbCatalog
+from whattoplaynext_api.adapters.igdb.throttle import ProviderThrottle
 from whattoplaynext_api.adapters.igdb.token import (
     HttpxTwitchTokenEndpoint,
     TwitchTokenManager,
@@ -52,6 +53,10 @@ def build_catalog(settings: Settings) -> tuple[Catalog, httpx.AsyncClient | None
         client=client,
         client_id=settings.twitch_client_id,
         token_provider=token_manager,
+        throttle=ProviderThrottle(
+            per_second=settings.provider_requests_per_second,
+            max_in_flight=settings.provider_max_in_flight,
+        ),
     )
     return IgdbCatalog(transport), client
 

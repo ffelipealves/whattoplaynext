@@ -182,3 +182,10 @@ def test_cache_lifetimes_are_read_from_nested_environment_variables(
     monkeypatch.setenv("WTPN_CACHE_TTL__SEARCH_FRESH_SECONDS", "120")
 
     assert Settings().cache_ttl.search_fresh_seconds == 120
+
+
+def test_settings_cannot_raise_the_provider_ceiling_above_igdbs() -> None:
+    with pytest.raises(ValueError):
+        Settings(provider_requests_per_second=5)
+    with pytest.raises(ValueError):
+        Settings(provider_max_in_flight=9)
