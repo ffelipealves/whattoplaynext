@@ -123,3 +123,30 @@ test("announces a filter validation message as an alert", async () => {
     ).toBe(true),
   );
 });
+
+test("warns above the results when they were served from stale saved data", () => {
+  const page = pageWith(200);
+  renderPage(
+    {},
+    {
+      ok: true,
+      page: {
+        ...page,
+        meta: {
+          ...page.meta,
+          servedFrom: "cache",
+          dataMayBeStale: true,
+          dataAsOf: "2026-09-26T18:05:00Z",
+        },
+      },
+    },
+  );
+
+  expect(screen.getByRole("note").textContent).toContain("may be out of date");
+});
+
+test("shows no freshness warning for fresh results", () => {
+  renderPage();
+
+  expect(screen.queryByRole("note")).toBeNull();
+});

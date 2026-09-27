@@ -371,3 +371,24 @@ the provider's ceiling.
 Paying it off means moving the provider limiter and circuit state into Redis
 and adding a short Redis lock around cache fills. Do that before running a
 second instance, not before closed beta.
+
+## Local verification
+
+### 18. The web unit suite times out under machine load
+
+Found on 2026-09-27 while verifying M4.4, on a WSL machine that was also
+running Docker Desktop and Redis (load average 5–9 on 12 cores). Under
+`pnpm coverage:web`, the axe checks in `search-page.a11y.test.tsx` and
+`game-detail-page.a11y.test.tsx` exceeded Vitest's 5-second test timeout. One
+timeout then cascaded into “Axe is already running” in the next test of the
+same file. `filter-panel.test.tsx`'s drawer test also exceeded Testing
+Library's one-second `waitFor`. The same failures reproduced with the M4.4 page
+changes stashed. Every affected file passes when run alone, and a 30-second
+test timeout clears the axe tests. The drawer test's `waitFor` still failed at
+that setting.
+
+Nothing is wrong with the product. The cost is a local gate that can fail for
+reasons unrelated to the change, which trains people to ignore it. Paying it
+off means giving the axe tests an explicit longer timeout and awaiting each
+run, and giving the drawer assertion a `waitFor` timeout that fits a loaded
+machine. CI has not shown the failure so far.

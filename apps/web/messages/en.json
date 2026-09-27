@@ -265,5 +265,9 @@
     "durationRangeMaximum": "up to {maximum} h",
     "removeChipLabel": "Remove filter: {label}",
     "excludedUnknownDuration": "Games with no recorded play time are excluded while a play-time filter is active."
+  },
+  "Freshness": {
+    "staleWithDate": "The game catalog is not answering right now, so this shows data saved on <time>{savedAt}</time>. It may be out of date.",
+    "staleWithoutDate": "The game catalog is not answering right now, so this shows saved data. It may be out of date."
   }
 }

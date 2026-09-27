@@ -2,6 +2,7 @@ import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { type ReactNode, useId } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { StaleDataNotice } from "@/features/catalog/stale-data-notice";
 
 import { GameCover } from "./game-cover";
 import type { GameDetail } from "./get-game-detail";
@@ -147,6 +148,11 @@ export function GameDetailPage({ detail }: GameDetailPageProps) {
 
   return (
     <main className="mx-auto max-w-7xl px-5 py-10 text-[#17203a] sm:px-8 lg:px-12">
+      {detail.meta.dataMayBeStale && (
+        <div className="mb-8">
+          <StaleDataNotice meta={detail.meta} />
+        </div>
+      )}
       <div className="grid items-center gap-8 sm:grid-cols-[minmax(0,18rem)_1fr] lg:gap-12">
         <GameCover cover={detail.cover} title={detail.title} />
 

@@ -139,3 +139,26 @@ test("keeps the English provider summary and labels in Portuguese with a source-
   expect(screen.getByText("Role-playing (RPG)")).toBeDefined();
   expect(screen.getByText("Conteúdo fornecido em inglês")).toBeDefined();
 });
+
+test("warns before the detail when it was served from stale saved data", () => {
+  renderPage({
+    ...completeGameDetail,
+    meta: {
+      ...completeGameDetail.meta,
+      servedFrom: "cache",
+      dataMayBeStale: true,
+      dataAsOf: "2026-09-26T18:05:00Z",
+    },
+  });
+
+  expect(screen.getByRole("note").textContent).toContain("may be out of date");
+});
+
+test("shows no freshness warning for a fresh cached detail", () => {
+  renderPage({
+    ...completeGameDetail,
+    meta: { ...completeGameDetail.meta, servedFrom: "cache" },
+  });
+
+  expect(screen.queryByRole("note")).toBeNull();
+});

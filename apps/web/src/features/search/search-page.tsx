@@ -1,6 +1,7 @@
 import { useTranslations } from "next-intl";
 
 import type { FilterMetadataResult } from "@/features/catalog/get-filter-metadata";
+import { StaleDataNotice } from "@/features/catalog/stale-data-notice";
 
 import { ActiveFilterChips } from "./active-filter-chips";
 import { activeFilters } from "./active-filters";
@@ -89,6 +90,12 @@ export function SearchPage({
             <div className="mt-4 space-y-4">
               <ActiveFilterChips metadata={metadata} params={params} />
               {result.ok && <DurationNotice meta={result.page.meta} />}
+            </div>
+          )}
+
+          {result.ok && result.page.meta.dataMayBeStale && (
+            <div className="mt-4">
+              <StaleDataNotice meta={result.page.meta} />
             </div>
           )}
 

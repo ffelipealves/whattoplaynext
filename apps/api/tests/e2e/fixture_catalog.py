@@ -8,6 +8,7 @@ the day.
 """
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
@@ -36,6 +37,7 @@ from whattoplaynext_api.catalog.models import (
     PopularGame,
     PopularGameSelection,
     ResponseMeta,
+    ServedFrom,
     SortOption,
 )
 from whattoplaynext_api.core.errors import ApplicationError, ErrorCode
@@ -43,6 +45,10 @@ from whattoplaynext_api.core.errors import ApplicationError, ErrorCode
 # Searching for this name makes the fixture fail the way a provider outage
 # does, so the upstream-failure journey needs no unreachable service.
 UPSTREAM_FAILURE_NAME = "trigger-upstream-failure"
+# Searching for this name answers the way the response cache does when the
+# provider fails but an expired entry is still usable: every game, marked stale.
+STALE_DATA_NAME = "trigger-stale-data"
+STALE_DATA_AS_OF = datetime(2026, 9, 26, 18, 5, tzinfo=UTC)
 UPSTREAM_FAILURE_GAME_ID = 999_998
 RATE_LIMIT_FAILURE_GAME_ID = 999_997
 VALIDATION_FAILURE_GAME_ID = 999_996
@@ -191,6 +197,9 @@ class FixtureCatalog:
         """Filter and page the fixed catalog with the criteria as given."""
         if criteria.name == UPSTREAM_FAILURE_NAME:
             raise ApplicationError(ErrorCode.UPSTREAM_UNAVAILABLE)
+        stale = criteria.name == STALE_DATA_NAME
+        if stale:
+            criteria = criteria.model_copy(update={"name": None})
 
         matches = [
             game
@@ -214,7 +223,10 @@ class FixtureCatalog:
             query=BrowseQuery(sort=criteria.sort, direction=criteria.direction),
             meta=ResponseMeta(
                 excluded_unknown_duration=criteria.minimum_duration_seconds is not None
-                or criteria.maximum_duration_seconds is not None
+                or criteria.maximum_duration_seconds is not None,
+                served_from=ServedFrom.CACHE if stale else ServedFrom.PROVIDER,
+                data_may_be_stale=stale,
+                data_as_of=STALE_DATA_AS_OF if stale else None,
             ),
         )
 

@@ -94,7 +94,8 @@ mobile search INP exceeds its lab target. Milestone 4 is in progress: M4.1
 recorded the cache, rate-limit, circuit-breaker, readiness, analytics, and
 released-game decisions, M4.2 delivered the Redis foundation, and M4.3
 cached catalog responses with request coalescing and excluded unreleased
-games, verified against live IGDB; M4.4 (stale-if-error) is next. The
+games, verified against live IGDB. M4.4 serves saved data with a localized
+warning when IGDB fails; M4.5 (rate limiting) is next. The
 [technical debt register](docs/technical-debt.md) tracks the known compromises.
 
 ## Local development

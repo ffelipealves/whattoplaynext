@@ -265,5 +265,9 @@
     "durationRangeMaximum": "até {maximum} h",
     "removeChipLabel": "Remover filtro: {label}",
     "excludedUnknownDuration": "Jogos sem tempo de jogo registrado ficam de fora enquanto um filtro de tempo estiver ativo."
+  },
+  "Freshness": {
+    "staleWithDate": "O catálogo de jogos não está respondendo agora, então exibimos dados salvos em <time>{savedAt}</time>. Eles podem estar desatualizados.",
+    "staleWithoutDate": "O catálogo de jogos não está respondendo agora, então exibimos dados salvos. Eles podem estar desatualizados."
   }
 }

@@ -1,6 +1,7 @@
 """The response cache wrapped around the catalog port."""
 
 import asyncio
+import logging
 from collections.abc import Awaitable, Callable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -26,6 +27,8 @@ from whattoplaynext_api.catalog.models import (
 from whattoplaynext_api.catalog.ports import Catalog
 from whattoplaynext_api.core.errors import ApplicationError, ErrorCode
 
+logger = logging.getLogger("whattoplaynext_api.cache")
+
 # Bump a resource's version whenever its response shape or eligibility changes;
 # entries written under the old version are then never read again.
 SCHEMA_VERSIONS = {
@@ -36,6 +39,18 @@ SCHEMA_VERSIONS = {
     "detail": 1,
     "game-not-found": 1,
 }
+
+# Failures that mean the provider could not answer; an expired entry still in
+# its stale window may stand in for them. Anything else is the caller's problem
+# or a defect, and stale data would only hide it.
+STALE_FALLBACK_CODES = frozenset(
+    {
+        ErrorCode.RATE_LIMITED,
+        ErrorCode.UPSTREAM_INVALID_RESPONSE,
+        ErrorCode.UPSTREAM_TIMEOUT,
+        ErrorCode.UPSTREAM_UNAVAILABLE,
+    }
+)
 
 
 class CachePolicy(BaseModel):
@@ -59,6 +74,7 @@ class CacheOutcome(StrEnum):
     HIT = "hit"
     MISS = "miss"
     COALESCED = "coalesced"
+    STALE = "stale"
 
 
 _outcomes: ContextVar[list[CacheOutcome] | None] = ContextVar(
@@ -96,8 +112,9 @@ def _utc_now() -> datetime:
 class CachingCatalog:
     """Serve fresh cached responses and share identical in-flight misses.
 
-    Provider failures are never cached and are shared by the callers of the
-    miss that produced them. Stale-if-error fallback is Milestone 4.4.
+    Lookup order: a fresh entry, then the provider, then (only when the
+    provider failed) an expired entry still inside its stale window, and
+    otherwise the provider's classified error. Failures are never cached.
     """
 
     def __init__(
@@ -121,7 +138,8 @@ class CachingCatalog:
     async def get_filter_metadata(self) -> FilterMetadata:
         policy = self._policy
         return await self._cached(
-            self._key("filters", None),
+            "filters",
+            None,
             FilterMetadata,
             self._provider.get_filter_metadata,
             fresh=policy.filters_fresh_seconds,
@@ -131,7 +149,8 @@ class CachingCatalog:
     async def browse_games(self, criteria: BrowseCriteria) -> GamePage:
         policy = self._policy
         return await self._cached(
-            self._key("search", criteria),
+            "search",
+            criteria,
             GamePage,
             lambda: self._provider.browse_games(criteria),
             fresh=policy.search_fresh_seconds,
@@ -140,7 +159,8 @@ class CachingCatalog:
 
     async def autocomplete(self, criteria: AutocompleteCriteria) -> AutocompleteResult:
         return await self._cached(
-            self._key("autocomplete", criteria),
+            "autocomplete",
+            criteria,
             AutocompleteResult,
             lambda: self._provider.autocomplete(criteria),
             fresh=self._policy.autocomplete_fresh_seconds,
@@ -150,7 +170,8 @@ class CachingCatalog:
     async def get_popular_games(self) -> PopularGameSelection:
         policy = self._policy
         return await self._cached(
-            self._key("popular", None),
+            "popular",
+            None,
             PopularGameSelection,
             self._provider.get_popular_games,
             fresh=policy.popular_fresh_seconds,
@@ -180,7 +201,8 @@ class CachingCatalog:
 
         policy = self._policy
         return await self._cached(
-            self._key("detail", {"gameId": game_id}),
+            "detail",
+            {"gameId": game_id},
             GameDetail,
             fetch,
             fresh=policy.detail_fresh_seconds,
@@ -198,31 +220,44 @@ class CachingCatalog:
 
     async def _cached[T: BaseModel](
         self,
-        key: str,
+        resource: str,
+        criteria: object,
         model: type[T],
         fetch: Callable[[], Awaitable[T]],
         *,
         fresh: int,
         stale: int,
     ) -> T:
+        key = self._key(resource, criteria)
         cached = await self._cache.read(key, model)
         if cached is not None and cached.is_fresh(self._clock()):
             _record(CacheOutcome.HIT)
             return _with_origin(cached.value, ServedFrom.CACHE)
 
         shared = self._in_flight.get(key)
-        if shared is not None:
-            _record(CacheOutcome.COALESCED)
-        else:
-            _record(CacheOutcome.MISS)
+        outcome = CacheOutcome.COALESCED if shared is not None else CacheOutcome.MISS
+        if shared is None:
             shared = asyncio.ensure_future(
                 self._fill(key, fetch, fresh=fresh, stale=stale)
             )
             self._in_flight[key] = shared
             shared.add_done_callback(lambda done: self._settle(key, done))
-        # Shielded: a caller that disconnects must not cancel the provider call
-        # the other callers are waiting for.
-        value: T = await asyncio.shield(shared)
+        try:
+            # Shielded: a caller that disconnects must not cancel the provider
+            # call the other callers are waiting for.
+            value: T = await asyncio.shield(shared)
+        except ApplicationError as error:
+            # The store's TTL already removed anything past its stale window.
+            if cached is None or error.code not in STALE_FALLBACK_CODES:
+                _record(outcome)
+                raise
+            _record(CacheOutcome.STALE)
+            logger.warning(
+                "cache.stale_served",
+                extra={"resource": resource, "error_code": error.code.value},
+            )
+            return _with_origin(cached.value, ServedFrom.CACHE, stale=True)
+        _record(outcome)
         return value
 
     async def _fill[T: BaseModel](
@@ -256,12 +291,17 @@ def _with_origin[T: BaseModel](
     origin: ServedFrom,
     *,
     data_as_of: datetime | None = None,
+    stale: bool = False,
 ) -> T:
-    """Mark where a response came from; a cached one keeps its stored time."""
+    """Mark where a response came from; a cached one keeps its stored time.
+
+    Filter metadata has no ``meta``: it is served stale without a marker, which
+    is harmless for allow-lists that change a few times a year.
+    """
     meta = getattr(value, "meta", None)
     if not isinstance(meta, ResponseMeta):
         return value
-    update: dict[str, object] = {"served_from": origin}
+    update: dict[str, object] = {"served_from": origin, "data_may_be_stale": stale}
     if data_as_of is not None:
         update["data_as_of"] = data_as_of
     return value.model_copy(update={"meta": meta.model_copy(update=update)})

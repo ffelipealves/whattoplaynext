@@ -143,7 +143,12 @@ async def test_an_injected_cache_store_is_used_as_given() -> None:
 
 def test_the_production_catalog_is_wrapped_in_the_response_cache() -> None:
     application = create_app(
-        Settings(environment="test", redis_url=None, twitch_client_id=None)
+        Settings(
+            environment="test",
+            redis_url=None,
+            twitch_client_id=None,
+            twitch_client_secret=None,
+        )
     )
 
     assert isinstance(application.state.catalog, CachingCatalog)

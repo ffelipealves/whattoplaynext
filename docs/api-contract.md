@@ -440,7 +440,7 @@ Additive nullable fields do not require a new base version. Removing or
 renaming fields, changing filter semantics, or changing null behavior requires
 a new API version or an explicitly managed migration.
 
-## 8. Freshness metadata (M4.3 implemented; stale fallback in M4.4)
+## 8. Freshness metadata (implemented in M4.3 and M4.4)
 
 Every catalog response's `meta` keeps its existing fields and gains one
 additive, nullable field:
@@ -457,6 +457,12 @@ current. `cache` is a new enumeration value: the web application treats
 `servedFrom` as informational, so the addition is compatible under the rules
 above. Error responses are unchanged; a stale fallback is a successful
 response, and without one the existing classified error is returned.
+
+Only provider failures fall back to stale data: `RATE_LIMITED` from the
+provider, `UPSTREAM_UNAVAILABLE`, `UPSTREAM_TIMEOUT`, and
+`UPSTREAM_INVALID_RESPONSE`. The windows are 24 hours for search, seven days
+for detail and the popular selection, and 30 days for filter metadata;
+autocomplete has none.
 
 Callers that shared another request's in-flight provider call also receive
 `servedFrom="provider"`: the data was fetched for them, just not by them.

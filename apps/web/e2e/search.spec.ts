@@ -6,6 +6,7 @@ import { expect, test } from "@playwright/test";
  */
 
 const UPSTREAM_FAILURE_NAME = "trigger-upstream-failure";
+const STALE_DATA_NAME = "trigger-stale-data";
 const UPSTREAM_FAILURE_GAME_ID = 999_998;
 const RATE_LIMIT_FAILURE_GAME_ID = 999_997;
 const VALIDATION_FAILURE_GAME_ID = 999_996;
@@ -103,6 +104,26 @@ test("an upstream failure is an alert, not an empty result set", async ({
   await expect(
     page.getByRole("status").filter({ hasText: "games" }),
   ).toHaveCount(0);
+});
+
+test("stale saved results are shown with a localized warning, not as current", async ({
+  page,
+}) => {
+  await page.goto(`/en/games?name=${STALE_DATA_NAME}`);
+
+  const warning = page.getByRole("note");
+  await expect(warning).toContainText("may be out of date");
+  await expect(warning.locator("time")).toHaveAttribute(
+    "datetime",
+    "2026-09-26T18:05:00Z",
+  );
+  await expect(page.locator("article h3").first()).toBeVisible();
+  await expect(page.getByRole("alert").filter(SPOKEN_ALERT)).toHaveCount(0);
+
+  await page.goto(`/pt-br/games?name=${STALE_DATA_NAME}`);
+  await expect(page.getByRole("note")).toContainText(
+    "podem estar desatualizados",
+  );
 });
 
 test("a genuine zero-result search says so and suggests a way out", async ({

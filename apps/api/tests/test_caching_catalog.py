@@ -1,6 +1,7 @@
 """Tests for the cache wrapped around the catalog port."""
 
 import asyncio
+import logging
 from collections import Counter
 from collections.abc import Awaitable, Callable
 from datetime import timedelta
@@ -46,30 +47,32 @@ class CountingCatalog(FixtureCatalog):
         self.calls: Counter[str] = Counter()
         self.release = asyncio.Event()
         self.release.set()
+        self.failure: ApplicationError | None = None
+
+    async def _answer(self, capability: str) -> None:
+        self.calls[capability] += 1
+        await self.release.wait()
+        if self.failure is not None:
+            raise self.failure
 
     async def get_filter_metadata(self) -> FilterMetadata:
-        self.calls["filters"] += 1
-        await self.release.wait()
+        await self._answer("filters")
         return await super().get_filter_metadata()
 
     async def browse_games(self, criteria: BrowseCriteria) -> GamePage:
-        self.calls["search"] += 1
-        await self.release.wait()
+        await self._answer("search")
         return await super().browse_games(criteria)
 
     async def autocomplete(self, criteria: AutocompleteCriteria) -> AutocompleteResult:
-        self.calls["autocomplete"] += 1
-        await self.release.wait()
+        await self._answer("autocomplete")
         return await super().autocomplete(criteria)
 
     async def get_popular_games(self) -> PopularGameSelection:
-        self.calls["popular"] += 1
-        await self.release.wait()
+        await self._answer("popular")
         return await super().get_popular_games()
 
     async def get_game_detail(self, game_id: int) -> GameDetail:
-        self.calls["detail"] += 1
-        await self.release.wait()
+        await self._answer("detail")
         return await super().get_game_detail(game_id)
 
 
@@ -385,3 +388,158 @@ async def test_the_policy_is_configurable() -> None:
 def test_the_policy_rejects_a_non_positive_fresh_ttl() -> None:
     with pytest.raises(ValueError):
         CachePolicy(detail_fresh_seconds=0)
+
+
+STALE_ELIGIBLE_FAILURES = [
+    ApplicationError(ErrorCode.UPSTREAM_UNAVAILABLE),
+    ApplicationError(ErrorCode.UPSTREAM_TIMEOUT),
+    ApplicationError(ErrorCode.UPSTREAM_INVALID_RESPONSE),
+    ApplicationError(ErrorCode.RATE_LIMITED, retry_after_seconds=30),
+]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("failure", STALE_ELIGIBLE_FAILURES)
+async def test_a_provider_failure_serves_the_expired_entry_marked_stale(
+    failure: ApplicationError,
+) -> None:
+    catalog, provider, clock, _ = build()
+    fresh = await catalog.browse_games(criteria())
+    clock.advance(hours=2)
+    provider.failure = failure
+
+    stale = await catalog.browse_games(criteria())
+
+    assert provider.calls["search"] == 2
+    assert stale.items == fresh.items
+    assert stale.meta.served_from is ServedFrom.CACHE
+    assert stale.meta.data_may_be_stale is True
+    assert stale.meta.data_as_of == fresh.meta.data_as_of
+
+
+@pytest.mark.anyio
+async def test_a_stale_game_detail_is_served_the_same_way() -> None:
+    catalog, provider, clock, _ = build()
+    await catalog.get_game_detail(DETAIL_ID)
+    clock.advance(days=3)
+    provider.failure = ApplicationError(ErrorCode.UPSTREAM_TIMEOUT)
+
+    stale = await catalog.get_game_detail(DETAIL_ID)
+
+    assert stale.meta.data_may_be_stale is True
+
+
+@pytest.mark.anyio
+async def test_the_provider_is_asked_again_after_serving_stale_data() -> None:
+    catalog, provider, clock, _ = build()
+    await catalog.browse_games(criteria())
+    clock.advance(hours=2)
+    provider.failure = ApplicationError(ErrorCode.UPSTREAM_UNAVAILABLE)
+    await catalog.browse_games(criteria())
+
+    provider.failure = None
+    recovered = await catalog.browse_games(criteria())
+
+    assert provider.calls["search"] == 3
+    assert recovered.meta.served_from is ServedFrom.PROVIDER
+    assert recovered.meta.data_may_be_stale is False
+    assert recovered.meta.data_as_of == clock.now
+
+
+@pytest.mark.anyio
+async def test_an_entry_past_its_stale_window_yields_the_classified_error() -> None:
+    catalog, provider, clock, _ = build()
+    await catalog.browse_games(criteria())
+    clock.advance(hours=25)
+    provider.failure = ApplicationError(ErrorCode.UPSTREAM_TIMEOUT)
+
+    with pytest.raises(ApplicationError) as raised:
+        await catalog.browse_games(criteria())
+
+    assert raised.value.code is ErrorCode.UPSTREAM_TIMEOUT
+
+
+@pytest.mark.anyio
+async def test_autocomplete_has_no_stale_fallback() -> None:
+    catalog, provider, clock, _ = build()
+    suggestion = AutocompleteCriteria(query="hollow")
+    await catalog.autocomplete(suggestion)
+    clock.advance(hours=1)
+    provider.failure = ApplicationError(ErrorCode.UPSTREAM_UNAVAILABLE)
+
+    with pytest.raises(ApplicationError):
+        await catalog.autocomplete(suggestion)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "code",
+    [ErrorCode.INVALID_QUERY, ErrorCode.VALIDATION_ERROR, ErrorCode.INTERNAL_ERROR],
+)
+async def test_failures_that_are_not_the_providers_never_fall_back(
+    code: ErrorCode,
+) -> None:
+    catalog, provider, clock, _ = build()
+    await catalog.browse_games(criteria())
+    clock.advance(hours=2)
+    provider.failure = ApplicationError(code)
+
+    with pytest.raises(ApplicationError) as raised:
+        await catalog.browse_games(criteria())
+
+    assert raised.value.code is code
+
+
+@pytest.mark.anyio
+async def test_without_a_usable_cache_a_provider_failure_is_the_classified_error() -> (
+    None
+):
+    catalog, provider, _, _ = build(FailingCacheStore())
+    provider.failure = ApplicationError(ErrorCode.UPSTREAM_UNAVAILABLE)
+
+    with pytest.raises(ApplicationError) as raised:
+        await catalog.browse_games(criteria())
+
+    assert raised.value.code is ErrorCode.UPSTREAM_UNAVAILABLE
+
+
+@pytest.mark.anyio
+async def test_coalesced_callers_all_receive_the_stale_fallback() -> None:
+    catalog, provider, clock, _ = build()
+    await catalog.browse_games(criteria())
+    clock.advance(hours=2)
+    provider.failure = ApplicationError(ErrorCode.UPSTREAM_UNAVAILABLE)
+    provider.release.clear()
+
+    async def browse() -> tuple[GamePage, list[CacheOutcome]]:
+        with record_cache_outcomes() as outcomes:
+            page = await catalog.browse_games(criteria())
+        return page, outcomes
+
+    pending = [asyncio.ensure_future(browse()) for _ in range(5)]
+    await asyncio.sleep(0)
+    provider.release.set()
+    results = await asyncio.gather(*pending)
+
+    assert provider.calls["search"] == 2
+    assert all(page.meta.data_may_be_stale for page, _ in results)
+    assert all(outcomes == [CacheOutcome.STALE] for _, outcomes in results)
+
+
+@pytest.mark.anyio
+async def test_serving_stale_data_is_logged_with_its_cause_only(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    catalog, provider, clock, _ = build()
+    await catalog.browse_games(criteria(name="Hollow"))
+    clock.advance(hours=2)
+    provider.failure = ApplicationError(ErrorCode.UPSTREAM_TIMEOUT)
+
+    with caplog.at_level(logging.WARNING, logger="whattoplaynext_api.cache"):
+        await catalog.browse_games(criteria(name="Hollow"))
+
+    (record,) = caplog.records
+    assert record.message == "cache.stale_served"
+    assert record.__dict__["resource"] == "search"
+    assert record.__dict__["error_code"] == "UPSTREAM_TIMEOUT"
+    assert "Hollow" not in caplog.text

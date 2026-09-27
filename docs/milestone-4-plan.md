@@ -1,6 +1,6 @@
 # Milestone 4 Plan
 
-Status: in progress — M4.1 and M4.2 accepted on 2026-09-27; M4.3 accepted on 2026-09-27; M4.4 through M4.9 not started
+Status: in progress — M4.1 through M4.4 accepted on 2026-09-27; M4.5 through M4.9 not started
 
 Prepared: 2026-09-22
 
@@ -226,7 +226,7 @@ NFR-001's 500 ms p95; the cold shapes are unchanged, as expected.
 
 ### M4.4 — Stale-if-error and provider degradation
 
-Status: planned.
+Status: completed on 2026-09-27.
 
 Deliver:
 
@@ -245,6 +245,36 @@ Acceptance:
 - provider failures never become successful empty results;
 - the sitemap and popular-game selection preserve their existing static-route
   fallback behavior.
+
+Outcome: `CachingCatalog` now answers in the documented order: a fresh entry,
+then the provider, then an expired entry still inside its stale window, and
+otherwise the classified error. Only provider failures (`RATE_LIMITED` from
+IGDB, `UPSTREAM_UNAVAILABLE`, `UPSTREAM_TIMEOUT`, and
+`UPSTREAM_INVALID_RESPONSE`) may fall back. Validation, not-found, and
+internal errors never do, because stale data would hide a caller mistake or a
+defect. The store's TTL enforces the window, so nothing extra is tracked. A
+stale answer carries `servedFrom: "cache"`, `dataMayBeStale: true`, and its
+original `dataAsOf`. It is logged as `cache.stale_served` with only the
+resource and error code, and recorded as a `stale` cache outcome. It is not
+rewritten into the cache, so the next request asks the provider again.
+Coalesced callers all receive the same fallback. Autocomplete has no stale
+window and fails as before. Filter metadata, which has no `meta`, is served
+stale without a marker.
+
+The web application shows `StaleDataNotice` above search results and at the
+top of the game page. It is a localized note with the save time in UTC inside
+a `<time>` element, and a date-free variant when the time is unknown. The
+browser fixture catalog gained a `trigger-stale-data` name; a new Playwright
+journey checks the warning in both locales and that stale results are neither
+an alert nor an empty result. The sitemap route is unchanged: it still falls
+back to static pages when the API fails, and a stale popular selection is now
+simply a successful answer.
+
+Verification: 275 API tests passed (14 new stale tests), and all 28 Playwright
+journeys passed, as did the build, lint, type checks, formatting, and the
+contract check. The web unit suite passed apart from load-sensitive timeouts
+that also fail without this change; see
+[technical debt 18](technical-debt.md#18-the-web-unit-suite-times-out-under-machine-load).
 
 ### M4.5 — Public and upstream-aware rate limiting
 
