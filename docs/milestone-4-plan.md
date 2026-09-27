@@ -1,6 +1,6 @@
 # Milestone 4 Plan
 
-Status: in progress — M4.1 and M4.2 accepted on 2026-09-27; M4.3 implemented with its live measurements pending; M4.4 through M4.9 not started
+Status: in progress — M4.1 and M4.2 accepted on 2026-09-27; M4.3 accepted on 2026-09-27; M4.4 through M4.9 not started
 
 Prepared: 2026-09-22
 
@@ -148,8 +148,7 @@ the committed OpenAPI contract unchanged. No catalog route uses the cache yet.
 
 ### M4.3 — Catalog cache and request coalescing
 
-Status: implemented on 2026-09-27; the two live-IGDB acceptance measurements
-are pending.
+Status: completed on 2026-09-27.
 
 Deliver:
 
@@ -207,9 +206,21 @@ production build passed. The Playwright journeys did not run on the
 development machine: the Chromium shell lacks system libraries (`libnspr4`),
 and installing them needs administrator rights. CI runs them.
 
-Pending, both needing Twitch credentials against live IGDB: the warm-path
-timing for the duration and platform-release-range shapes (debt 2 and 2b),
-and the changed eligible totals after the released rule.
+Live IGDB verification ran on 2026-09-27 with owner-configured credentials.
+`pnpm smoke:api` passed all four capabilities. The eligible total fell from
+316,258 (M3.1) to 233,997 once unreleased and undated games were excluded.
+Cold versus warm timings went through `CachingCatalog` with an in-memory store,
+because no Redis was available, so the warm figures exclude the Redis round
+trip; the warm p95 is over 20 repeated requests:
+
+| Query                                           | Total   | Cold   | Warm p95 |
+| ----------------------------------------------- | ------- | ------ | -------- |
+| `platform=nintendo-switch&genre=indie` + 2–10 h | 707     | 9.5 s  | 0.99 ms  |
+| `platform=pc` + all of 2020                     | 10,536  | 67.1 s | 1.08 ms  |
+| unfiltered, sorted by rating                    | 233,997 | 2.2 s  | 0.90 ms  |
+
+The warm path is far inside NFR-001's 500 ms p95 even allowing for a Redis
+round trip; the cold shapes are unchanged, as expected.
 
 ### M4.4 — Stale-if-error and provider degradation
 

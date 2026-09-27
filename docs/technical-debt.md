@@ -64,8 +64,8 @@ cached, so the change needs no cache invalidation. `IgdbCatalog` takes an
 injectable day, and every games query, count, autocomplete, popular-selection
 batch, and the detail check carry
 `first_release_date != null & first_release_date <= <end of today>`. The
-changed live totals still need an owner-run measurement, because no Twitch
-credentials were available when it landed.
+eligible total fell from 316,258 to 233,997 in the live smoke test on
+2026-09-27.
 
 ### 2. A duration filter still costs seconds on a cold cache
 
@@ -77,8 +77,9 @@ query against a provider allowing four requests per second.
 
 No Redis cache is active yet, so this cost can affect current live requests.
 Milestone 4 owns the first cache layer: M4.3 caches a search page for an hour,
-so only the first identical request pays, and M4.3's acceptance requires a
-measured warm-path result for this shape. Paying it off further would mean
+so only the first identical request pays. On 2026-09-27 the
+Switch + indie + 2–10 h shape measured 9.5 s cold and 0.99 ms warm (p95,
+in-memory store, so excluding the Redis round trip). Paying it off further would mean
 caching the duration index itself — it is small enough (~9,300 rows) to hold
 whole — rather than re-reading it per request.
 
@@ -97,8 +98,9 @@ games and took 63.7–71.8 s in two cold live runs; an exact `totalItems` — wh
 pagination depends on — means resolving every one of them through the games
 endpoint to apply the rest of the filter: about fifty requests against a
 provider allowing four per second. Narrower ranges are proportionally better;
-the M4.3 search cache serves repeated requests warm, but a cold range still
-has this cost, and while it runs it also holds the process-wide provider
+the M4.3 search cache serves repeated requests warm (`platform=pc` + all
+of 2020: 67.1 s cold, 1.08 ms warm p95 on 2026-09-27, 10,536 matches after the
+released rule), but a cold range still has this cost, and while it runs it also holds the process-wide provider
 limiter that M4.5 adds.
 
 Paying off the rest means either giving up an exact total for this shape, or
