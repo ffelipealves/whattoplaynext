@@ -2,12 +2,14 @@
 
 import pytest
 from cache_fakes import InMemoryCacheStore, ManualClock
+from fixture_catalog import FixtureCatalog
 from httpx2 import ASGITransport, AsyncClient
 from pydantic import RedisDsn, SecretStr
 
 from whattoplaynext_api.adapters.igdb.catalog import IgdbCatalog
 from whattoplaynext_api.adapters.redis.store import RedisCacheStore
 from whattoplaynext_api.cache.cache import Cache, CacheHealth
+from whattoplaynext_api.cache.catalog import CachingCatalog
 from whattoplaynext_api.catalog.unavailable import UnavailableCatalog
 from whattoplaynext_api.core.settings import Settings
 from whattoplaynext_api.main import build_cache, build_catalog, create_app
@@ -137,3 +139,41 @@ async def test_an_injected_cache_store_is_used_as_given() -> None:
 
     assert await application.state.cache.health() is CacheHealth.UP
     assert store.calls == ["ping"]
+
+
+def test_the_production_catalog_is_wrapped_in_the_response_cache() -> None:
+    application = create_app(
+        Settings(environment="test", redis_url=None, twitch_client_id=None)
+    )
+
+    assert isinstance(application.state.catalog, CachingCatalog)
+
+
+@pytest.mark.anyio
+async def test_a_repeated_http_request_is_answered_from_the_cache() -> None:
+    application = create_app(
+        Settings(environment="test"),
+        catalog=FixtureCatalog(),
+        cache_store=InMemoryCacheStore(ManualClock()),
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://testserver"
+    ) as client:
+        first = await client.get("/api/v1/games", params={"platform": "pc"})
+        second = await client.get("/api/v1/games", params={"platform": "pc"})
+
+    assert first.status_code == second.status_code == 200
+    assert first.json()["meta"]["servedFrom"] == "provider"
+    assert second.json()["meta"]["servedFrom"] == "cache"
+    assert second.json()["meta"]["dataAsOf"] == first.json()["meta"]["dataAsOf"]
+    assert second.json()["meta"]["requestId"] == second.headers["x-request-id"]
+    assert second.json()["items"] == first.json()["items"]
+
+
+def test_cache_lifetimes_are_read_from_nested_environment_variables(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("WTPN_CACHE_TTL__SEARCH_FRESH_SECONDS", "120")
+
+    assert Settings().cache_ttl.search_fresh_seconds == 120

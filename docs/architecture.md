@@ -222,8 +222,8 @@ documented in the [technical debt register](technical-debt.md).
 ## 7. Caching
 
 Redis is a disposable optimization, not a source of truth. M4.2 added the
-`CacheStore` port, its Redis adapter, and the typed `Cache`; no catalog
-response is cached until M4.3. The popular-game endpoint sets a 24-hour
+`CacheStore` port, its Redis adapter, and the typed `Cache`; M4.3 added the
+`CachingCatalog` described below. The popular-game endpoint sets a 24-hour
 HTTP cache policy and the Next.js sitemap revalidates daily. The policy below
 was decided in M4.1 on 2026-09-27; M4.2–M4.4 implement it.
 

@@ -6,6 +6,8 @@ from typing import Literal, Self
 from pydantic import Field, RedisDsn, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from whattoplaynext_api.cache.catalog import CachePolicy
+
 
 class Settings(BaseSettings):
     """Configuration shared by the application composition root."""
@@ -14,6 +16,7 @@ class Settings(BaseSettings):
         case_sensitive=False,
         env_file=".env",
         env_file_encoding="utf-8",
+        env_nested_delimiter="__",
         env_prefix="WTPN_",
         extra="ignore",
     )
@@ -26,6 +29,7 @@ class Settings(BaseSettings):
     cache_operation_timeout_seconds: float = Field(default=0.2, gt=0, le=5)
     cache_max_connections: int = Field(default=10, ge=1, le=100)
     cache_bypass_seconds: float = Field(default=30, ge=0, le=3600)
+    cache_ttl: CachePolicy = Field(default_factory=CachePolicy)
     twitch_client_id: str | None = None
     twitch_client_secret: SecretStr | None = None
 

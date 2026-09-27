@@ -404,6 +404,7 @@ async def test_browses_complete_game_summaries_with_an_explicit_projection() -> 
             "servedFrom": "provider",
             "dataMayBeStale": False,
             "excludedUnknownDuration": False,
+            "dataAsOf": None,
         },
     }
     assert transport.count_requests == [("games", f"where {ELIGIBILITY};")]
@@ -817,6 +818,7 @@ async def test_autocompletes_with_a_normalized_relevance_ordered_projection() ->
             "servedFrom": "provider",
             "dataMayBeStale": False,
             "excludedUnknownDuration": False,
+            "dataAsOf": None,
         },
     }
     assert transport.requests == [
@@ -994,6 +996,7 @@ async def test_returns_complete_normalized_detail_from_a_full_projection() -> No
             "servedFrom": "provider",
             "dataMayBeStale": False,
             "excludedUnknownDuration": False,
+            "dataAsOf": None,
         },
     }
     assert transport.requests[0][0] == "games"
@@ -1045,6 +1048,7 @@ async def test_keeps_missing_optional_detail_fields_nullable_or_empty() -> None:
             "servedFrom": "provider",
             "dataMayBeStale": False,
             "excludedUnknownDuration": False,
+            "dataAsOf": None,
         },
     }
 

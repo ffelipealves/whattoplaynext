@@ -467,6 +467,11 @@ export interface components {
          */
         ResponseMeta: {
             /**
+             * Dataasof
+             * @description When the provider produced this data.
+             */
+            dataAsOf?: string | null;
+            /**
              * Datamaybestale
              * @default false
              */
@@ -486,7 +491,7 @@ export interface components {
          * @description Origin of the data returned to the caller.
          * @enum {string}
          */
-        ServedFrom: "provider";
+        ServedFrom: "provider" | "cache";
         /**
          * SortDirection
          * @description Provider-neutral ordering direction.

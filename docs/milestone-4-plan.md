@@ -1,6 +1,6 @@
 # Milestone 4 Plan
 
-Status: in progress — M4.1 and M4.2 accepted on 2026-09-27; M4.3 through M4.9 not started
+Status: in progress — M4.1 and M4.2 accepted on 2026-09-27; M4.3 implemented with its live measurements pending; M4.4 through M4.9 not started
 
 Prepared: 2026-09-22
 
@@ -148,7 +148,8 @@ the committed OpenAPI contract unchanged. No catalog route uses the cache yet.
 
 ### M4.3 — Catalog cache and request coalescing
 
-Status: planned.
+Status: implemented on 2026-09-27; the two live-IGDB acceptance measurements
+are pending.
 
 Deliver:
 
@@ -172,6 +173,43 @@ Acceptance:
 - the duration and platform-release-range debt has a measured warm-path result;
 - unreleased and undated games are excluded from detail and every discovery
   path, and the changed live totals are recorded.
+
+Outcome: the released-game rule landed first in its own commit. `IgdbCatalog`
+takes an injectable day, every games query and count carries
+`first_release_date != null & first_release_date <= <end of today>`, and the
+detail check applies the same rule to the record it fetches by ID.
+
+`CachingCatalog` (`cache/catalog.py`) implements the `Catalog` port around the
+provider catalog. It caches filters, search pages, autocomplete, the popular
+selection, and game detail with the M4.1 lifetimes, plus a ten-minute
+`GAME_NOT_FOUND` marker. `CachePolicy` holds every lifetime and is configurable
+through `WTPN_CACHE_TTL__*` variables. Entries are written with their stale
+window already included, so M4.4 only has to read them. Identical in-flight
+misses share one shielded provider call: a caller that disconnects does not
+cancel it, and a failure reaches every waiting caller without being cached or
+retried. `record_cache_outcomes()` exposes hit, miss, and coalesced outcomes to
+the request for M4.7. Responses now carry `servedFrom: "cache"` on a hit and
+`dataAsOf`, the time the provider produced the data; the contract and generated
+client were regenerated.
+
+The composition root wraps the production catalog. An injected catalog is
+wrapped only when a cache store is injected too, so existing HTTP tests and the
+browser fixture server keep uncached behavior. Testing the HTTP composition
+caught one defect before commit: a hit reported the envelope's storage time
+instead of the provider time the first response had shown.
+
+Verification: 261 API tests passed with one opt-in skip at 94% coverage (98% for
+`cache/catalog.py`), including a hit without a provider call, 20 concurrent
+misses making one call, key equivalence and separation, every lifetime, the
+negative marker, and an unavailable Redis. The contract check, formatting,
+lint, type checks, web and contracts unit coverage (237 web tests), and the
+production build passed. The Playwright journeys did not run on the
+development machine: the Chromium shell lacks system libraries (`libnspr4`),
+and installing them needs administrator rights. CI runs them.
+
+Pending, both needing Twitch credentials against live IGDB: the warm-path
+timing for the duration and platform-release-range shapes (debt 2 and 2b),
+and the changed eligible totals after the released rule.
 
 ### M4.4 — Stale-if-error and provider degradation
 

@@ -213,6 +213,11 @@ outage does not add a timeout to every request. `cache_key()` builds namespaced,
 schema-versioned keys from a SHA-256 digest of canonical criteria. The policy
 behind these values is in [architecture §7](../../docs/architecture.md#7-caching).
 
+`CachingCatalog` (`cache/catalog.py`) applies that cache to every `Catalog`
+capability with the lifetimes in `CachePolicy` (override with
+`WTPN_CACHE_TTL__SEARCH_FRESH_SECONDS` and similar), remembers a missing game
+for ten minutes, and makes concurrent identical misses share one provider call.
+
 The composition root builds the cache from settings only when it also builds
 the catalog. A test or the browser fixture server that injects a catalog gets
 no cache unless it injects a store as well, so it can never reach a developer's

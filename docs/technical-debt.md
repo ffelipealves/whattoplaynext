@@ -16,8 +16,9 @@ open.
 
 For the Milestone 4 handoff, the highest-impact open items are the cold-query
 costs (2 and 2b), missing public rate limiter (4), sequential search metadata
-fetch (9), and mobile search INP (15). Release gates remain separate: decide
-how to enforce “released” (1b) and test actual branded browsers (14). The
+fetch (9), and mobile search INP (15). Release gates remain separate: test
+actual branded browsers (14); “released” (1b) was decided and implemented in
+M4.3. The
 other entries below are deliberate compromises, not newly found defects.
 
 ## Provider and API

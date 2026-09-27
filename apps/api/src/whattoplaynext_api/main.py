@@ -16,6 +16,7 @@ from whattoplaynext_api.adapters.igdb.token import (
 from whattoplaynext_api.adapters.igdb.transport import IgdbTransport
 from whattoplaynext_api.adapters.redis.store import RedisCacheStore
 from whattoplaynext_api.cache.cache import Cache
+from whattoplaynext_api.cache.catalog import CachingCatalog
 from whattoplaynext_api.cache.store import CacheStore
 from whattoplaynext_api.catalog.ports import Catalog
 from whattoplaynext_api.catalog.unavailable import UnavailableCatalog
@@ -107,6 +108,14 @@ def create_app(
         cache, redis_store = build_cache(resolved_settings)
         if redis_store is not None:
             closers.append(redis_store.aclose)
+    if cache_store is not None or catalog is None:
+        resolved_catalog = CachingCatalog(
+            resolved_catalog,
+            cache,
+            environment=resolved_settings.environment,
+            api_version=resolved_settings.api_prefix.rsplit("/", 1)[-1],
+            policy=resolved_settings.cache_ttl,
+        )
     application = FastAPI(
         debug=resolved_settings.debug,
         description="Provider-neutral game discovery API.",

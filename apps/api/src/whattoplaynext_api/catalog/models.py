@@ -4,7 +4,7 @@ from datetime import date
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import AwareDatetime, BaseModel, Field, field_validator, model_validator
 
 
 class CatalogOption(BaseModel):
@@ -123,6 +123,7 @@ class ServedFrom(StrEnum):
     """Origin of the data returned to the caller."""
 
     PROVIDER = "provider"
+    CACHE = "cache"
 
 
 class BrowseCriteria(BaseModel):
@@ -253,6 +254,11 @@ class ResponseMeta(BaseModel):
     excluded_unknown_duration: bool = Field(
         default=False,
         serialization_alias="excludedUnknownDuration",
+    )
+    data_as_of: AwareDatetime | None = Field(
+        default=None,
+        serialization_alias="dataAsOf",
+        description="When the provider produced this data.",
     )
 
 

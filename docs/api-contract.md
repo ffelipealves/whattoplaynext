@@ -440,7 +440,7 @@ Additive nullable fields do not require a new base version. Removing or
 renaming fields, changing filter semantics, or changing null behavior requires
 a new API version or an explicitly managed migration.
 
-## 8. Freshness metadata (Milestone 4.3–4.4 target)
+## 8. Freshness metadata (M4.3 implemented; stale fallback in M4.4)
 
 Every catalog response's `meta` keeps its existing fields and gains one
 additive, nullable field:
@@ -449,7 +449,7 @@ additive, nullable field:
 | ---------------- | ---------------------------- | ------------------------------------------------------------------------ |
 | `servedFrom`     | `provider`, `cache`          | Whether this request called the provider or read a stored response       |
 | `dataMayBeStale` | boolean                      | `true` only when an expired entry was served because the provider failed |
-| `dataAsOf`       | ISO 8601 date-time or `null` | When the provider produced the data; `null` only for pre-M4 responses    |
+| `dataAsOf`       | ISO 8601 date-time or `null` | When the provider produced the data; `null` only without the cache layer |
 
 A stale response is `servedFrom="cache"` with `dataMayBeStale=true`; the web
 application shows a localized notice with `dataAsOf` and never presents it as
@@ -457,3 +457,7 @@ current. `cache` is a new enumeration value: the web application treats
 `servedFrom` as informational, so the addition is compatible under the rules
 above. Error responses are unchanged; a stale fallback is a successful
 response, and without one the existing classified error is returned.
+
+Callers that shared another request's in-flight provider call also receive
+`servedFrom="provider"`: the data was fetched for them, just not by them.
+Filter metadata has no `meta` object and is cached without these fields.

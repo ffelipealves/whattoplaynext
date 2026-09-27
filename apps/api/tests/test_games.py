@@ -177,6 +177,7 @@ async def test_browses_a_normalized_default_page() -> None:
             "servedFrom": "provider",
             "dataMayBeStale": False,
             "excludedUnknownDuration": False,
+            "dataAsOf": None,
         },
     }
     assert catalog.criteria == BrowseCriteria()
@@ -207,6 +208,7 @@ async def test_lists_the_daily_popular_game_selection() -> None:
             "servedFrom": "provider",
             "dataMayBeStale": False,
             "excludedUnknownDuration": False,
+            "dataAsOf": None,
         },
     }
 

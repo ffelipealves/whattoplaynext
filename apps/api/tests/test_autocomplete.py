@@ -113,6 +113,7 @@ async def test_returns_normalized_suggestions_for_a_valid_query() -> None:
             "servedFrom": "provider",
             "dataMayBeStale": False,
             "excludedUnknownDuration": False,
+            "dataAsOf": None,
         },
     }
     assert catalog.criteria == AutocompleteCriteria(query="witcher")

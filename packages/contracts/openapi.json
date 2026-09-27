@@ -936,6 +936,19 @@
       "ResponseMeta": {
         "description": "Freshness and processing metadata for one catalog response.",
         "properties": {
+          "dataAsOf": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the provider produced this data.",
+            "title": "Dataasof"
+          },
           "dataMayBeStale": {
             "default": false,
             "title": "Datamaybestale",
@@ -968,7 +981,8 @@
       "ServedFrom": {
         "description": "Origin of the data returned to the caller.",
         "enum": [
-          "provider"
+          "provider",
+          "cache"
         ],
         "title": "ServedFrom",
         "type": "string"

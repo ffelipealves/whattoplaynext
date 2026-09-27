@@ -214,6 +214,7 @@ async def test_returns_normalized_detail_for_a_valid_game_id() -> None:
             "servedFrom": "provider",
             "dataMayBeStale": False,
             "excludedUnknownDuration": False,
+            "dataAsOf": None,
         },
     }
     assert catalog.requested_game_id == 1942
