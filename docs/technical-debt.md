@@ -28,7 +28,7 @@ deliberate compromises, not newly found defects.
 
 ## Provider and API
 
-### 2. A duration filter still costs seconds on a cold cache — **partly paid in M4.3**
+### 2. A duration filter still costs seconds while its shared index is cold — **partly paid on 2026-09-28**
 
 Evaluating play time has to read two IGDB datasets and join them locally, since
 `games` cannot be filtered by a field that lives on `game_time_to_beats`.
@@ -36,13 +36,19 @@ Milestone 2.4's follow-up cut a duration-filtered search from ~30 s to ~10 s by
 bounding the smaller index first, but ~10 s is the floor for that shape of
 query against a provider allowing four requests per second.
 
-No Redis cache is active yet, so this cost can affect current live requests.
-Milestone 4 owns the first cache layer: M4.3 caches a search page for an hour,
-so only the first identical request pays. On 2026-09-27 the
-Switch + indie + 2–10 h shape measured 9.5 s cold and 0.99 ms warm (p95,
-in-memory store, so excluding the Redis round trip). Paying it off further would mean
-caching the duration index itself — it is small enough (~9,300 rows) to hold
-whole — rather than re-reading it per request.
+M4.3 caches an identical search page for an hour. On 2026-09-28 the adapter
+also began caching the complete duration index (all three measures) for one
+hour, retaining it stale for a day if IGDB fails. It is populated only for a
+broad candidate set; narrow searches keep the old bounded-query plan. A full
+index is 458,912 B in Redis. After the first fill, a different Switch + indie
+duration range took 3.36 s instead of repeating the duration-index walk; it
+still made the necessary games and popularity calls.
+
+The first range to fill the index measured 11.32 s cold through Redis versus
+the previous 10.47 s bounded path, so the initial population still misses the
+2.5 s cold target. Further improvement needs a product decision to prewarm
+this ~9,300-row provider resource, accept asynchronous results, or limit the
+forms of duration search allowed before the cache is populated.
 
 ### 2b. A broad platform release range still has to read its whole index — **partly paid on 2026-09-28**
 

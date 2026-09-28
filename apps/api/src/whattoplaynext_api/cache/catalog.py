@@ -62,6 +62,8 @@ class CachePolicy(BaseModel):
     detail_stale_seconds: int = Field(default=7 * 86_400, ge=0)
     search_fresh_seconds: int = Field(default=3_600, gt=0)
     search_stale_seconds: int = Field(default=86_400, ge=0)
+    duration_index_fresh_seconds: int = Field(default=3_600, gt=0)
+    duration_index_stale_seconds: int = Field(default=86_400, ge=0)
     autocomplete_fresh_seconds: int = Field(default=3_600, gt=0)
     popular_fresh_seconds: int = Field(default=86_400, gt=0)
     popular_stale_seconds: int = Field(default=7 * 86_400, ge=0)

@@ -151,10 +151,13 @@ async def main() -> int:
     else:
         store = MemoryStore()
 
-    provider, client = build_catalog(settings, build_circuit(settings))
-    catalog = CachingCatalog(
-        provider, Cache(store), environment="measure", api_version="v1"
+    cache = Cache(store)
+    provider, client = build_catalog(
+        settings,
+        build_circuit(settings),
+        duration_index_cache=cache,
     )
+    catalog = CachingCatalog(provider, cache, environment="measure", api_version="v1")
     print(f"cache: {'redis' if redis else 'memory'}; warm requests: {WARM_REQUESTS}")
     try:
         detail_game_id: int | None = None

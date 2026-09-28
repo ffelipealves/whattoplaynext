@@ -43,6 +43,8 @@ from whattoplaynext_api.ratelimit.policy import ProviderAdmission, RateLimiting
 def build_catalog(
     settings: Settings,
     circuit: ProviderCircuit | None = None,
+    *,
+    duration_index_cache: Cache | None = None,
 ) -> tuple[Catalog, httpx.AsyncClient | None]:
     """Compose the production IGDB catalog, or report it unavailable.
 
@@ -69,8 +71,28 @@ def build_catalog(
         ),
     )
     if circuit is None:
-        return IgdbCatalog(transport), client
-    return IgdbCatalog(CircuitBreakingTransport(transport, circuit)), client
+        return (
+            IgdbCatalog(
+                transport,
+                duration_index_cache=duration_index_cache,
+                cache_environment=settings.environment,
+                cache_api_version=settings.api_prefix.rsplit("/", 1)[-1],
+                duration_index_fresh_seconds=settings.cache_ttl.duration_index_fresh_seconds,
+                duration_index_stale_seconds=settings.cache_ttl.duration_index_stale_seconds,
+            ),
+            client,
+        )
+    return (
+        IgdbCatalog(
+            CircuitBreakingTransport(transport, circuit),
+            duration_index_cache=duration_index_cache,
+            cache_environment=settings.environment,
+            cache_api_version=settings.api_prefix.rsplit("/", 1)[-1],
+            duration_index_fresh_seconds=settings.cache_ttl.duration_index_fresh_seconds,
+            duration_index_stale_seconds=settings.cache_ttl.duration_index_stale_seconds,
+        ),
+        client,
+    )
 
 
 def build_circuit(settings: Settings) -> ProviderCircuit:
@@ -176,23 +198,31 @@ def create_app(
     resolved_settings = settings or get_settings()
     closers: list[Callable[[], Awaitable[None]]] = []
     resolved_catalog = catalog
-    circuit: ProviderCircuit | None = None
-    if resolved_catalog is None:
-        circuit = build_circuit(resolved_settings)
-        resolved_catalog, client = build_catalog(resolved_settings, circuit)
-        if client is not None:
-            closers.append(client.aclose)
-        else:
-            circuit = None  # no provider configured, so nothing to protect
+    duration_index_cache: Cache | None = None
     if cache_store is not None or catalog is not None:
         cache = _cache(resolved_settings, cache_store)
+        if cache_store is not None:
+            duration_index_cache = cache
     else:
         cache, redis_store = build_cache(resolved_settings)
         if redis_store is not None:
             closers.append(redis_store.aclose)
+            duration_index_cache = cache
         rate_limiting = rate_limiting or build_rate_limiting(
             resolved_settings, redis_store
         )
+    circuit: ProviderCircuit | None = None
+    if resolved_catalog is None:
+        circuit = build_circuit(resolved_settings)
+        resolved_catalog, client = build_catalog(
+            resolved_settings,
+            circuit,
+            duration_index_cache=duration_index_cache,
+        )
+        if client is not None:
+            closers.append(client.aclose)
+        else:
+            circuit = None  # no provider configured, so nothing to protect
     if cache_store is not None or catalog is None:
         resolved_catalog = CachingCatalog(
             resolved_catalog,

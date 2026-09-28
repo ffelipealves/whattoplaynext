@@ -7,6 +7,7 @@ from typing import cast
 
 import httpx
 import pytest
+from cache_fakes import InMemoryCacheStore, ManualClock
 
 from whattoplaynext_api.adapters.igdb.catalog import IgdbCatalog, IgdbQueryTransport
 from whattoplaynext_api.adapters.igdb.transport import (
@@ -14,6 +15,7 @@ from whattoplaynext_api.adapters.igdb.transport import (
     IgdbTransport,
     IgdbTransportError,
 )
+from whattoplaynext_api.cache.cache import Cache
 from whattoplaynext_api.catalog.models import (
     AutocompleteCriteria,
     BrowseCriteria,
@@ -1391,6 +1393,46 @@ async def test_bounds_the_duration_index_before_reading_matching_games() -> None
         "games",
         "game_time_to_beats",
     ]
+
+
+@pytest.mark.anyio
+async def test_reuses_the_cached_duration_index_for_distinct_duration_filters() -> None:
+    clock = ManualClock()
+    store = InMemoryCacheStore(clock)
+    transport = M17FixtureTransport({"games": 200_000, "game_time_to_beats": 5})
+    catalog = IgdbCatalog(
+        transport,
+        today=lambda: TODAY,
+        duration_index_cache=Cache(store, clock=clock),
+        cache_environment="test",
+        cache_clock=clock,
+    )
+
+    await catalog.browse_games(
+        BrowseCriteria(
+            duration_kind=DurationKind.NORMAL,
+            minimum_duration_seconds=7_200,
+            maximum_duration_seconds=36_000,
+        )
+    )
+    await catalog.browse_games(
+        BrowseCriteria(
+            duration_kind=DurationKind.NORMAL,
+            maximum_duration_seconds=72_000,
+        )
+    )
+
+    index_queries = [
+        query
+        for endpoint, query in transport.requests
+        if endpoint == "game_time_to_beats" and "where game_id != null" in query
+    ]
+    assert len(index_queries) == 1
+    assert "fields game_id,hastily,normally,completely" in index_queries[0]
+    assert store.calls.count("set") == 1
+    assert [endpoint for endpoint, _query in transport.count_requests].count(
+        "game_time_to_beats"
+    ) == 1
 
 
 @pytest.mark.anyio

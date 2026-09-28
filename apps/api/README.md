@@ -232,6 +232,11 @@ behind these values is in [architecture §7](../../docs/architecture.md#7-cachin
 capability with the lifetimes in `CachePolicy` (override with
 `WTPN_CACHE_TTL__SEARCH_FRESH_SECONDS` and similar), remembers a missing game
 for ten minutes, and makes concurrent identical misses share one provider call.
+For broad duration-filtered searches, `IgdbCatalog` additionally caches the
+complete play-time index under its own versioned key; later duration ranges
+reuse it without rereading IGDB. Its fresh and stale windows use
+`WTPN_CACHE_TTL__DURATION_INDEX_FRESH_SECONDS` and
+`WTPN_CACHE_TTL__DURATION_INDEX_STALE_SECONDS`.
 
 The composition root builds the cache from settings only when it also builds
 the catalog. A test or the browser fixture server that injects a catalog gets

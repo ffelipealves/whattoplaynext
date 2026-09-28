@@ -233,6 +233,14 @@ Redis is a disposable optimization, not a source of truth. M4.2 added the
 HTTP cache policy and the Next.js sitemap revalidates daily. The policy below
 was decided in M4.1 and implemented in M4.2–M4.4.
 
+The IGDB adapter also uses the same typed cache for its complete
+`game_time_to_beats` index. It writes the three duration measures under a
+separate versioned resource only for broad duration-filtered searches, then
+filters that index locally for later, distinct ranges. A one-hour fresh period
+and one-day stale-if-error window are configurable through
+`WTPN_CACHE_TTL__DURATION_INDEX_*`; without a configured cache the adapter
+keeps the bounded provider-query plan.
+
 ### 7.1 Where the cache sits
 
 The cache wraps the `Catalog` port: a caching catalog implements the same

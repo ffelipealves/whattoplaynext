@@ -3,15 +3,19 @@
 import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, time
+from datetime import UTC, date, datetime, time, timedelta
 from json import dumps
 from math import ceil
 from typing import Protocol
+
+from pydantic import BaseModel
 
 from whattoplaynext_api.adapters.igdb.transport import (
     IgdbErrorReason,
     IgdbTransportError,
 )
+from whattoplaynext_api.cache.cache import Cache
+from whattoplaynext_api.cache.keys import cache_key
 from whattoplaynext_api.catalog.models import (
     AgeRating,
     AutocompleteCriteria,
@@ -124,6 +128,10 @@ POPULAR_GAME_SELECTION_LIMIT = 500
 # index walk in this adapter is measured in.
 PROVIDER_BATCH_SIZE = 500
 RELEASE_INDEX_READ_CONCURRENCY = 8
+DURATION_INDEX_CACHE_SCHEMA_VERSION = 1
+DURATION_INDEX_READ_CONCURRENCY = 8
+DURATION_INDEX_FRESH_SECONDS = 3_600
+DURATION_INDEX_STALE_SECONDS = 86_400
 
 # Listing every match costs two requests per provider page, which is both
 # cheap and exact while the matches are few; paging an index only earns its
@@ -131,6 +139,7 @@ RELEASE_INDEX_READ_CONCURRENCY = 8
 # paged the same way, for the same reason.
 POPULARITY_WALK_THRESHOLD = 4 * PROVIDER_BATCH_SIZE
 RELEASE_WALK_THRESHOLD = POPULARITY_WALK_THRESHOLD
+DURATION_INDEX_CACHE_THRESHOLD = POPULARITY_WALK_THRESHOLD
 
 # Released base games plus their separately cataloged remakes and remasters;
 # DLC, expansions, bundles, mods, and other non-base `game_type` values are
@@ -154,6 +163,12 @@ def _utc_today() -> date:
     return datetime.now(UTC).date()
 
 
+class _DurationIndex(BaseModel):
+    """All recorded IGDB play-time values, keyed by game and duration kind."""
+
+    values: dict[int, dict[DurationKind, int]]
+
+
 class IgdbCatalog:
     """Normalize IGDB data behind the catalog application interface."""
 
@@ -162,9 +177,27 @@ class IgdbCatalog:
         transport: IgdbQueryTransport,
         *,
         today: Callable[[], date] = _utc_today,
+        duration_index_cache: Cache | None = None,
+        cache_environment: str = "local",
+        cache_api_version: str = "v1",
+        cache_clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        duration_index_fresh_seconds: int = DURATION_INDEX_FRESH_SECONDS,
+        duration_index_stale_seconds: int = DURATION_INDEX_STALE_SECONDS,
     ) -> None:
         self._transport = transport
         self._today = today
+        self._duration_index_cache = duration_index_cache
+        self._duration_index_cache_key = cache_key(
+            environment=cache_environment,
+            api_version=cache_api_version,
+            resource="duration-index",
+            schema_version=DURATION_INDEX_CACHE_SCHEMA_VERSION,
+            criteria=None,
+        )
+        self._duration_index_fresh = timedelta(seconds=duration_index_fresh_seconds)
+        self._duration_index_stale = timedelta(seconds=duration_index_stale_seconds)
+        self._cache_clock = cache_clock
+        self._duration_index_in_flight: asyncio.Future[_DurationIndex] | None = None
 
     def _eligibility(self) -> str:
         """The content and release rule every games query must carry."""
@@ -494,14 +527,22 @@ class IgdbCatalog:
         # play-time window covers a fraction of the duration index, while a
         # narrow game filter matches a fraction of the catalog.
         candidate_total = await self._transport.count("games", where_query)
-        duration_total = (
-            await self._transport.count(
+        cached_duration_matches: dict[int, dict[DurationKind, int]] | None = None
+        if _has_duration_filter(criteria) and self._should_use_duration_index_cache(
+            candidate_total
+        ):
+            cached_duration_matches = await self._durations_in_range(
+                criteria,
+                duration_kinds,
+            )
+            duration_total = len(cached_duration_matches)
+        elif _has_duration_filter(criteria):
+            duration_total = await self._transport.count(
                 "game_time_to_beats",
                 _duration_range_where(criteria),
             )
-            if _has_duration_filter(criteria)
-            else None
-        )
+        else:
+            duration_total = None
 
         release_total = (
             await self._transport.count(
@@ -514,7 +555,11 @@ class IgdbCatalog:
         total_items: int | None = None
 
         if _reads_duration_index(duration_total, release_total, candidate_total):
-            durations = await self._durations_in_range(criteria, duration_kinds)
+            durations = (
+                cached_duration_matches
+                if cached_duration_matches is not None
+                else await self._durations_in_range(criteria, duration_kinds)
+            )
             records = await self._games_by_ids(
                 list(durations),
                 where_query,
@@ -577,6 +622,13 @@ class IgdbCatalog:
         offset = (criteria.page - 1) * criteria.page_size
         page_records = records[offset : offset + criteria.page_size]
         return total_items, _normalize_games_with_durations(page_records, durations)
+
+    def _should_use_duration_index_cache(self, candidate_total: int) -> bool:
+        """Use a reusable full index only when the game candidate list is broad."""
+        return (
+            self._duration_index_cache is not None
+            and candidate_total > DURATION_INDEX_CACHE_THRESHOLD
+        )
 
     async def _candidate_records(
         self,
@@ -677,7 +729,24 @@ class IgdbCatalog:
         criteria: BrowseCriteria,
         kinds: tuple[DurationKind, ...],
     ) -> dict[int, dict[DurationKind, int]]:
-        """Read every game whose selected duration falls inside the bounds."""
+        """Filter the shared duration index locally before joining games."""
+        if self._duration_index_cache is None:
+            return await self._durations_in_range_from_provider(criteria, kinds)
+        index = await self._duration_index()
+        return {
+            game_id: {
+                kind: value for kind, value in game_durations.items() if kind in kinds
+            }
+            for game_id, game_durations in index.values.items()
+            if _matches_duration(game_id, index.values, criteria)
+        }
+
+    async def _durations_in_range_from_provider(
+        self,
+        criteria: BrowseCriteria,
+        kinds: tuple[DurationKind, ...],
+    ) -> dict[int, dict[DurationKind, int]]:
+        """Read a bounded range when no shared duration cache is configured."""
         fields = ",".join(DURATION_PROVIDER_FIELDS[kind] for kind in kinds)
         where = _duration_range_where(criteria)
         durations: dict[int, dict[DurationKind, int]] = {}
@@ -694,6 +763,76 @@ class IgdbCatalog:
             if len(records) < PROVIDER_BATCH_SIZE:
                 return durations
             offset += PROVIDER_BATCH_SIZE
+
+    async def _duration_index(self) -> _DurationIndex:
+        """Return the complete duration index, using stale data on failure.
+
+        A duration range is a query over this small independent resource, not
+        an attribute the games endpoint can filter. Caching it once prevents
+        every distinct duration search from paying the same provider walk.
+        """
+        cache = self._duration_index_cache
+        cached = (
+            await cache.read(self._duration_index_cache_key, _DurationIndex)
+            if cache is not None
+            else None
+        )
+        if cached is not None and cached.is_fresh(self._cache_clock()):
+            return cached.value
+
+        shared = self._duration_index_in_flight
+        if shared is None:
+            shared = asyncio.ensure_future(self._fetch_duration_index())
+            self._duration_index_in_flight = shared
+            shared.add_done_callback(self._settle_duration_index)
+        try:
+            index = await asyncio.shield(shared)
+        except IgdbTransportError:
+            if cached is not None:
+                return cached.value
+            raise
+
+        if cache is not None:
+            await cache.write(
+                self._duration_index_cache_key,
+                index,
+                fresh_for=self._duration_index_fresh,
+                stale_for=self._duration_index_stale,
+            )
+        return index
+
+    def _settle_duration_index(self, done: asyncio.Future[_DurationIndex]) -> None:
+        if self._duration_index_in_flight is done:
+            self._duration_index_in_flight = None
+
+    async def _fetch_duration_index(self) -> _DurationIndex:
+        """Read all duration rows with bounded concurrent provider requests."""
+        where = "where game_id != null;"
+        total = await self._transport.count("game_time_to_beats", where)
+        if total == 0:
+            return _DurationIndex(values={})
+
+        semaphore = asyncio.Semaphore(DURATION_INDEX_READ_CONCURRENCY)
+
+        async def read_page(offset: int) -> list[dict[str, object]]:
+            async with semaphore:
+                return await self._transport.query(
+                    "game_time_to_beats",
+                    (
+                        "fields game_id,hastily,normally,completely; "
+                        f"{where} sort game_id asc; limit {PROVIDER_BATCH_SIZE}; "
+                        f"offset {offset};"
+                    ),
+                )
+
+        pages = await asyncio.gather(
+            *(read_page(offset) for offset in range(0, total, PROVIDER_BATCH_SIZE))
+        )
+        durations: dict[int, dict[DurationKind, int]] = {}
+        kinds = tuple(DurationKind)
+        for page in pages:
+            durations.update(_normalize_duration_records(page, kinds))
+        return _DurationIndex(values=durations)
 
     async def _games_by_ids(
         self,
