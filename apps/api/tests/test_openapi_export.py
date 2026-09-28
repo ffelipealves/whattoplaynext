@@ -1,8 +1,27 @@
 """Tests for deterministic OpenAPI artifact generation."""
 
+import json
+import subprocess
+import sys
+from pathlib import Path
+
 import pytest
 
 from whattoplaynext_api.openapi import build_openapi_schema
+
+
+def test_openapi_export_writes_only_parseable_json() -> None:
+    result = subprocess.run(
+        [sys.executable, "scripts/export_openapi.py"],
+        cwd=Path(__file__).parents[1],
+        capture_output=True,
+        check=True,
+        text=True,
+    )
+
+    schema = json.loads(result.stdout)
+
+    assert schema["info"]["title"] == "What To Play Next API"
 
 
 def test_openapi_export_ignores_local_process_configuration(

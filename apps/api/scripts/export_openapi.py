@@ -1,7 +1,12 @@
 """Emit the executable FastAPI contract without starting an HTTP server."""
 
 import json
+import os
 import sys
+
+# Importing the application constructs its default ASGI instance. Make that
+# import deterministic and silent so stdout remains the contract's JSON stream.
+os.environ["WTPN_ENVIRONMENT"] = "test"
 
 from whattoplaynext_api.openapi import build_openapi_schema
 
