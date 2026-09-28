@@ -240,6 +240,16 @@ browsers at both versions, recorded against the same journeys the suite
 covers. A hosted cross-browser service could automate it; that is a cost
 decision for the beta milestones, not an engineering blocker now.
 
+**Tooling prepared on 2026-09-27; the pass itself is still owed.** The
+`branded-chrome` and `branded-edge` Playwright projects (`pnpm e2e:branded`)
+run every journey in the installed Chrome and Edge. The
+[browser release checklist](browser-release-checklist.md) holds the manual
+journeys for Firefox and the record table for every browser and version.
+Safari is owed: the owner has no Apple device, so it needs a Mac, an iPhone,
+or a paid service before the gate can close. Previous-stable versions need
+kept installers or a cloud service as well. The pass has to run against the
+closed-beta release candidate, so it cannot close before a deployment exists.
+
 ### 15. Opening the mobile filter drawer is slow to respond
 
 Milestone 2.10's Core Web Vitals spot check measured the search page on a Pixel

@@ -13,6 +13,7 @@
     "e2e": "playwright test --project=chromium",
     "e2e:browsers": "playwright test --project=chromium --project=desktop-firefox --project=desktop-webkit --project=mobile-chromium --project=mobile-webkit",
     "e2e:vitals": "playwright test --project=vitals-desktop --project=vitals-mobile",
+    "e2e:branded": "playwright test --project=branded-chrome --project=branded-edge",
     "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {

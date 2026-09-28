@@ -15,6 +15,8 @@ const WEB_BASE_URL = `http://127.0.0.1:${WEB_PORT}`;
  */
 const EXTERNAL_BASE_URL = process.env.E2E_BASE_URL;
 
+const DESKTOP_VIEWPORT = { width: 1280, height: 720 };
+
 /** Measurements record numbers rather than guard behavior, so they only run
  * when a project asks for them by name. */
 const VITALS = /@vitals/;
@@ -27,7 +29,10 @@ const VITALS = /@vitals/;
  * - the desktop and mobile projects are the on-demand browser matrix — every
  *   engine Playwright ships, at both layouts — which would cost more on every
  *   push than the regressions six scenarios could plausibly catch;
- * - the vitals projects take Core Web Vitals spot measurements.
+ * - the vitals projects take Core Web Vitals spot measurements;
+ * - the branded projects drive the Chrome and Edge a visitor installs, not
+ *   Playwright's own builds, for the release-time browser pass (technical
+ *   debt 14). They need both browsers installed on the machine.
  */
 const projects: Project[] = [
   {
@@ -61,6 +66,17 @@ const projects: Project[] = [
     grep: VITALS,
   },
   { name: "vitals-mobile", use: { ...devices["Pixel 7"] }, grep: VITALS },
+  {
+    name: "branded-chrome",
+    // No device descriptor: its fixed user agent would mask the real one.
+    use: { channel: "chrome", viewport: DESKTOP_VIEWPORT },
+    grepInvert: VITALS,
+  },
+  {
+    name: "branded-edge",
+    use: { channel: "msedge", viewport: DESKTOP_VIEWPORT },
+    grepInvert: VITALS,
+  },
 ];
 
 export default defineConfig({

@@ -39,6 +39,8 @@ approximate matching.
   operations, analytics, increments, and exit criteria.
 - [Security review](docs/security-review.md) — trust boundaries, verified
   controls, and accepted residual risks.
+- [Browser release checklist](docs/browser-release-checklist.md) — the
+  release-time pass on real Chrome, Edge, Firefox, and Safari.
 - [Technical debt](docs/technical-debt.md) — deliberate compromises, what each
   costs, and the release gates that depend on them.
 - [MVP roadmap](docs/roadmap.md) — delivery sequence and milestone exit checks.
