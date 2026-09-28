@@ -217,9 +217,13 @@ bound is active; only that policy sets `excludedUnknownDuration`.
 
 Milestone 2 replaced exhaustive popularity and release/duration scans on broad
 queries with bounded index walks; Milestone 3.1 applied the detail endpoint's
-eligible `game_type` rule to every discovery path and count. The exhaustive
-popularity fallback and exact count on a broad platform release range remain
-documented in the [technical debt register](technical-debt.md).
+eligible `game_type` rule to every discovery path and count. When a platform
+release range is the only game-level filter, the release index now carries that
+eligibility predicate itself: its distinct ids give the exact total, its ids
+are intersected locally with popularity, and only the displayed cards are read
+from `games`. The unavoidable full release-index read for that exact total,
+plus the exhaustive popularity fallback, remain documented in the
+[technical debt register](technical-debt.md).
 
 ## 7. Caching
 

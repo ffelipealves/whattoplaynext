@@ -1,5 +1,6 @@
 """IGDB implementation of the provider-neutral catalog interface."""
 
+import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time
@@ -122,6 +123,7 @@ POPULAR_GAME_SELECTION_LIMIT = 500
 # IGDB's maximum page size for a single query, and therefore the unit every
 # index walk in this adapter is measured in.
 PROVIDER_BATCH_SIZE = 500
+RELEASE_INDEX_READ_CONCURRENCY = 8
 
 # Listing every match costs two requests per provider page, which is both
 # cheap and exact while the matches are few; paging an index only earns its
@@ -211,7 +213,10 @@ class IgdbCatalog:
         offset = (criteria.page - 1) * criteria.page_size
         needs_local_evaluation = _needs_local_evaluation(criteria)
         try:
-            if needs_local_evaluation:
+            if _can_page_platform_release_range_from_index(criteria):
+                total_items, items = await self._platform_release_range_page(criteria)
+                items = await self._enrich_page_durations(items)
+            elif needs_local_evaluation:
                 total_items, items = await self._locally_evaluated_page(criteria)
             elif criteria.sort is SortOption.POPULARITY:
                 total_items, game_ids = await self._filtered_popularity_ids(criteria)
@@ -250,6 +255,144 @@ class IgdbCatalog:
             ),
             meta=ResponseMeta(excluded_unknown_duration=_has_duration_filter(criteria)),
         )
+
+    async def _platform_release_range_page(
+        self,
+        criteria: BrowseCriteria,
+    ) -> tuple[int, list[GameSummary]]:
+        """Page a pure platform-release range without joining every game.
+
+        The release-date index is authoritative when the visitor supplied no
+        game-level condition beyond the selected platform and its date bounds.
+        It carries the shared eligibility predicate, so its distinct game ids
+        are the exact result set rather than merely candidates for a later
+        games-endpoint join.
+        """
+        include_game_fields = criteria.sort in {SortOption.RATING, SortOption.TITLE}
+        rows = await self._eligible_release_index_rows(
+            criteria,
+            include_game_fields=include_game_fields,
+        )
+        total_items = len(_release_index_dates(rows))
+
+        if criteria.sort is SortOption.POPULARITY:
+            page_ids = await self._release_index_popularity_page_ids(
+                _release_index_game_ids(rows),
+                criteria,
+            )
+            records = await self._games_by_ids(
+                page_ids,
+                _where_query(
+                    criteria,
+                    self._eligibility(),
+                    include_release_bounds=False,
+                ),
+                include_release_dates=False,
+            )
+            return total_items, _normalize_games(records, page_ids)
+
+        if criteria.sort is SortOption.RELEASE_DATE:
+            page_ids = _release_index_release_page_ids(rows, criteria)
+            records = await self._games_by_ids(
+                page_ids,
+                _where_query(
+                    criteria,
+                    self._eligibility(),
+                    include_release_bounds=False,
+                ),
+                include_release_dates=False,
+            )
+            return total_items, _normalize_games(records, page_ids)
+
+        records = _release_index_game_records(rows)
+        ordered = _order_local_records(records, criteria, {}, {})
+        offset = (criteria.page - 1) * criteria.page_size
+        return total_items, _normalize_games_with_durations(
+            ordered[offset : offset + criteria.page_size],
+            {},
+        )
+
+    async def _eligible_release_index_rows(
+        self,
+        criteria: BrowseCriteria,
+        *,
+        include_game_fields: bool,
+    ) -> list[dict[str, object]]:
+        """Read the full, already-eligible selected-platform release index."""
+        fields = (
+            f"{_release_index_game_fields()},date"
+            if include_game_fields
+            else "game,date"
+        )
+        where = _release_range_where(
+            criteria,
+            extra_clauses=(_release_index_eligibility_clause(self._today()),),
+        )
+        row_total = await self._transport.count("release_dates", where)
+        if row_total == 0:
+            return []
+
+        semaphore = asyncio.Semaphore(RELEASE_INDEX_READ_CONCURRENCY)
+
+        async def read_page(offset: int) -> list[dict[str, object]]:
+            async with semaphore:
+                return await self._transport.query(
+                    "release_dates",
+                    f"fields {fields}; {where} sort date asc; "
+                    f"limit {PROVIDER_BATCH_SIZE}; offset {offset};",
+                )
+
+        pages = await asyncio.gather(
+            *(read_page(offset) for offset in range(0, row_total, PROVIDER_BATCH_SIZE))
+        )
+        return [row for page in pages for row in page]
+
+    async def _release_index_popularity_page_ids(
+        self,
+        candidate_ids: list[int],
+        criteria: BrowseCriteria,
+    ) -> list[int]:
+        """Read just enough of the popularity index to settle one page.
+
+        Unlike a normal filtered popularity walk, membership is decided by the
+        release index already in memory. Each index page can therefore be
+        intersected locally, avoiding one games lookup for every 500 release
+        records. The bounded fallback retains the established treatment of
+        unranked games and stable id tie-breaker.
+        """
+        candidate_set = set(candidate_ids)
+        required = criteria.page * criteria.page_size
+        ranked: list[tuple[int, float]] = []
+        seen: set[int] = set()
+        budget = max(1, ceil(len(candidate_ids) / PROVIDER_BATCH_SIZE))
+        for batch in range(budget):
+            records = await self._transport.query(
+                "popularity_primitives",
+                (
+                    "fields game_id,value; where popularity_type = 1; "
+                    f"sort value {criteria.direction.value}; "
+                    f"limit {PROVIDER_BATCH_SIZE}; "
+                    f"offset {batch * PROVIDER_BATCH_SIZE};"
+                ),
+            )
+            values = _popularity_values(records)
+            for game_id, value in values.items():
+                if game_id in candidate_set and game_id not in seen:
+                    seen.add(game_id)
+                    ranked.append((game_id, value))
+            if len(ranked) >= required:
+                ordered = _ids_by_popularity(ranked, criteria.direction)
+                offset = (criteria.page - 1) * criteria.page_size
+                return ordered[offset : offset + criteria.page_size]
+            if len(records) < PROVIDER_BATCH_SIZE:
+                break
+
+        popularity = await self._popularity_for_ids(candidate_ids)
+        ordered = _ids_by_known_popularity(
+            candidate_ids, popularity, criteria.direction
+        )
+        offset = (criteria.page - 1) * criteria.page_size
+        return ordered[offset : offset + criteria.page_size]
 
     async def autocomplete(self, criteria: AutocompleteCriteria) -> AutocompleteResult:
         """Return at most eight relevance-ordered title suggestions."""
@@ -804,6 +947,27 @@ def _ids_by_popularity(
     ]
 
 
+def _ids_by_known_popularity(
+    game_ids: list[int],
+    popularity: dict[int, float],
+    direction: SortDirection,
+) -> list[int]:
+    """Order known values first and retain unranked games in id order."""
+    reverse_value = direction is SortDirection.DESCENDING
+    return sorted(
+        game_ids,
+        key=lambda game_id: (
+            game_id not in popularity,
+            (
+                -popularity[game_id]
+                if reverse_value and game_id in popularity
+                else popularity.get(game_id, 0)
+            ),
+            game_id,
+        ),
+    )
+
+
 def _where_with_ids(where_query: str, game_ids: list[int]) -> str:
     """Narrow an existing where clause to one batch of candidate ids."""
     ids = ",".join(str(game_id) for game_id in game_ids)
@@ -880,6 +1044,12 @@ def _candidate_games_fields(include_release_dates: bool) -> str:
     )
 
 
+def _release_index_game_fields() -> str:
+    """The browse projection, traversing from a release date to its game."""
+    fields = _candidate_games_fields(False).removeprefix("fields ").split(",")
+    return ",".join(f"game.{field}" for field in fields)
+
+
 def _candidate_games_query(
     where_query: str,
     offset: int,
@@ -917,6 +1087,19 @@ def _needs_local_evaluation(criteria: BrowseCriteria) -> bool:
         _has_duration_filter(criteria)
         or criteria.sort is SortOption.DURATION
         or _needs_platform_release_data(criteria)
+    )
+
+
+def _can_page_platform_release_range_from_index(criteria: BrowseCriteria) -> bool:
+    """Whether the release index alone defines this search's result set."""
+    return (
+        _has_platform_release_filter(criteria)
+        and criteria.name is None
+        and not criteria.genre_ids
+        and criteria.minimum_rating is None
+        and not criteria.game_mode_ids
+        and not _has_duration_filter(criteria)
+        and criteria.sort is not SortOption.DURATION
     )
 
 
@@ -993,7 +1176,11 @@ def _platform_release_value(
     return min(dates) if dates else None
 
 
-def _release_range_where(criteria: BrowseCriteria) -> str:
+def _release_range_where(
+    criteria: BrowseCriteria,
+    *,
+    extra_clauses: tuple[str, ...] = (),
+) -> str:
     clauses = [
         f"platform = ({_provider_ids(criteria.platform_ids, PLATFORMS)})",
         "date != null",
@@ -1002,7 +1189,17 @@ def _release_range_where(criteria: BrowseCriteria) -> str:
         clauses.append(f"date >= {_day_start(criteria.release_from)}")
     if criteria.release_to is not None:
         clauses.append(f"date <= {_day_end(criteria.release_to)}")
+    clauses.extend(extra_clauses)
     return f"where {' & '.join(clauses)};"
+
+
+def _release_index_eligibility_clause(today: date) -> str:
+    """The games eligibility rule, expressed at the release-dates endpoint."""
+    game_types = ",".join(str(game_type) for game_type in sorted(ELIGIBLE_GAME_TYPES))
+    return (
+        f"game.game_type = ({game_types}) & game.first_release_date != null & "
+        f"game.first_release_date <= {_day_end(today)}"
+    )
 
 
 def _reads_duration_index(
@@ -1017,7 +1214,63 @@ def _reads_duration_index(
 
 
 def _release_index_game_ids(rows: list[dict[str, object]]) -> list[int]:
-    return [_required_int(row, "game") for row in rows]
+    game_ids: dict[int, None] = {}
+    for row in rows:
+        game = row.get("game")
+        game_id = (
+            _required_int(game, "id")
+            if isinstance(game, dict)
+            else _required_int(row, "game")
+        )
+        game_ids[game_id] = None
+    return list(game_ids)
+
+
+def _release_index_dates(rows: list[dict[str, object]]) -> dict[int, int]:
+    """The first matching selected-platform release date for each game."""
+    dates: dict[int, int] = {}
+    for row in rows:
+        game = row.get("game")
+        game_id = (
+            _required_int(game, "id")
+            if isinstance(game, dict)
+            else _required_int(row, "game")
+        )
+        release_date = _required_int(row, "date")
+        existing = dates.get(game_id)
+        if existing is None or release_date < existing:
+            dates[game_id] = release_date
+    return dates
+
+
+def _release_index_release_page_ids(
+    rows: list[dict[str, object]],
+    criteria: BrowseCriteria,
+) -> list[int]:
+    dates = _release_index_dates(rows)
+    ordered = sorted(
+        dates.items(),
+        key=(
+            (lambda item: (-item[1], item[0]))
+            if criteria.direction is SortDirection.DESCENDING
+            else (lambda item: (item[1], item[0]))
+        ),
+    )
+    offset = (criteria.page - 1) * criteria.page_size
+    return [game_id for game_id, _date in ordered[offset : offset + criteria.page_size]]
+
+
+def _release_index_game_records(
+    rows: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    """Extract one embedded game record per release-index game id."""
+    records: dict[int, dict[str, object]] = {}
+    for row in rows:
+        game = row.get("game")
+        if not isinstance(game, dict):
+            raise ValueError("release index row lacks embedded game")
+        records.setdefault(_required_int(game, "id"), game)
+    return list(records.values())
 
 
 def _needs_release_index_walk(

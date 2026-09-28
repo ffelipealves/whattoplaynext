@@ -44,30 +44,31 @@ in-memory store, so excluding the Redis round trip). Paying it off further would
 caching the duration index itself — it is small enough (~9,300 rows) to hold
 whole — rather than re-reading it per request.
 
-### 2b. A platform release range still materializes its whole match set — **partly paid in M4.3**
+### 2b. A broad platform release range still has to read its whole index — **partly paid on 2026-09-28**
 
-**Resolved for the sort; partially resolved for the range.** Ordering by a
-platform's release date used to read every matching game; it now pages the
-`release_dates` index in date order and stops as soon as the requested page
-cannot change, taking `platform=pc&sort=release-date` from over 75 s (no
-response) to 3.2 s. A release _range_ on a platform now reads that index
-bounded by the dates instead of scanning the catalog, which took
-`platform=pc` + all of 2020 from over 180 s to 58 s.
+**Resolved for the cross-resource join; still open for the cold index walk.**
+Ordering by a platform's release date pages the `release_dates` index in date
+order and stops as soon as the requested page cannot change, taking
+`platform=pc&sort=release-date` from over 75 s (no response) to 3.2 s. For a
+platform release range with no other game-level filter, the adapter now applies
+the shared eligibility rule inside `release_dates`, derives the exact distinct
+`totalItems` there, intersects its ids with the popularity index locally, and
+loads only the visible game cards. Title and rating sorts receive their game
+projection from the same index. It no longer resolves every matching game just
+to count or rank it.
 
-What remains is the count. After M3.1 eligibility, that shape matches 10,597
-games and took 63.7–71.8 s in two cold live runs; an exact `totalItems` — which
-pagination depends on — means resolving every one of them through the games
-endpoint to apply the rest of the filter: about fifty requests against a
-provider allowing four per second. Narrower ranges are proportionally better;
-the M4.3 search cache serves repeated requests warm (`platform=pc` + all
-of 2020: 67.1 s cold, 1.08 ms warm p95 on 2026-09-27, 10,536 matches after the
-released rule), but a cold range still has this cost, and while it runs it also holds the process-wide provider
-limiter that M4.5 adds.
+The live Redis profile on 2026-09-28 kept the same 10,536 matches for PC in
+2020 but reduced a cold request from 67.68 s to 9.33 s; warm p95 was 1.37 ms.
+The remaining cold time is reading 22 provider-sized release-index pages to
+preserve an exact distinct total. They are scheduled concurrently without
+exceeding IGDB's four request starts per second, but still cannot meet the
+2.5 s cold target. Narrower ranges are proportionally better, and the M4.3
+search cache serves repeat requests warm.
 
-Paying off the rest means either giving up an exact total for this shape, or
-skipping the join when the platform is the only game-level criterion — the
-index walk alone already determines the result set then, since every candidate
-it returns has a release on the selected platform.
+Paying off the remaining cost requires a product-contract choice: drop or
+approximate `totalItems` for this broad shape, cap the browse depth, or make
+the total asynchronous. Keeping exact pagination necessarily retains the
+full-index read.
 
 ### 3. The popularity fallback still reads every match
 

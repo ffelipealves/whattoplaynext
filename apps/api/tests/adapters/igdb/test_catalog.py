@@ -1464,6 +1464,7 @@ class ReleaseIndexTransport:
         *,
         releases: list[tuple[int, int]],
         matching: list[int],
+        ranked: list[tuple[int, float]] | None = None,
         candidate_total: int | None = None,
         release_total: int | None = None,
     ) -> None:
@@ -1472,6 +1473,7 @@ class ReleaseIndexTransport:
         # can hold several, and a page of results is one row at a time.
         self.releases = releases
         self.matching = matching
+        self.ranked = [] if ranked is None else ranked
         self.candidate_total = (
             len(matching) if candidate_total is None else candidate_total
         )
@@ -1503,15 +1505,52 @@ class ReleaseIndexTransport:
     ) -> list[dict[str, object]]:
         self.requests.append((endpoint, query))
         if endpoint == "release_dates":
+            rows = self.releases
+            if "date >= " in query:
+                lower = int(query.split("date >= ", 1)[1].split(" ", 1)[0])
+                rows = [row for row in rows if row[1] >= lower]
+            if " & date <= " in query:
+                upper = int(query.split(" & date <= ", 1)[1].split(" ", 1)[0])
+                rows = [row for row in rows if row[1] <= upper]
             rows = sorted(
-                self.releases,
+                rows,
                 key=lambda row: row[1],
                 reverse="sort date desc" in query,
             )
             limit, offset = self._window(query)
+            if "game.id" in query:
+                return [
+                    {
+                        "game": {
+                            "id": game_id,
+                            "slug": f"game-{game_id}",
+                            "name": f"Game {game_id}",
+                        },
+                        "date": date,
+                    }
+                    for game_id, date in rows[offset : offset + limit]
+                ]
             return [
                 {"game": game, "date": date}
                 for game, date in rows[offset : offset + limit]
+            ]
+        if endpoint == "popularity_primitives":
+            if "game_id = (" in query:
+                wanted = set(self._ids(query, "game_id"))
+                return [
+                    {"game_id": game_id, "value": value}
+                    for game_id, value in self.ranked
+                    if game_id in wanted
+                ]
+            ordered = sorted(
+                self.ranked,
+                key=lambda entry: entry[1],
+                reverse="sort value desc" in query,
+            )
+            limit, offset = self._window(query)
+            return [
+                {"game_id": game_id, "value": value}
+                for game_id, value in ordered[offset : offset + limit]
             ]
         if endpoint == "games":
             if "id = (" in query:
@@ -1536,7 +1575,7 @@ class ReleaseIndexTransport:
                 }
                 for game_id in selected
             ]
-        if endpoint in {"game_time_to_beats", "popularity_primitives"}:
+        if endpoint == "game_time_to_beats":
             return []
         raise AssertionError(f"unexpected endpoint: {endpoint}")
 
@@ -1697,7 +1736,7 @@ async def test_bounds_the_release_index_before_reading_matching_games() -> None:
 
 
 @pytest.mark.anyio
-async def test_reads_the_matches_when_they_are_fewer_than_the_release_range() -> None:
+async def test_uses_the_exact_release_index_when_it_is_the_only_filter() -> None:
     transport = ReleaseIndexTransport(
         releases=[(1, 1_577_836_800), (2, 1_600_000_000)],
         matching=[1, 2],
@@ -1716,7 +1755,68 @@ async def test_reads_the_matches_when_they_are_fewer_than_the_release_range() ->
     games_query = next(
         query for endpoint, query in transport.requests if endpoint == "games"
     )
-    assert "offset 0;" in games_query
+    assert "id = (1,2)" in games_query
+    assert [endpoint for endpoint, _query in transport.count_requests] == [
+        "release_dates"
+    ]
+
+
+@pytest.mark.anyio
+async def test_pages_a_pure_platform_release_range_from_its_two_indexes() -> None:
+    # The release index establishes the exact result set, then the popularity
+    # index settles the visible page. No games join is needed for every match.
+    transport = ReleaseIndexTransport(
+        releases=[(game_id, 1_577_836_800 + game_id) for game_id in range(1, 2_001)],
+        matching=list(range(1, 2_001)),
+        ranked=[(game_id, 1.0 - game_id / 10_000) for game_id in range(1, 2_001)],
+    )
+    catalog = catalog_for(transport)
+
+    result = await catalog.browse_games(
+        BrowseCriteria(
+            platform_ids=(PlatformId.PC,),
+            release_from=date(2020, 1, 1),
+            release_to=date(2020, 12, 31),
+        )
+    )
+
+    assert [item.id for item in result.items] == list(range(1, 25))
+    assert result.pagination.total_items == 2_000
+    assert [endpoint for endpoint, _query in transport.count_requests] == [
+        "release_dates"
+    ]
+    release_query = next(
+        query for endpoint, query in transport.requests if endpoint == "release_dates"
+    )
+    assert "game.game_type = (0,8,9)" in release_query
+    assert transport.endpoints().count("release_dates") == 4
+    assert transport.endpoints().count("popularity_primitives") == 1
+    assert transport.endpoints().count("games") == 1
+
+
+@pytest.mark.anyio
+async def test_reads_embedded_games_to_sort_a_pure_release_range_by_title() -> None:
+    transport = ReleaseIndexTransport(
+        releases=[(2, 1_577_836_800), (1, 1_600_000_000)],
+        matching=[1, 2],
+    )
+    catalog = catalog_for(transport)
+
+    result = await catalog.browse_games(
+        BrowseCriteria(
+            platform_ids=(PlatformId.PC,),
+            release_from=date(2020, 1, 1),
+            sort=SortOption.TITLE,
+            direction=SortDirection.ASCENDING,
+        )
+    )
+
+    assert [item.id for item in result.items] == [1, 2]
+    assert "games" not in transport.endpoints()
+    release_query = next(
+        query for endpoint, query in transport.requests if endpoint == "release_dates"
+    )
+    assert "game.id,game.slug,game.name" in release_query
 
 
 @pytest.mark.anyio
