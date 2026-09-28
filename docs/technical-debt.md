@@ -83,37 +83,7 @@ rows in the live Visits index; a regression test pins that page without the
 fallback. The fallback remains bounded in practice and correct for small or
 pathological filtered sets, which is why it stays.
 
-### 4. The API has no rate limiter of its own — **resolved in M4.5**
-
-`RATE_LIMITED` only ever surfaces when IGDB itself returns 429; nothing
-protects the provider from this service, or this service from a caller. The
-architecture places rate limiting before provider access, and Milestone 4 owns
-it. The frontend's rate-limit copy and retry timing are covered by component
-tests and a fixture-backed game-detail Playwright scenario, but have not been
-verified against a live provider 429.
-
-**Decided in M4.1 and implemented in M4.5**, with a live check against the
-production composition ([Milestone 4 plan](milestone-4-plan.md#m45--public-and-upstream-aware-rate-limiting)).
-Because every API call
-comes from the Next.js server, the web server forwards the visitor's address
-with a shared edge token, and the API limits by a keyed digest of it
-([architecture §8.1](architecture.md#81-rate-limiting)). An accepted residual
-risk: visitors behind one carrier-grade NAT address, common on Brazilian
-mobile networks, share a budget. The budgets are configuration, so they can
-be raised if closed-beta logs show legitimate rejections.
-
 ## Web application
-
-### 5. Filter metadata failures are still generic — **resolved in M3.5**
-
-Milestone 3.5 made `getFilterMetadata` retain the classified `ApiFailure`,
-including a published retry delay and request ID. The desktop sidebar and
-mobile drawer now use the same per-code copy map as search and game failures,
-so rate limits, provider failures, timeouts, invalid responses, and an
-unreachable API remain distinct instead of collapsing to "Filters
-unavailable." Their failure markup is non-indexable and covered in both
-locales. The increment also fixed an adjacent classifier bug that interpreted
-a missing `Retry-After` header as zero seconds.
 
 ### 6. Autocomplete never recovers without a reload
 
@@ -269,16 +239,6 @@ Paying it off is a manual pass at release time on real installs of all four
 browsers at both versions, recorded against the same journeys the suite
 covers. A hosted cross-browser service could automate it; that is a cost
 decision for the beta milestones, not an engineering blocker now.
-
-**Tooling prepared on 2026-09-27; the pass itself is still owed.** The
-`branded-chrome` and `branded-edge` Playwright projects (`pnpm e2e:branded`)
-run every journey in the installed Chrome and Edge. The
-[browser release checklist](browser-release-checklist.md) holds the manual
-journeys for Firefox and the record table for every browser and version.
-Safari is owed: the owner has no Apple device, so it needs a Mac, an iPhone,
-or a paid service before the gate can close. Previous-stable versions need
-kept installers or a cloud service as well. The pass has to run against the
-closed-beta release candidate, so it cannot close before a deployment exists.
 
 ### 15. Opening the mobile filter drawer is slow to respond
 
