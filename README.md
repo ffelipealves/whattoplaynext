@@ -127,8 +127,10 @@ Install these tools before cloning the repository:
 
 The exact Node and Python versions are also recorded in `.node-version` and
 `.python-version`; pnpm is pinned by the `packageManager` field in
-`package.json`. Docker is optional for current development, tests, and builds;
-the local Redis service is available for Milestone 4 cache work.
+`package.json`. Docker is optional for development, tests, and builds. When the
+local Redis service runs, the API uses it for the response cache and the
+rate-limit counters; without it, the API serves every request from the
+provider and counts rate limits in process.
 
 Verify the command-line tools:
 
@@ -170,35 +172,50 @@ Copy-Item apps/api/.env.example apps/api/.env
 Copy-Item apps/web/.env.example apps/web/.env.local
 ```
 
-The defaults connect the web app to `http://localhost:8000` and configure an
-unused local Redis URL for the future cache. `WTPN_SITE_ORIGIN` supplies the
-absolute origin for canonical and sitemap URLs. Twitch credentials may remain
-blank until live IGDB work begins. When used, `WTPN_TWITCH_CLIENT_ID` and
-`WTPN_TWITCH_CLIENT_SECRET` must both be set in `apps/api/.env`; never place
-credentials in a `NEXT_PUBLIC_` variable or commit populated environment files.
+The defaults connect the web app to `http://localhost:8000` and the API to the
+local Compose Redis; a blank `WTPN_REDIS_URL` disables the cache.
+`WTPN_SITE_ORIGIN` supplies the absolute origin for canonical and sitemap URLs.
+Twitch credentials may remain blank until live IGDB work begins. When used,
+`WTPN_TWITCH_CLIENT_ID` and `WTPN_TWITCH_CLIENT_SECRET` must both be set in
+`apps/api/.env`.
+
+The optional settings:
+
+- `WTPN_EDGE_TOKEN` (API) and `WTPN_API_EDGE_TOKEN` (web) must hold the same
+  secret for the API to rate-limit each visitor separately. Without them,
+  every visitor shares the web server's budget.
+- `NEXT_PUBLIC_UMAMI_WEBSITE_ID` turns on anonymous analytics.
+- Cache lifetimes, rate-limit budgets, and circuit thresholds have defaults
+  in the example files.
+
+Never place credentials in a `NEXT_PUBLIC_` variable or commit populated
+environment files.
 
 ### Start the applications
 
-Run both development servers. Start Redis first only if working on the
-Milestone 4 cache or its infrastructure:
+Run both development servers. Start Redis first to run with the cache, as
+production does:
 
 ```bash
+pnpm infra:up
 pnpm dev
 ```
 
-For Redis work, run `pnpm infra:up` and `pnpm infra:status` before `pnpm dev`.
-With Twitch credentials left blank, health and API documentation work, but
+`pnpm infra:status` shows whether Redis is healthy, and
+`GET /api/v1/health/ready` reports what the API sees. With Twitch credentials
+left blank, health and API documentation work, but
 catalog requests report the provider as unavailable until credentials are
 configured; the automated suite uses a fixture catalog instead.
 
 The services are available at:
 
-| Service                    | URL                                   |
-| -------------------------- | ------------------------------------- |
-| Web — English              | <http://localhost:3000/en>            |
-| Web — Brazilian Portuguese | <http://localhost:3000/pt-br>         |
-| API health                 | <http://localhost:8000/api/v1/health> |
-| API documentation          | <http://localhost:8000/docs>          |
+| Service                    | URL                                         |
+| -------------------------- | ------------------------------------------- |
+| Web — English              | <http://localhost:3000/en>                  |
+| Web — Brazilian Portuguese | <http://localhost:3000/pt-br>               |
+| API health                 | <http://localhost:8000/api/v1/health>       |
+| API readiness              | <http://localhost:8000/api/v1/health/ready> |
+| API documentation          | <http://localhost:8000/docs>                |
 
 Use `pnpm dev:web` or `pnpm dev:api` to run only one application. Use
 `pnpm infra:logs` to inspect Redis and `pnpm infra:down` to stop it. A normal
@@ -269,7 +286,9 @@ pnpm smoke:api
 This queries live filter, browse, autocomplete, and detail data through the
 same `Catalog` interface used by the HTTP routes and prints only counts and
 titles — never credentials or raw provider payloads. It requires network
-access, so it is excluded from `pnpm quality` and CI.
+access, so it is excluded from `pnpm quality` and CI. `pnpm measure:api` is its
+companion for performance: it times each representative search cold and warm,
+and with `-- --redis` it goes through the configured Redis.
 
 ### Windows troubleshooting
 
@@ -289,6 +308,22 @@ access, so it is excluded from `pnpm quality` and CI.
 - **Installs or builds fail inside a synchronized folder:** pause the sync tool
   or clone the repository into a short, non-synchronized path such as
   `C:\src\whattoplaynext`, then run `pnpm setup` again.
+
+### Linux and WSL troubleshooting
+
+- **`pnpm` is not found:** run `corepack enable`, or prefix commands with
+  `corepack pnpm`. Package scripts call `pnpm` themselves, so it must be on
+  `PATH` for `pnpm quality`.
+- **Playwright's browsers fail to launch** with a missing shared library such
+  as `libnspr4.so`: install the system dependencies once with
+  `cd apps/web && sudo env "PATH=$PATH" npx playwright install-deps chromium`
+  (add `firefox webkit` for the browser matrix). The `env "PATH=$PATH"` keeps
+  an nvm-installed Node visible to `sudo`.
+- **`docker` is not found inside WSL:** enable your distribution under Docker
+  Desktop → Settings → Resources → WSL Integration.
+- **The web build fails with `WTPN_SITE_ORIGIN is not set`:** copy
+  `apps/web/.env.example` to `apps/web/.env.local`, or pass the variable to the
+  command.
 
 If the problem remains, capture the failing command and its complete output when
 opening an issue; never include `.env` contents or credentials.

@@ -28,6 +28,11 @@ domain is not selected: use `http://localhost:3000` locally and configure the
 actual origin independently in each deployed environment. Values with a path,
 query, hash, credentials, or a non-HTTP protocol are rejected.
 
+`WTPN_API_EDGE_TOKEN` is the server-only secret shared with the API's
+`WTPN_EDGE_TOKEN`; with it, calls made for a visitor carry that visitor's
+address so the API can rate-limit visitors separately. `NEXT_PUBLIC_UMAMI_*`
+configures analytics, which stays off without a website ID.
+
 ## Internationalization
 
 `next-intl` owns locale routing and every first-party UI string; provider
@@ -50,9 +55,12 @@ not by branching on the locale in component code.
 ## API client and design system
 
 `src/lib/api-client.ts` is the only place that constructs a client from the
-generated `@whattoplaynext/contracts` package; feature code calls
-`getApiClient()` rather than importing `openapi-fetch` or hand-writing
-request/response types. `src/components/ui/` holds shadcn/ui primitives
+generated `@whattoplaynext/contracts` package; feature code never imports
+`openapi-fetch` or hand-writes request/response types. Calls made while
+serving a visitor use `getVisitorApiClient()`. It sends one `X-Request-ID` per
+render and, with the edge token, the first `X-Forwarded-For` entry as the
+visitor's address (never `X-Real-IP`). The sitemap, which renders outside any
+request, uses the header-free `getApiClient()`. `src/components/ui/` holds shadcn/ui primitives
 (button, input, select, checkbox, slider, sheet, badge, skeleton) themed
 through the CSS variables in `globals.css`, which reuse this project's own
 brand palette rather than shadcn's generic defaults.
@@ -105,6 +113,43 @@ never arrived, and a response that was not the published envelope at all.
 retry timing a rate-limited response provides, and offers no retry for the
 codes that mean the criteria themselves were rejected.
 
+## Stale data
+
+When the API answers from an expired cache entry because IGDB failed,
+`features/catalog/stale-data-notice.tsx` shows a localized note with the save
+time in UTC above the results and at the top of the game page. It never
+presents such data as current.
+
+## Security headers
+
+`src/lib/security-headers.ts` builds the headers `next.config.ts` sends with
+every page:
+
+- a CSP with `default-src 'self'`, closed `object-src`, `base-uri`,
+  `form-action`, and `frame-ancestors`, and the analytics origins only when
+  analytics is configured;
+- `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`,
+  `Cross-Origin-Opener-Policy`, and `Permissions-Policy`;
+- HSTS and `upgrade-insecure-requests` only for an `https://` site origin.
+
+`'unsafe-inline'` remains in `script-src` for the App Router's inline
+bootstrap; the [security review](../../docs/security-review.md) records why.
+`X-Powered-By` is off.
+
+## Analytics
+
+`src/features/analytics/` is the only code that talks to Umami:
+
+- `events.ts` holds the allow-list of events, properties, and buckets, and
+  enforces it at run time;
+- `track.ts` owns `window.umami`. It queues early calls until the script
+  loads, and it sends page views by route template (`/en/games/[game]`) with
+  an empty title and the referrer's host only;
+- small client components in `trackers.tsx` emit the search, sort, game,
+  external-link, failure, and stale events.
+
+No search text, title, slug, game ID, URL, or filter value is ever sent.
+
 ## Accessibility
 
 `search-page.a11y.test.tsx` runs axe over four states — desktop, the opened
@@ -129,7 +174,12 @@ Every configuration is a named project in `playwright.config.ts`, selected with
 `--project` so no script depends on shell-specific environment syntax: the gate
 runs `chromium`; `pnpm e2e:browsers` runs the desktop and mobile matrix; and
 `pnpm e2e:vitals` runs the `vitals-*` projects, which measure LCP, INP, and CLS
-on the search page and report them against NFR-003's targets. Set
+on the search and game pages and report them against NFR-003's targets.
+
+The suite's build turns analytics on against a recording stub that the fixture
+API serves (`/e2e/umami-stub.js`), so `analytics.spec.ts` inspects the
+payloads that would be sent. `security.spec.ts` checks the headers and fails
+on any CSP violation. Set
 `E2E_BASE_URL` to point any of them at an application you are already serving
 — a build against the live API, say — and the suite starts no servers of its
 own.

@@ -95,7 +95,7 @@ pnpm quality
 pnpm check
 ```
 
-The end-to-end suite needs the browser it drives; `pnpm setup` installs it, and `pnpm e2e:install` installs it on its own. The suite starts the API with a fixture catalog and a production web build on ports 8100 and 3100, so it needs no credentials and no running services of yours. `pnpm e2e:browsers` runs the same suite across Chromium, Firefox, and WebKit at desktop and mobile viewports (after `pnpm e2e:install:browsers`), and the manual "Browser matrix" CI job runs it where WebKit's system libraries can be installed; run it for every release candidate.
+The end-to-end suite needs the browser it drives; `pnpm setup` installs it, and `pnpm e2e:install` installs it on its own. The suite starts the API with a fixture catalog and a production web build on ports 8100 and 3100, so it needs no credentials and no running services of yours. `pnpm e2e:browsers` runs the same suite across Chromium, Firefox, and WebKit at desktop and mobile viewports (after `pnpm e2e:install:browsers`), and the manual "Browser matrix" CI job runs it where WebKit's system libraries can be installed; run it for every release candidate. Locally on Linux or WSL those libraries need `sudo env "PATH=$PATH" npx playwright install-deps firefox webkit` once, run from `apps/web`.
 
 `pnpm format` rewrites files. `pnpm quality` is the canonical, non-mutating
 quality gate; `pnpm check` is its compatibility alias. The gate runs formatting
@@ -107,6 +107,10 @@ the committed OpenAPI schema and generated TypeScript types are current.
 filter, browse, autocomplete, and detail data through real Twitch/IGDB
 credentials configured in `apps/api/.env`. It requires network access, prints
 no credentials, and is intentionally excluded from `pnpm quality` and CI.
+`pnpm measure:api` is its opt-in performance companion: it times
+representative searches cold and warm against live IGDB, through memory or,
+with `-- --redis`, through the configured Redis, and it deletes every key it
+writes.
 
 Coverage starts with explicit per-package thresholds: the API requires 90%
 overall; the contracts client requires 90% for statements, lines, functions,

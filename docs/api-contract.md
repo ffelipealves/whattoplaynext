@@ -1,8 +1,8 @@
 # API Contract
 
-Status: implemented through Milestone 3; the Milestone 4 rate-limit,
-readiness, and freshness semantics were decided in M4.1 and are not yet
-implemented. The generated OpenAPI schema is the executable authority.
+Status: implemented through Milestone 4, including rate limiting, readiness,
+and freshness metadata. The generated OpenAPI schema is the executable
+authority.
 Base path: `/api/v1`
 
 FastAPI OpenAPI is the executable source of truth. The committed schema is
@@ -162,10 +162,10 @@ Joins happen before the requested 24-item page is selected and preserve the
 chosen order.
 
 An empty provider page is a successful response with an empty `items` list.
-Provider failures retain their classified error responses. Until M4.3,
-metadata remains `servedFrom="provider"` and `dataMayBeStale=false`;
-`excludedUnknownDuration` is true exactly when duration bounds are active.
-Section 8 defines the Milestone 4 freshness metadata.
+Provider failures retain their classified error responses, unless an expired
+entry can stand in for them (section 8). `excludedUnknownDuration` is true
+exactly when duration bounds are active; section 8 defines `servedFrom`,
+`dataMayBeStale`, and `dataAsOf`.
 
 ### `GET /api/v1/games/autocomplete`
 
@@ -208,11 +208,11 @@ the candidate set with AND against the query text. The response never exceeds
 eight items, applies the same base-game/remake/remaster eligibility allow-list
 as browse and detail, and leaves missing release year or cover values as `null`.
 
-Independent public rate limiting and Redis caching are planned for Milestone 4,
-not active yet; suggestions will be cached for one hour with no stale
-fallback. A failed suggestion request does not block normal name-filter
-submission: the web application keeps the search field usable without
-autocomplete until that page is reloaded.
+Suggestions count toward the per-visitor rate limits (section 6) and are
+cached for one hour with no stale fallback. A failed suggestion request does
+not block normal name-filter submission: the web application keeps the search
+field usable without autocomplete until that page is reloaded (technical debt
+6).
 
 ### `GET /api/v1/games/popular`
 

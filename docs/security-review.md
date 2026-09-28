@@ -82,7 +82,8 @@ Visitor's browser ──HTTPS──► hosting proxy ──► Next.js server �
    chosen yet.
 8. **Dependency audits are manual.** Neither audit runs in CI yet. Adding
    `pnpm audit --prod` and `pip-audit` to the workflow is an engineering
-   follow-up before public beta.
+   follow-up before public beta
+   ([technical debt 20](technical-debt.md#20-dependency-audits-are-manual)).
 
 ## 5. Release-gate items for deployment
 

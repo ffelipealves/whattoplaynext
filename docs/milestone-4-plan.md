@@ -274,7 +274,7 @@ Verification: 275 API tests passed (14 new stale tests), and all 28 Playwright
 journeys passed, as did the build, lint, type checks, formatting, and the
 contract check. The web unit suite passed apart from load-sensitive timeouts
 that also fail without this change; see
-[technical debt 18](technical-debt.md#18-the-web-unit-suite-times-out-under-machine-load).
+[technical debt 18](technical-debt.md#18-the-web-unit-suite-times-out-under-machine-load--resolved-on-2026-09-27).
 
 ### M4.5 — Public and upstream-aware rate limiting
 

@@ -9,7 +9,7 @@ milestone plans and their outcome notes. Items marked **blocking** must be
 resolved before the release gate that names them.
 
 Last reviewed: 2026-09-27, at the Milestone 4 closeout. Milestone 4 resolved
-1b, 4, and 18, measured 2 and 2b warm, and added 17 and 19. The mobile INP
+1b, 4, and 18, partly paid 2, 2b, 9, and 10, and added 17, 19, and 20–25. The mobile INP
 finding (15) was re-measured and now includes the game page in this
 environment.
 
@@ -20,8 +20,11 @@ For the closed-beta handoff, the highest-impact open items are:
 - mobile search INP (15);
 - process-local resilience (17), before a second API instance runs.
 
-The release gate that remains is testing actual branded browsers (14). The
-other entries are deliberate compromises, not newly found defects.
+The release gate that remains is testing actual branded browsers (14).
+Entries 20–25 were found while delivering Milestone 4 and are not paid yet.
+Accepted security risks, such as the CSP's `'unsafe-inline'`, live in the
+[security review](security-review.md) rather than here. The other entries are
+deliberate compromises, not newly found defects.
 
 ## Provider and API
 
@@ -69,7 +72,7 @@ batch, and the detail check carry
 eligible total fell from 316,258 to 233,997 in the live smoke test on
 2026-09-27.
 
-### 2. A duration filter still costs seconds on a cold cache
+### 2. A duration filter still costs seconds on a cold cache — **partly paid in M4.3**
 
 Evaluating play time has to read two IGDB datasets and join them locally, since
 `games` cannot be filtered by a field that lives on `game_time_to_beats`.
@@ -85,7 +88,7 @@ in-memory store, so excluding the Redis round trip). Paying it off further would
 caching the duration index itself — it is small enough (~9,300 rows) to hold
 whole — rather than re-reading it per request.
 
-### 2b. A platform release range still materializes its whole match set
+### 2b. A platform release range still materializes its whole match set — **partly paid in M4.3**
 
 **Resolved for the sort; partially resolved for the range.** Ordering by a
 platform's release date used to read every matching game; it now pages the
@@ -167,6 +170,12 @@ page's life, even after the API recovers.
 A backoff that re-enables after a delay would fix it without reintroducing the
 retry storm, but needs a deliberate policy rather than a guessed interval.
 
+Milestone 4.5 made this more likely: suggestions now count toward the
+visitor's 60-per-minute public budget, so a fast typist near the limit can get
+one `429`, and it switches suggestions off until reload. The API's
+`Retry-After` would give the backoff its interval, which makes the policy
+easier to choose than it was.
+
 ### 7. `src/app/**` sits outside the coverage floor
 
 Coverage thresholds cover `src/features/**` and `src/lib/**`. Pages and route
@@ -201,7 +210,7 @@ when it is not.
 Kept deliberately; recorded so the next reader does not "fix" it by
 hardcoding the enums.
 
-### 9. The search page reads filter metadata before it can search
+### 9. The search page reads filter metadata before it can search — **partly paid in M4.3**
 
 Parsing the URL needs the published allow-lists and limits, so the games route
 awaits `GET /api/v1/filters` before it can parse criteria and only then queries
@@ -220,9 +229,15 @@ sequential cold API calls stand between the request and the first result text,
 and `GET /api/v1/filters` alone measured 2.1 s cold. Caching the metadata —
 here or in Redis — is the cheapest lever on that gap.
 
+Milestone 4.3 caches the filter metadata in Redis for seven days, so after the
+first request the sequential call costs a warm API round trip, about a
+millisecond inside the API, instead of 2.1 s against IGDB. The round trip
+itself remains; removing it still means caching the metadata in the web
+application.
+
 ## End-to-end suite
 
-### 10. Part of the search page has no browser-level test
+### 10. Part of the search page has no browser-level test — **partly paid**
 
 **Partly paid in Milestones 2.10 and 3.9.** The Apply interaction — the one
 interaction whose correctness depends on hydration — is now covered:
@@ -238,6 +253,9 @@ ignored-criteria notice, and the duration notice. The superseded-request abort
 path remains covered by the component test with fake timers, not a browser
 scenario.
 
+Milestone 4 added browser journeys for stale results, security headers and
+CSP, and analytics payloads. The gaps listed above are unchanged.
+
 ### 11. `pnpm e2e` leaves the build pointing at the fixture API
 
 The suite builds the web application with `NEXT_PUBLIC_API_BASE_URL` pointing
@@ -250,6 +268,11 @@ then talk to a server that is no longer running.
 `pnpm dev:web` is unaffected, which is why this has not bitten anyone yet.
 Paying it off means building the suite's application into its own `distDir`,
 so the two builds stop sharing one directory.
+
+Since Milestone 4.9 the suite's build also turns analytics on, loading a stub
+script from the fixture API. A `pnpm start` after `pnpm e2e` would therefore
+try to load `http://127.0.0.1:8100/e2e/umami-stub.js` as well. The fix is the
+same.
 
 ### 12. A stale server can be reused locally
 
@@ -426,3 +449,94 @@ The autocomplete behaves correctly; the test measures real time on a machine
 it does not control. Paying it off means asserting the debounce with a
 controlled clock (Playwright's `page.clock`), or asserting only that the last
 query was requested rather than the exact list.
+
+## Operations
+
+### 20. Dependency audits are manual
+
+Found in M4.8. `pnpm audit` and `pip-audit` were run by hand for the security
+review. The first found a high advisory in `js-yaml`, fixed with a workspace
+override. Neither audit runs in CI, so a new advisory surfaces only when
+someone thinks to look.
+
+Paying it off is a CI job running `pnpm audit --prod` and `pip-audit` over the
+API environment, failing on high or critical findings. A scheduled trigger
+would also catch advisories published after a merge. **Blocking for public
+beta**, as recorded in the [security review](security-review.md).
+
+### 21. Redis memory use is unbounded and unmeasured
+
+Found in M4.9. The architecture sizes the cache for Upstash Redis Free (256
+MB) and requires an `allkeys-lru` eviction policy, but:
+
+- the local Compose Redis sets neither `maxmemory` nor an eviction policy;
+- no one has measured the size of a cached search page or detail entry;
+- nothing estimates how many distinct searches a day of closed-beta traffic
+  would keep for the 25-hour search lifetime.
+
+The deployed Redis could fill up and reject writes. The cache would then
+degrade into the 30-second bypass and fail open, which is safe but slow.
+
+Paying it off means measuring entry sizes with `pnpm measure:api --redis`,
+setting `maxmemory` and `allkeys-lru` in `compose.yaml` to match production,
+and confirming the eviction setting on the chosen Redis host.
+
+### 22. A missing edge token or proxy-hop setting collapses every visitor into one budget
+
+Found in M4.5. The API tells visitors apart only by the address the web server
+forwards with the edge token. Without `WTPN_EDGE_TOKEN` and
+`WTPN_API_EDGE_TOKEN`, every visitor is charged to the web server's own
+address.
+
+On a host that puts a proxy in front of the API, such as Render, the socket
+peer is that proxy for every caller. Without `WTPN_TRUSTED_PROXY_HOPS`,
+direct callers also share one identity. Either way, the whole site shares 60
+requests per minute. A search page makes two API calls, so a handful of
+visitors would start getting `429`.
+
+Nothing warns about this at startup. Paying it off means logging a warning,
+and in production refusing to start, when no edge token is configured, and
+adding the proxy-hop value to each deployment's checklist.
+
+### 23. The operational scripts are not type-checked
+
+Found in M4.7. `scripts/smoke_igdb.py`, `scripts/measure_catalog.py`, and
+`scripts/export_openapi.py` are linted and formatted, but mypy checks only
+`src` and `tests`. Checking them fails today on untyped imports of the
+installed package.
+
+A script that drifts from the application's API would fail only when someone
+runs it against live IGDB. Paying it off means adding `scripts` to the mypy
+configuration with the package importable as source.
+
+## Analytics
+
+### 24. Two analytics measures are approximations
+
+Found in M4.9. The name search is a native GET form, so submitting it
+reloads the page and clears the in-memory analytics session, which leaves two
+measures approximate:
+
+- `search-submitted.refinement` is true only for searches changed without a
+  reload (filters applied, chips removed), never for a new name search;
+- `responseTime` for a reloaded search is measured from navigation start, so
+  it includes page load, not only the API.
+
+Umami's own daily session grouping can still count repeated searches per
+session, so the secondary metric is recoverable. It is just not exact in this
+flag. Paying it off means either a client-side submission for the name form
+or accepting the definitions and documenting them in the analytics review
+before public beta.
+
+### 25. The usefulness prompt (FR-047) is not built
+
+Found in M4.9. FR-047 allows an optional “Did you find something interesting?”
+prompt with `Yes` and `Not yet`, and the analytics allow-list reserves a
+`usefulness-answered` event for it. Neither exists in the web application. The
+primary metric does not depend on it, but the secondary “anonymous response to
+the usefulness prompt” in the product requirements cannot be measured until
+it does.
+
+Building it is small: a dismissible prompt on the results page, the event,
+and its allow-list entry and tests. It needs a product decision on placement
+and frequency, which is why it was not added silently.

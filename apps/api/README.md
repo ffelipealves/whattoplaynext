@@ -1,8 +1,9 @@
 # What To Play Next — API
 
 The public HTTP application uses FastAPI and Python 3.14. It is the only
-credential-bearing part of the product and will expose provider-neutral game
-data under `/api/v1`.
+credential-bearing part of the product and exposes provider-neutral game data
+under `/api/v1`, behind a response cache, per-visitor rate limits, a provider
+throttle and circuit breaker, redacted JSON logs, and security headers.
 
 ## Architecture
 
@@ -11,8 +12,12 @@ The API follows a selective hexagonal architecture:
 - `http` contains inbound FastAPI adapters;
 - `core` contains application composition and typed configuration;
 - domain modules define their own interfaces at real seams;
-- `adapters/igdb` contains the Twitch token lifecycle and authenticated IGDB
-  transport;
+- `adapters/igdb` contains the Twitch token lifecycle, the authenticated IGDB
+  transport, its throttle, and its circuit breaker;
+- `adapters/redis` implements the cache and counter stores;
+- `cache` owns the response cache and `CachingCatalog`, `ratelimit` the
+  visitor identity and budgets, and `core` the settings, telemetry, and
+  structured logging;
 - IGDB, Redis, and test fakes are adapters behind those interfaces;
 - domain modules must not import FastAPI, HTTPX, Redis, or IGDB types.
 
@@ -43,12 +48,15 @@ in `error.requestId`, and never expose framework or provider details.
 
 ## Environment
 
-Copy `.env.example` to `.env`. `WTPN_REDIS_URL` has a safe local default and a
-blank value disables the cache; an unreachable Redis never blocks startup.
-`WTPN_TWITCH_CLIENT_ID` and `WTPN_TWITCH_CLIENT_SECRET` are optional until live
-IGDB access is implemented, but must always be provided together. The settings
-loader treats blank example credentials as absent and masks the secret in model
-representations.
+Copy `.env.example` to `.env`; every setting is listed there with its default.
+`WTPN_REDIS_URL` points at the local Compose Redis, a blank value disables the
+cache, and an unreachable Redis never blocks startup.
+`WTPN_TWITCH_CLIENT_ID` and `WTPN_TWITCH_CLIENT_SECRET` are optional locally,
+but they must be provided together; without them the catalog reports itself
+unavailable. The Twitch secret, `WTPN_EDGE_TOKEN`, and
+`WTPN_IDENTITY_HMAC_KEY` are masked in every representation of the settings.
+`WTPN_ENVIRONMENT=production` refuses `WTPN_DEBUG=true`, sends HSTS, and
+switches off `/docs`, `/redoc`, and `/openapi.json`.
 
 ## Twitch application token
 
@@ -228,6 +236,47 @@ real Redis:
 pnpm infra:up
 WTPN_TEST_REDIS_URL=redis://localhost:6379/15 pnpm test:api
 ```
+
+## Rate limiting
+
+`http/rate_limit.py` charges each catalog request to a visitor; health checks
+are exempt. The visitor is the `X-WTPN-Client-Address` the web server
+forwards, trusted only with a matching `X-WTPN-Edge-Token`; otherwise it is
+the socket peer, or an `X-Forwarded-For` entry chosen by
+`WTPN_TRUSTED_PROXY_HOPS`. Addresses become keyed HMAC digests before
+reaching Redis, and they are never logged.
+
+- **Public ceiling**: 60 requests per minute (`WTPN_RATE_LIMIT_*`), using
+  sliding-window counters that fall back to an in-process store while Redis
+  is down.
+- **Provider-reaching budget**: 20 per minute, charged by `CachingCatalog` only
+  to a caller that would start a provider call. Over it, the caller gets stale
+  data if any, otherwise `429`.
+
+## Provider throttle and circuit breaker
+
+`adapters/igdb/throttle.py` spaces every IGDB attempt, retries included, to
+IGDB's own ceiling of four starts per second and eight in flight.
+`adapters/igdb/circuit.py` opens after five consecutive timeout, unavailable,
+or `429` outcomes, fails fast with the remaining open time, and closes after
+one successful probe. A refused turn and an open circuit both reach the
+visitor as `503 UPSTREAM_UNAVAILABLE` with a retry delay, or as stale data.
+Both are process-local (technical debt 17).
+
+## Observability
+
+`core/structured_logging.py` writes one JSON object per log line and keeps
+only allow-listed fields. Exceptions keep their type and stack, never their
+message. `http/correlation.py` writes one `http.request` line per request:
+
+- the route template, status, and duration;
+- the cache outcomes and provider attempts;
+- the rate-limit decision and the circuit state.
+
+Uvicorn's access log is switched off because it printed addresses and query
+strings. `GET /api/v1/health` is liveness and makes no I/O.
+`GET /api/v1/health/ready` reports the cache and circuit for monitoring
+without calling IGDB.
 
 ## Checks
 

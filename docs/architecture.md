@@ -2,35 +2,36 @@
 
 Status: accepted MVP architecture baseline; implementation complete through
 Milestone 4
-Last updated: 2026-09-27 (Milestone 4.1 operational decisions)
+Last updated: 2026-09-27 (Milestone 4 closeout)
 
 ## 1. Context
 
 This document describes the accepted design and its implementation status.
 Product behavior, quality targets, and scope are defined only in the
-[product requirements](product-requirements.md). Sections labelled for
-Milestone 4 are targets, not claims that the mechanisms already run.
+[product requirements](product-requirements.md). Everything below runs today
+unless it is explicitly marked as a deployment target; no environment beyond
+local development has been provisioned yet.
 
 ## 2. System view
 
 ```text
-Browser
+Browser ──────── allow-listed events ────────► Umami Cloud (when configured)
   │
-  ├── pages, metadata, localized UI
+  ├── pages, metadata, localized UI, security headers
   ▼
-Next.js web application (Vercel target)
-  │  generated REST client
+Next.js web application (deployment target: Vercel or a VPS, undecided)
+  │  generated REST client + X-Request-ID + edge token and visitor address
   ▼
-FastAPI service (Render target)
+FastAPI service (deployment target: Render or a VPS, undecided)
   │
+  ├── security headers, request correlation, JSON logs
   ├── validation and query normalization
-  ├── IGDB transport timeout, retry, and 429 handling (implemented)
-  ├── public rate limiting and circuit breaker (Milestone 4)
-  ├── Redis-compatible cache (Milestone 4)
-  └── IGDB adapter ───────────────► Twitch OAuth / IGDB API
+  ├── per-visitor rate limits ─────────────► Redis counters (in-process fallback)
+  ├── response cache, coalescing, stale-if-error ──► Redis entries
+  ├── provider throttle (4/s, 8 in flight) and circuit breaker
+  └── IGDB adapter: timeout, one retry ───► Twitch OAuth / IGDB API
 
-Anonymous analytics ──────────────► Umami Cloud (Milestone 4)
-Errors and health ────────────────► monitoring providers (Milestone 4)
+Logs and health ──────────────► destination chosen with the deployment
 ```
 
 ## 3. Repository layout
@@ -71,7 +72,7 @@ search state lives in the URL; transient form state remains local to the form.
 - Pydantic models and settings;
 - asynchronous HTTPX client;
 - asynchronous Redis-compatible client (`redis` asyncio, since M4.2);
-- structured JSON logging (Milestone 4);
+- structured JSON logging with an allow-listed formatter (since M4.7);
 - Poetry dependency management;
 - Ruff, mypy, and pytest.
 
@@ -144,7 +145,8 @@ public API models.
 Responsibilities:
 
 - obtain and refresh a Twitch application token server-side;
-- enforce a process-wide and distributed upstream request budget (Milestone 4);
+- keep every request within IGDB's ceiling through a process-wide throttle
+  and circuit breaker (M4.5–M4.6; a distributed budget is technical debt 17);
 - construct the minimum IGDB field projection;
 - join duration or related endpoint data when required;
 - normalize nullable fields and image URLs;
@@ -225,7 +227,7 @@ Redis is a disposable optimization, not a source of truth. M4.2 added the
 `CacheStore` port, its Redis adapter, and the typed `Cache`; M4.3 added the
 `CachingCatalog` described below. The popular-game endpoint sets a 24-hour
 HTTP cache policy and the Next.js sitemap revalidates daily. The policy below
-was decided in M4.1 on 2026-09-27; M4.2–M4.4 implement it.
+was decided in M4.1 and implemented in M4.2–M4.4.
 
 ### 7.1 Where the cache sits
 
@@ -293,17 +295,17 @@ Redis operations use a 200 ms timeout and a bounded pool of ten connections.
 After a Redis error the cache is bypassed for 30 seconds instead of paying the
 timeout on every request; requests then go to the provider under the normal
 rate limits and circuit. A process without Redis configured runs with the
-cache disabled. Upstash Redis Free is 256 MB, so the Redis instance runs with
-an `allkeys-lru` eviction policy; M4.3 measures entry sizes before compression
-is considered.
+cache disabled. Upstash Redis Free is 256 MB, so the deployed Redis must run
+with an `allkeys-lru` eviction policy. Neither that policy nor a memory limit
+is configured for the local Compose Redis, and entry sizes have not been
+measured yet ([technical debt 21](technical-debt.md#21-redis-memory-use-is-unbounded-and-unmeasured)).
 
 ## 8. Resilience
 
 The IGDB transport already has bounded timeouts, one retry for eligible
 transient failures, jitter, and bounded `Retry-After` handling. The web
 application renders classified provider failures and retry timing. The
-following policies were decided in M4.1 on 2026-09-27; M4.5 and M4.6 implement
-them. Until then, the provider's own 429 can surface as `RATE_LIMITED`.
+following policies were decided in M4.1 and implemented in M4.5 and M4.6.
 
 ### 8.1 Rate limiting
 
@@ -404,7 +406,8 @@ validation runs before provider access, and public errors expose only stable
 codes and a correlation ID. Rate limiting (M4.5), log redaction (M4.7), and
 the security headers and policies of M4.8 are in place; the
 [security review](security-review.md) records the controls and accepted
-residual risks. Analytics allow-lists are M4.9 work. The binding requirements
+residual risks, and the analytics allow-list of M4.9 is described in §11a.
+The binding requirements
 are NFR-015 through NFR-023.
 
 Supported environment-variable names are committed only in `.env.example`
@@ -438,7 +441,7 @@ allow-listed JSON logs with one `http.request` line per request. The log and
 monitoring destinations, and their 14-day retention (NFR-023), remain
 deployment decisions.
 
-Decided in M4.1 for M4.7:
+Implemented in M4.7:
 
 - the web server creates one request ID per incoming page or route-handler
   request and sends it as `X-Request-ID` on every API call it makes for that
@@ -533,10 +536,11 @@ provider credentials or live infrastructure.
 A small critical Playwright suite runs inside that gate, driving a real browser
 against the real application composed with a fixture catalog: it needs no
 provider credentials and no live infrastructure, exactly like the rest of the
-suite. The workflow installs Chromium for the default gate; its on-demand
-browser job runs 27 scenarios in five engine/layout projects on manual dispatch
-or a `[browser-matrix]` push commit. Deployment and secret scoping remain
-release work rather than an active CI deployment job.
+suite. The workflow installs Chromium for the default gate, where 37 journeys
+run. Its on-demand browser job runs the same journeys in five engine and
+layout projects (185 runs) on a manual dispatch or a `[browser-matrix]` push
+commit. Deployment, secret scoping, and dependency audits are not CI jobs yet
+([technical debt 20](technical-debt.md#20-dependency-audits-are-manual)).
 
 ## 14. Testing strategy
 
@@ -566,9 +570,15 @@ change.
 - no live IGDB dependency in the normal automated suite;
 - FastAPI endpoint integration tests;
 - frontend component tests for filter and result states;
+- cache, rate-limit, circuit, and throttle tests against in-memory stores,
+  injectable clocks, and scripted transports, with an opt-in test against a
+  real Redis (`WTPN_TEST_REDIS_URL`);
+- redaction tests that capture the JSON log output of whole requests;
 - Playwright for search, URL restoration, pagination, locale switch, upstream
-  error, zero-result behavior, canonical game detail, metadata, sitemap, and
-  accessibility journeys against a fixture catalog injected at the API
-  composition root;
+  error, stale data, zero-result behavior, canonical game detail, metadata,
+  sitemap, security headers and CSP, analytics payloads (recorded by a stub
+  script the fixture server provides), and accessibility journeys against a
+  fixture catalog injected at the API composition root;
+- opt-in live checks: `pnpm smoke:api` and `pnpm measure:api`;
 - automated accessibility checks plus manual keyboard and screen-reader smoke
   testing on critical flows.

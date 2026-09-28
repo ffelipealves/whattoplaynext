@@ -163,3 +163,10 @@ decided; it was postponed on 2026-09-27. These release-gate items remain open:
    retention, and describe the digest-only handling of addresses.
 5. **Existing gates**: branded-browser testing (technical debt 14), IGDB
    written confirmation, and name and domain.
+
+A documentation review after this closeout added technical debt entries
+20–25, which were found during the milestone and are not paid yet. Two of
+them matter for the first deployment: the Redis memory limit and eviction
+(21), and the edge token and proxy-hop settings (22), whose absence would put
+every visitor in one rate-limit budget. The dependency audit in CI (20) is
+blocking for public beta.
