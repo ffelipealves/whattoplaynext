@@ -20,8 +20,8 @@ For the closed-beta handoff, the highest-impact open items are:
 - mobile search INP (15);
 - process-local resilience (17), before a second API instance runs.
 
-The release gate that remains is testing actual branded browsers (14).
-Entries 20–25 were found while delivering Milestone 4 and are not paid yet.
+The release gate that remains is testing actual branded browsers (14). Entries
+21 and 23–25 were found while delivering Milestone 4 and are not paid yet.
 Accepted security risks, such as the CSP's `'unsafe-inline'`, live in the
 [security review](security-review.md) rather than here. The other entries are
 deliberate compromises, not newly found defects.
@@ -361,18 +361,6 @@ controlled clock (Playwright's `page.clock`), or asserting only that the last
 query was requested rather than the exact list.
 
 ## Operations
-
-### 20. Dependency audits are manual
-
-Found in M4.8. `pnpm audit` and `pip-audit` were run by hand for the security
-review. The first found a high advisory in `js-yaml`, fixed with a workspace
-override. Neither audit runs in CI, so a new advisory surfaces only when
-someone thinks to look.
-
-Paying it off is a CI job running `pnpm audit --prod` and `pip-audit` over the
-API environment, failing on high or critical findings. A scheduled trigger
-would also catch advisories published after a merge. **Blocking for public
-beta**, as recorded in the [security review](security-review.md).
 
 ### 21. Redis production policy still needs verification
 

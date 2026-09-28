@@ -547,8 +547,11 @@ provider credentials and no live infrastructure, exactly like the rest of the
 suite. The workflow installs Chromium for the default gate, where 37 journeys
 run. Its on-demand browser job runs the same journeys in five engine and
 layout projects (185 runs) on a manual dispatch or a `[browser-matrix]` push
-commit. Deployment, secret scoping, and dependency audits are not CI jobs yet
-([technical debt 20](technical-debt.md#20-dependency-audits-are-manual)).
+commit. Deployment and secret scoping remain deployment concerns. A separate
+CI job audits production JavaScript
+dependencies at high severity or above, and every locked Python dependency;
+it runs on pushes, pull requests, and weekly without running the browser
+suite.
 
 ## 14. Testing strategy
 
