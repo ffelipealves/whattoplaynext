@@ -141,7 +141,7 @@ def build_rate_limiting(
             if settings.edge_token is not None
             else None
         ),
-        trusted_proxy_hops=settings.trusted_proxy_hops,
+        trusted_proxy_hops=settings.trusted_proxy_hops or 0,
     )
 
 

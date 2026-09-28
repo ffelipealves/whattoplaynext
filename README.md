@@ -184,6 +184,11 @@ The optional settings:
 - `WTPN_EDGE_TOKEN` (API) and `WTPN_API_EDGE_TOKEN` (web) must hold the same
   secret for the API to rate-limit each visitor separately. Without them,
   every visitor shares the web server's budget.
+- In production, also set a unique `WTPN_IDENTITY_HMAC_KEY` and explicitly
+  choose `WTPN_TRUSTED_PROXY_HOPS`: use `0` only when no hosting proxy sits in
+  front of the API; otherwise use the trusted proxy-hop count that appends
+  `X-Forwarded-For`. The API refuses to start until all three API values are
+  configured.
 - `NEXT_PUBLIC_UMAMI_WEBSITE_ID` turns on anonymous analytics.
 - Cache lifetimes, rate-limit budgets, and circuit thresholds have defaults
   in the example files.

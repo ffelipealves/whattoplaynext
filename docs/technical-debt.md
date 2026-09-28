@@ -8,10 +8,10 @@ This is not a bug list: everything here works as designed. Defects go to the
 milestone plans and their outcome notes. Items marked **blocking** must be
 resolved before the release gate that names them.
 
-Last reviewed: 2026-09-27, at the Milestone 4 closeout. Milestone 4 resolved
-1b, 4, and 18, partly paid 2, 2b, 9, and 10, and added 17, 19, and 20–25. The mobile INP
-finding (15) was re-measured and now includes the game page in this
-environment.
+Last reviewed: 2026-09-28. Milestone 4 partly paid 2, 2b, 9, and 10, and
+added 17, 19, and 20–25. The mobile INP finding (15) was re-measured and now
+includes the game page in this environment. Resolved entries are removed; the
+remaining identifiers stay stable because other documents refer to them.
 
 For the closed-beta handoff, the highest-impact open items are:
 
@@ -27,50 +27,6 @@ Accepted security risks, such as the CSP's `'unsafe-inline'`, live in the
 deliberate compromises, not newly found defects.
 
 ## Provider and API
-
-### 1. Browse does not enforce content eligibility — **resolved in M3.1**
-
-Milestone 3.1 made browse, every games-side index join, counts, and autocomplete
-use the same `ELIGIBLE_GAME_TYPES` allow-list as detail. DLC, expansions,
-bundles, mods, and other rejected types can no longer become results that link
-to `GAME_NOT_FOUND`; one adapter-level guard drives every query strategy and
-requires the eligibility clause on every `games` query and count.
-
-Live IGDB counts on 2026-09-15 put the change in concrete terms: the old direct
-popularity total was 81,543 and the old rating total was 375,653; both now
-report 316,258 eligible games. The popularity total grows because it now counts
-all eligible games, including unranked ones, while its first 100 pages remain
-settled from the Visits index. All 24 games on a sampled page returned 200 from
-detail. An unfiltered autocomplete for “Blood and Wine” returned the type-2
-expansion `13166`; the eligible query returned no suggestion.
-
-First flagged in the [Milestone 1 review](milestone-1-review.md#deferred-external-actions)
-and observed from the frontend in Milestone 2.3; closed before Milestone 3 adds
-links from result cards.
-
-### 1b. “Released games” is not enforced as a catalog condition — **resolved in M4.3**
-
-The MVP scope says released base games, remakes, and remasters, but eligibility
-currently constrains only `game_type`. Detail, browse, and autocomplete do not
-require a past release date or otherwise distinguish announced and unreleased
-records, so they agree with one another but are broader than that word in the
-product requirements.
-
-This was made explicit while closing M3.1 instead of silently expanding an
-increment about content type into a release-state policy.
-
-**Decided and implemented on 2026-09-27 in M4.3.** The owner chose the global
-rule: `first_release_date` present and no later than the end of the current
-UTC day, applied with the `game_type` allow-list to detail and every discovery
-path ([architecture §8a](architecture.md#8a-released-game-eligibility)). The
-residual imprecision is accepted: a game first released on a platform outside
-the MVP scope counts as released. It lands in M4.3, before any entry is
-cached, so the change needs no cache invalidation. `IgdbCatalog` takes an
-injectable day, and every games query, count, autocomplete, popular-selection
-batch, and the detail check carry
-`first_release_date != null & first_release_date <= <end of today>`. The
-eligible total fell from 316,258 to 233,997 in the live smoke test on
-2026-09-27.
 
 ### 2. A duration filter still costs seconds on a cold cache — **partly paid in M4.3**
 
@@ -314,6 +270,16 @@ browsers at both versions, recorded against the same journeys the suite
 covers. A hosted cross-browser service could automate it; that is a cost
 decision for the beta milestones, not an engineering blocker now.
 
+**Tooling prepared on 2026-09-27; the pass itself is still owed.** The
+`branded-chrome` and `branded-edge` Playwright projects (`pnpm e2e:branded`)
+run every journey in the installed Chrome and Edge. The
+[browser release checklist](browser-release-checklist.md) holds the manual
+journeys for Firefox and the record table for every browser and version.
+Safari is owed: the owner has no Apple device, so it needs a Mac, an iPhone,
+or a paid service before the gate can close. Previous-stable versions need
+kept installers or a cloud service as well. The pass has to run against the
+closed-beta release candidate, so it cannot close before a deployment exists.
+
 ### 15. Opening the mobile filter drawer is slow to respond
 
 Milestone 2.10's Core Web Vitals spot check measured the search page on a Pixel
@@ -409,32 +375,6 @@ second instance, not before closed beta.
 
 ## Local verification
 
-### 18. The web unit suite times out under machine load — **resolved on 2026-09-27**
-
-Found on 2026-09-27 while verifying M4.4, on a WSL machine that was also
-running Docker Desktop and Redis (load average 5–9 on 12 cores). Under
-`pnpm coverage:web`, the axe checks in `search-page.a11y.test.tsx` and
-`game-detail-page.a11y.test.tsx` exceeded Vitest's 5-second test timeout. One
-timeout then cascaded into “Axe is already running” in the next test of the
-same file. `filter-panel.test.tsx`'s drawer test also exceeded Testing
-Library's one-second `waitFor`. The same failures reproduced with the M4.4 page
-changes stashed. Every affected file passes when run alone, and a 30-second
-test timeout clears the axe tests. The drawer test's `waitFor` still failed at
-that setting.
-
-Nothing was wrong with the product, but a local gate that fails for reasons
-unrelated to the change trains people to ignore it. The fix:
-
-- `test/axe.ts` now holds the axe helpers both files had copied. It chains each
-  run after the previous one, so a run abandoned by a timed-out test can no
-  longer fail the next test.
-- Both axe files set a 30-second test timeout with `vi.setConfig`.
-- The drawer assertion waits up to ten seconds, inside a 20-second test.
-
-Verified the same day: three consecutive `pnpm coverage:web` runs passed
-245/245 at load averages up to 6.8. Two concurrent full suites, one with
-coverage, at a load average of 8.6, also both passed 245/245.
-
 ### 19. The debounce journey depends on wall-clock gaps
 
 Found at the Milestone 4 closeout. `accessibility.spec.ts` types “Wit”, waits
@@ -481,23 +421,6 @@ Paying it off means measuring entry sizes with `pnpm measure:api --redis`,
 setting `maxmemory` and `allkeys-lru` in `compose.yaml` to match production,
 and confirming the eviction setting on the chosen Redis host.
 
-### 22. A missing edge token or proxy-hop setting collapses every visitor into one budget
-
-Found in M4.5. The API tells visitors apart only by the address the web server
-forwards with the edge token. Without `WTPN_EDGE_TOKEN` and
-`WTPN_API_EDGE_TOKEN`, every visitor is charged to the web server's own
-address.
-
-On a host that puts a proxy in front of the API, such as Render, the socket
-peer is that proxy for every caller. Without `WTPN_TRUSTED_PROXY_HOPS`,
-direct callers also share one identity. Either way, the whole site shares 60
-requests per minute. A search page makes two API calls, so a handful of
-visitors would start getting `429`.
-
-Nothing warns about this at startup. Paying it off means logging a warning,
-and in production refusing to start, when no edge token is configured, and
-adding the proxy-hop value to each deployment's checklist.
-
 ### 23. The operational scripts are not type-checked
 
 Found in M4.7. `scripts/smoke_igdb.py`, `scripts/measure_catalog.py`, and
@@ -531,12 +454,11 @@ before public beta.
 ### 25. The usefulness prompt (FR-047) is not built
 
 Found in M4.9. FR-047 allows an optional “Did you find something interesting?”
-prompt with `Yes` and `Not yet`, and the analytics allow-list reserves a
-`usefulness-answered` event for it. Neither exists in the web application. The
-primary metric does not depend on it, but the secondary “anonymous response to
-the usefulness prompt” in the product requirements cannot be measured until
-it does.
+prompt with `Yes` and `Not yet`. Neither the prompt nor an allow-listed
+analytics event for it exists in the web application. The primary metric does
+not depend on it, but the secondary “anonymous response to the usefulness
+prompt” in the product requirements cannot be measured until it does.
 
-Building it is small: a dismissible prompt on the results page, the event,
-and its allow-list entry and tests. It needs a product decision on placement
-and frequency, which is why it was not added silently.
+Building it is small: a dismissible prompt on the results page, the event, its
+allow-list entry, and tests. It needs a product decision on placement and
+frequency, which is why it was not added silently.

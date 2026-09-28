@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 
 from whattoplaynext_api.core.settings import Settings
 
@@ -109,6 +109,61 @@ def test_settings_bound_the_cache_connection_by_default(
     assert settings.cache_operation_timeout_seconds == 0.2
     assert settings.cache_max_connections == 10
     assert settings.cache_bypass_seconds == 30
+
+
+@pytest.mark.parametrize(
+    ("edge_token", "identity_hmac_key", "trusted_proxy_hops", "missing"),
+    [
+        (None, SecretStr("hmac-key"), 0, "WTPN_EDGE_TOKEN"),
+        (SecretStr("edge-token"), None, 0, "WTPN_IDENTITY_HMAC_KEY"),
+        (
+            SecretStr("edge-token"),
+            SecretStr("hmac-key"),
+            None,
+            "WTPN_TRUSTED_PROXY_HOPS",
+        ),
+    ],
+)
+def test_production_requires_complete_rate_limit_identity_configuration(
+    edge_token: SecretStr | None,
+    identity_hmac_key: SecretStr | None,
+    trusted_proxy_hops: int | None,
+    missing: str,
+) -> None:
+    with pytest.raises(ValidationError, match=missing):
+        Settings(
+            environment="production",
+            edge_token=edge_token,
+            identity_hmac_key=identity_hmac_key,
+            trusted_proxy_hops=trusted_proxy_hops,
+        )
+
+
+def test_production_accepts_an_explicit_direct_connection_identity_configuration() -> (
+    None
+):
+    settings = Settings(
+        environment="production",
+        edge_token=SecretStr("edge-token"),
+        identity_hmac_key=SecretStr("hmac-key"),
+        trusted_proxy_hops=0,
+    )
+
+    assert settings.trusted_proxy_hops == 0
+
+
+def test_local_configuration_warns_when_rate_limit_identity_is_incomplete(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level("WARNING"):
+        Settings(
+            environment="local",
+            edge_token=None,
+            identity_hmac_key=None,
+            trusted_proxy_hops=None,
+        )
+
+    assert "rate_limit_identity_configuration_incomplete" in caplog.messages
 
 
 @pytest.mark.parametrize(

@@ -19,8 +19,17 @@ STRICT_HEADERS = {
 
 
 def client_for(environment: str = "test") -> AsyncClient:
+    identity = (
+        {
+            "edge_token": SecretStr("test-edge-token"),
+            "identity_hmac_key": SecretStr("test-hmac-key"),
+            "trusted_proxy_hops": 0,
+        }
+        if environment == "production"
+        else {}
+    )
     application = create_app(
-        Settings(environment=environment),  # type: ignore[arg-type]
+        Settings(environment=environment, **identity),  # type: ignore[arg-type]
         catalog=FixtureCatalog(),
     )
     return AsyncClient(
@@ -147,7 +156,13 @@ async def test_local_development_keeps_the_interactive_documentation() -> None:
 def test_production_refuses_debug_mode() -> None:
     # Starlette's debug mode answers an unexpected error with its traceback.
     with pytest.raises(ValidationError, match="debug"):
-        Settings(environment="production", debug=True)
+        Settings(
+            environment="production",
+            debug=True,
+            edge_token=SecretStr("test-edge-token"),
+            identity_hmac_key=SecretStr("test-hmac-key"),
+            trusted_proxy_hops=0,
+        )
 
 
 def test_settings_never_print_their_secrets() -> None:

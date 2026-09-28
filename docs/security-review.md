@@ -90,7 +90,11 @@ Visitor's browser ──HTTPS──► hosting proxy ──► Next.js server �
 - Production Redis must require authentication and TLS (`rediss://`); the
   local Compose Redis binds only to loopback.
 - The edge token and HMAC key must be generated per environment and differ
-  between preview and production.
+  between preview and production. Set both API values and the matching web
+  token, then explicitly set `WTPN_TRUSTED_PROXY_HOPS` for each deployment:
+  use `0` only with no API-fronting proxy, otherwise record the number of
+  trusted hops that append `X-Forwarded-For`. The API refuses to start in
+  production when any of these values is absent.
 - `WTPN_ENVIRONMENT=production` must be set on the production API, because
   HSTS, the documentation switch-off, and the debug refusal depend on it.
 - `WTPN_SITE_ORIGIN` must be the final `https://` origin, so the web

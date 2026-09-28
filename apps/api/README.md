@@ -58,6 +58,13 @@ unavailable. The Twitch secret, `WTPN_EDGE_TOKEN`, and
 `WTPN_ENVIRONMENT=production` refuses `WTPN_DEBUG=true`, sends HSTS, and
 switches off `/docs`, `/redoc`, and `/openapi.json`.
 
+Production also refuses to start until `WTPN_EDGE_TOKEN`,
+`WTPN_IDENTITY_HMAC_KEY`, and `WTPN_TRUSTED_PROXY_HOPS` are configured.
+`WTPN_TRUSTED_PROXY_HOPS=0` is an explicit choice for an API with no hosting
+proxy in front of it; otherwise set it to the number of trusted proxy hops
+that append `X-Forwarded-For`. Local development remains permissive but logs a
+warning when this identity configuration is incomplete.
+
 ## Twitch application token
 
 `TwitchTokenManager.get_access_token()` is the application-facing seam for an

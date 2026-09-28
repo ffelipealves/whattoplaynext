@@ -1,5 +1,6 @@
 """Typed application settings loaded from the environment."""
 
+import logging
 from functools import lru_cache
 from typing import Literal, Self
 
@@ -7,6 +8,8 @@ from pydantic import Field, RedisDsn, SecretStr, field_validator, model_validato
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from whattoplaynext_api.cache.catalog import CachePolicy
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -34,7 +37,9 @@ class Settings(BaseSettings):
     rate_limit_provider_per_minute: int = Field(default=20, ge=1, le=10_000)
     edge_token: SecretStr | None = None
     identity_hmac_key: SecretStr | None = None
-    trusted_proxy_hops: int = Field(default=0, ge=0, le=5)
+    # None means the deployment has not stated whether the API is proxied;
+    # production must choose an explicit count, including zero.
+    trusted_proxy_hops: int | None = Field(default=None, ge=0, le=5)
     # IGDB's own ceiling; lower it if the provider starts answering 429.
     provider_requests_per_second: float = Field(default=4, gt=0, le=4)
     provider_max_in_flight: int = Field(default=8, ge=1, le=8)
@@ -73,6 +78,32 @@ class Settings(BaseSettings):
         if bool(self.twitch_client_id) != bool(self.twitch_client_secret):
             msg = "Twitch client ID and secret must be configured together"
             raise ValueError(msg)
+        return self
+
+    @model_validator(mode="after")
+    def require_rate_limit_identity_configuration(self) -> Self:
+        """Make a deployment choose how visitor requests are identified."""
+        missing = [
+            name
+            for name, configured in (
+                ("WTPN_EDGE_TOKEN", self.edge_token is not None),
+                ("WTPN_IDENTITY_HMAC_KEY", self.identity_hmac_key is not None),
+                ("WTPN_TRUSTED_PROXY_HOPS", self.trusted_proxy_hops is not None),
+            )
+            if not configured
+        ]
+        if not missing:
+            return self
+
+        if self.environment == "production":
+            msg = "production requires " + ", ".join(missing)
+            raise ValueError(msg)
+
+        if self.environment == "local":
+            logger.warning(
+                "rate_limit_identity_configuration_incomplete",
+                extra={"reason": ",".join(missing)},
+            )
         return self
 
 
