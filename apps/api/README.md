@@ -296,8 +296,10 @@ pnpm build:api
 ```
 
 `pnpm measure:api` (add `-- --redis` to go through the configured Redis) is
-an opt-in live profile of cold versus warm search timings; like
-`pnpm smoke:api`, it needs Twitch credentials and is never part of the gate.
+an opt-in live profile of cold versus warm search timings. With Redis it also
+reports aggregate Redis byte accounting for the search and detail entries it
+writes, then deletes those temporary keys. Like `pnpm smoke:api`, it needs
+Twitch credentials and is never part of the gate.
 
 Run these commands from the repository root. `pnpm quality` runs the complete
 web, API, and contracts quality gate; `pnpm check` is an alias. No Twitch, IGDB,

@@ -109,8 +109,8 @@ credentials configured in `apps/api/.env`. It requires network access, prints
 no credentials, and is intentionally excluded from `pnpm quality` and CI.
 `pnpm measure:api` is its opt-in performance companion: it times
 representative searches cold and warm against live IGDB, through memory or,
-with `-- --redis`, through the configured Redis, and it deletes every key it
-writes.
+with `-- --redis`, through the configured Redis. The Redis mode also reports
+aggregate entry sizes by cache resource, and it deletes every key it writes.
 
 Coverage starts with explicit per-package thresholds: the API requires 90%
 overall; the contracts client requires 90% for statements, lines, functions,

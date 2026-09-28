@@ -295,7 +295,7 @@ same `Catalog` interface used by the HTTP routes and prints only counts and
 titles — never credentials or raw provider payloads. It requires network
 access, so it is excluded from `pnpm quality` and CI. `pnpm measure:api` is its
 companion for performance: it times each representative search cold and warm,
-and with `-- --redis` it goes through the configured Redis.
+and with `-- --redis` it also reports Redis byte totals by cache resource.
 
 ### Windows troubleshooting
 

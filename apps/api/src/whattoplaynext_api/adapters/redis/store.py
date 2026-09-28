@@ -24,6 +24,8 @@ class RedisCommands(Protocol):
 
     def ping(self) -> Awaitable[Any]: ...
 
+    def memory_usage(self, key: str) -> Awaitable[Any]: ...
+
     def pipeline(self, transaction: bool = True) -> Any: ...
 
     def aclose(self) -> Awaitable[None]: ...
@@ -75,6 +77,16 @@ class RedisCacheStore:
     async def ping(self) -> None:
         async with self._bounded():
             await self._client.ping()
+
+    async def memory_usage(self, key: str) -> int | None:
+        """Return Redis's own byte accounting for one key when it exists.
+
+        This is intentionally an adapter-specific diagnostic, used by the
+        opt-in capacity measurement rather than the cache request path.
+        """
+        async with self._bounded():
+            size = await self._client.memory_usage(key)
+        return size if isinstance(size, int) else None
 
     async def hit(
         self, current_key: str, previous_key: str, ttl_seconds: int

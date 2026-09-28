@@ -295,10 +295,18 @@ Redis operations use a 200 ms timeout and a bounded pool of ten connections.
 After a Redis error the cache is bypassed for 30 seconds instead of paying the
 timeout on every request; requests then go to the provider under the normal
 rate limits and circuit. A process without Redis configured runs with the
-cache disabled. Upstash Redis Free is 256 MB, so the deployed Redis must run
-with an `allkeys-lru` eviction policy. Neither that policy nor a memory limit
-is configured for the local Compose Redis, and entry sizes have not been
-measured yet ([technical debt 21](technical-debt.md#21-redis-memory-use-is-unbounded-and-unmeasured)).
+cache disabled. The local Compose Redis mirrors the Upstash Free target with a
+256 MB `maxmemory` and `allkeys-lru`, so cache writes evict old entries instead
+of failing when the capacity limit is reached.
+
+On 2026-09-28, `pnpm measure:api -- --redis` measured three live search pages
+at 14,464–20,608 B each (17,195 B average), and one live detail at 1,664 B.
+Search entries persist for 25 hours including their stale window. Reserving
+20% of the 256 MB target for Redis overhead, rate-limit counters, details, and
+other cache resources leaves room for 10,420 distinct worst-case search pages
+in that window (12,489 at the measured average). The selected production Redis
+host still needs the same policy and limit verified when deployment is chosen
+([technical debt 21](technical-debt.md#21-redis-production-policy-still-needs-verification)).
 
 ## 8. Resilience
 

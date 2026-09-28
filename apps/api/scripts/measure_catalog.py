@@ -1,4 +1,4 @@
-"""Opt-in cold versus warm timings against live IGDB.
+"""Opt-in cold versus warm timings and Redis entry sizes against live IGDB.
 
 Reproduces the Milestone 4 performance profile: each representative search
 shape is requested once cold (a provider call) and then repeatedly warm (a
@@ -7,8 +7,8 @@ cache hit), and the warm p50/p95 are reported against NFR-001's 500 ms p95.
 Never run by CI or ``pnpm quality``: it needs network access and Twitch
 credentials in ``apps/api/.env``. By default the cache lives in memory; with
 ``--redis`` it goes through the configured Redis under a separate ``measure``
-namespace and deletes every key it wrote. Prints only shapes, totals, and
-timings.
+namespace, reports Redis's byte accounting by resource, and deletes every key
+it wrote. Prints only shapes, totals, timings, and aggregate byte counts.
 """
 
 import argparse
@@ -89,10 +89,33 @@ class TrackingRedisStore:
     async def ping(self) -> None:
         await self.inner.ping()
 
+    async def memory_usage_by_resource(self) -> dict[str, list[int]]:
+        """Measure written entries without exposing cache keys or payloads."""
+        sizes: dict[str, list[int]] = {}
+        for key in self.written:
+            size = await self.inner.memory_usage(key)
+            if size is not None:
+                resource = key.split(":", maxsplit=5)[4]
+                sizes.setdefault(resource, []).append(size)
+        return sizes
+
 
 def percentile(sorted_seconds: list[float], fraction: float) -> float:
     index = max(0, round(fraction * len(sorted_seconds)) - 1)
     return sorted_seconds[index] * 1000
+
+
+def format_memory_sizes(sizes: dict[str, list[int]]) -> list[str]:
+    """Render aggregates suitable for a runbook without leaking catalog data."""
+    return [
+        (
+            f"redis {resource}: entries={len(entries)} total={sum(entries)}B "
+            f"min={min(entries)}B average={sum(entries) / len(entries):.0f}B "
+            f"max={max(entries)}B"
+        )
+        for resource, entries in sorted(sizes.items())
+        if entries
+    ]
 
 
 async def main() -> int:
@@ -134,6 +157,7 @@ async def main() -> int:
     )
     print(f"cache: {'redis' if redis else 'memory'}; warm requests: {WARM_REQUESTS}")
     try:
+        detail_game_id: int | None = None
         for label, criteria in SHAPES.items():
             started = time.perf_counter()
             page = await catalog.browse_games(criteria)
@@ -149,6 +173,15 @@ async def main() -> int:
                 f"warm_p50={percentile(warm, 0.5):.2f}ms "
                 f"warm_p95={percentile(warm, 0.95):.2f}ms"
             )
+            if detail_game_id is None and page.items:
+                detail_game_id = page.items[0].id
+        if detail_game_id is not None:
+            await catalog.get_game_detail(detail_game_id)
+        if redis is not None:
+            for measurement in format_memory_sizes(
+                await redis.memory_usage_by_resource()
+            ):
+                print(measurement)
     finally:
         if redis is not None:
             for key in redis.written:

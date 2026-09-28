@@ -374,22 +374,22 @@ API environment, failing on high or critical findings. A scheduled trigger
 would also catch advisories published after a merge. **Blocking for public
 beta**, as recorded in the [security review](security-review.md).
 
-### 21. Redis memory use is unbounded and unmeasured
+### 21. Redis production policy still needs verification
 
-Found in M4.9. The architecture sizes the cache for Upstash Redis Free (256
-MB) and requires an `allkeys-lru` eviction policy, but:
+**Locally sized and configured on 2026-09-28; deployment verification remains.**
+Compose now applies the 256 MB Upstash Free target with `allkeys-lru`, and the
+running container confirmed both settings. `pnpm measure:api -- --redis`
+measured three live search entries at 14,464–20,608 B (17,195 B average) and
+one detail entry at 1,664 B. Search entries have a 25-hour fresh-plus-stale
+lifetime. Reserving 20% of 256 MB for Redis overhead, rate-limit counters,
+details, and the other cache resources permits 10,420 distinct worst-case
+search pages in that window (12,489 at the measured average).
 
-- the local Compose Redis sets neither `maxmemory` nor an eviction policy;
-- no one has measured the size of a cached search page or detail entry;
-- nothing estimates how many distinct searches a day of closed-beta traffic
-  would keep for the 25-hour search lifetime.
-
-The deployed Redis could fill up and reject writes. The cache would then
-degrade into the 30-second bypass and fail open, which is safe but slow.
-
-Paying it off means measuring entry sizes with `pnpm measure:api --redis`,
-setting `maxmemory` and `allkeys-lru` in `compose.yaml` to match production,
-and confirming the eviction setting on the chosen Redis host.
+The deployment target has not been chosen yet. Before its first deploy, set
+and verify the same 256 MB limit and `allkeys-lru` policy on that host. Without
+that final check the host could reject cache writes rather than evicting old
+ones; the application would remain safe but would take its 30-second cache
+bypass and become slower.
 
 ### 23. The operational scripts are not type-checked
 

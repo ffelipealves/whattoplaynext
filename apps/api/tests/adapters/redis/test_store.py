@@ -19,6 +19,7 @@ class StubRedis:
 
     def __init__(self, *, failure: BaseException | None = None) -> None:
         self.values: dict[str, bytes] = {}
+        self.memory_sizes: dict[str, int] = {}
         self.commands: list[tuple[object, ...]] = []
         self.failure = failure
 
@@ -43,6 +44,10 @@ class StubRedis:
     async def ping(self) -> bool:
         self._run("ping")
         return True
+
+    async def memory_usage(self, key: str) -> int | None:
+        self._run("memory_usage", key)
+        return self.memory_sizes.get(key)
 
     async def aclose(self) -> None:
         self._run("aclose")
@@ -104,6 +109,17 @@ async def test_deletes_and_pings_through_the_client() -> None:
 
     assert await store.get(KEY) is None
     assert ("ping",) in client.commands
+
+
+@pytest.mark.anyio
+async def test_reports_redis_byte_accounting_without_reading_the_entry() -> None:
+    client = StubRedis()
+    client.memory_sizes[KEY] = 512
+    store = RedisCacheStore(client, operation_timeout_seconds=0.2)
+
+    assert await store.memory_usage(KEY) == 512
+    assert await store.memory_usage("missing") is None
+    assert ("memory_usage", KEY) in client.commands
 
 
 @pytest.mark.anyio
@@ -247,6 +263,7 @@ async def test_round_trips_and_expires_against_a_real_redis() -> None:
         assert await store.get(key) is None
 
         await store.set(key, b"payload", 60)
+        assert await store.memory_usage(key) is not None
         await store.delete(key)
         assert await store.get(key) is None
 

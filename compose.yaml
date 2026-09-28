@@ -1,7 +1,19 @@
 services:
   redis:
     image: redis:8.2.9-alpine
-    command: ["redis-server", "--appendonly", "yes"]
+    # Match the 256 MB Upstash Free deployment target. All cache keys are
+    # disposable, so discard the least-recently-used entry rather than reject
+    # a write when the limit is reached.
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--maxmemory",
+        "256mb",
+        "--maxmemory-policy",
+        "allkeys-lru",
+      ]
     ports:
       - "127.0.0.1:6380:6379"
     volumes:
