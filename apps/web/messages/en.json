@@ -193,7 +193,11 @@
     "noExternalLinks": "No external links available.",
     "notFoundTitle": "Game not found",
     "notFoundDescription": "This game does not exist or is not available in the catalog.",
-    "backToGames": "Browse games"
+    "backToGames": "Browse games",
+    "closeDetail": "Close game details",
+    "previousGame": "Previous",
+    "nextGame": "Next",
+    "sequencePosition": "{current} of {total}"
   },
   "Failure": {
     "validationTitle": "This request could not be run",

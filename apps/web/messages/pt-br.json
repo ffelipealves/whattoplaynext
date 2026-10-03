@@ -193,7 +193,11 @@
     "noExternalLinks": "Nenhum link externo disponível.",
     "notFoundTitle": "Jogo não encontrado",
     "notFoundDescription": "Este jogo não existe ou não está disponível no catálogo.",
-    "backToGames": "Ver jogos"
+    "backToGames": "Ver jogos",
+    "closeDetail": "Fechar detalhes do jogo",
+    "previousGame": "Anterior",
+    "nextGame": "Próximo",
+    "sequencePosition": "{current} de {total}"
   },
   "Failure": {
     "validationTitle": "Não foi possível executar esta solicitação",

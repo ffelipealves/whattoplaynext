@@ -9,6 +9,7 @@ import { analyticsConfig } from "@/features/analytics/analytics-config";
 import { AnalyticsScript } from "@/features/analytics/analytics-script";
 import { PageviewTracker } from "@/features/analytics/trackers";
 import { SiteFooter } from "@/features/information/site-footer";
+import { ResultSequenceProvider } from "@/features/search/result-sequence";
 import { getSiteOrigin } from "@/lib/seo";
 
 import "../globals.css";
@@ -44,6 +45,8 @@ export function generateStaticParams() {
 
 type LocaleLayoutProps = {
   children: React.ReactNode;
+  /** A game opened over the current page; empty everywhere else. */
+  modal: React.ReactNode;
   params: Promise<{ locale: string }>;
 };
 
@@ -69,6 +72,7 @@ export async function generateMetadata({
 
 export default async function LocaleLayout({
   children,
+  modal,
   params,
 }: LocaleLayoutProps) {
   const { locale } = await params;
@@ -90,8 +94,11 @@ export default async function LocaleLayout({
       {/* A column, so the footer sits at the foot of a short page. */}
       <body className="flex flex-col">
         <NextIntlClientProvider>
-          <div className="flex-1">{children}</div>
-          <SiteFooter />
+          <ResultSequenceProvider>
+            <div className="flex-1">{children}</div>
+            <SiteFooter />
+            {modal}
+          </ResultSequenceProvider>
           {analytics && (
             <>
               <AnalyticsScript {...analytics} />

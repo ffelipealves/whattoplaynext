@@ -15,6 +15,7 @@ import { IgnoredCriteria } from "./ignored-criteria";
 import { PaginationLinks } from "./pagination-links";
 import { ResultsGrid } from "./results-grid";
 import { GenreChips } from "./genre-chips";
+import { RegisterResultSequence } from "./result-sequence";
 import { SortMenu } from "./sort-menu";
 import { ViewToggle } from "./view-toggle";
 import {
@@ -163,6 +164,16 @@ export function SearchPage({
           <div className="mt-4">
             <ResultsGrid params={params} result={result} />
           </div>
+          {result.ok && (
+            // What a game opened from this page steps through.
+            <RegisterResultSequence
+              entries={result.page.items.map(({ id, slug, title }) => ({
+                id,
+                slug,
+                title,
+              }))}
+            />
+          )}
 
           {result.ok && (
             <div className="mt-12">

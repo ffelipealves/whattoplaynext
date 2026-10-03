@@ -129,9 +129,12 @@ for (const locale of ["en", "pt-br"] as const) {
     await expect(
       page.getByRole("heading", { level: 1, name: "The Witcher 3: Wild Hunt" }),
     ).toBeVisible();
-    const main = page.getByRole("main");
-    await expect(main).toBeVisible();
-    expect(await main.ariaSnapshot()).toContain(
+    // From the results, the game opens over them, named by its title.
+    const dialog = page.getByRole("dialog", {
+      name: "The Witcher 3: Wild Hunt",
+    });
+    await expect(dialog).toBeVisible();
+    expect(await dialog.ariaSnapshot()).toContain(
       "A story-driven, next-generation open world role-playing game.",
     );
     await expectNoSevereAxeViolations(page);

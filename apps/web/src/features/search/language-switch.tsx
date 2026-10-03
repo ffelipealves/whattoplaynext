@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 
-import { Link, usePathname } from "@/i18n/navigation";
+import { getPathname, usePathname } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 
 const LINK_CLASS_NAME =
@@ -15,10 +15,25 @@ function useAlternateLocale() {
   return routing.locales.find((candidate) => candidate !== locale)!;
 }
 
+/**
+ * A plain link, so switching language is a full page load: every message
+ * changes anyway, and a client navigation from a game page to the same game
+ * in the other language would otherwise be intercepted into the modal.
+ */
+function LanguageLink({ href }: { href: string }) {
+  const alternateLocale = useAlternateLocale();
+  const t = useTranslations("Locale");
+
+  return (
+    <a className={LINK_CLASS_NAME} href={href} hrefLang={alternateLocale}>
+      {t(alternateLocale)}
+    </a>
+  );
+}
+
 /** Switches language on the page being viewed, search included. */
 function SamePageLink() {
   const alternateLocale = useAlternateLocale();
-  const t = useTranslations("Locale");
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -28,13 +43,9 @@ function SamePageLink() {
   }
 
   return (
-    <Link
-      className={LINK_CLASS_NAME}
-      href={{ pathname, query }}
-      locale={alternateLocale}
-    >
-      {t(alternateLocale)}
-    </Link>
+    <LanguageLink
+      href={getPathname({ href: { pathname, query }, locale: alternateLocale })}
+    />
   );
 }
 
@@ -46,9 +57,9 @@ export function LanguageSwitch() {
     <nav aria-label={t("navLabel")} className="ml-auto">
       <Suspense
         fallback={
-          <Link className={LINK_CLASS_NAME} href="/" locale={alternateLocale}>
-            {t(alternateLocale)}
-          </Link>
+          <LanguageLink
+            href={getPathname({ href: "/", locale: alternateLocale })}
+          />
         }
       >
         <SamePageLink />

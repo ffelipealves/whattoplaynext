@@ -235,7 +235,7 @@ test("the header switches language in place and searches from any page", async (
   ).toBeVisible();
 });
 
-test("a result opens its canonical game page and back restores the localized search", async ({
+test("a result opens the game over the search, and back closes it", async ({
   page,
 }) => {
   const searchUrl =
@@ -281,16 +281,68 @@ test("a result opens its canonical game page and back restores the localized sea
       name: "Captura de tela 2 de The Witcher 3: Wild Hunt",
     }),
   ).toBeVisible();
+  // Escape closes the screenshot viewer only; the game stays open.
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog")).toBeHidden();
+  await expect(
+    page.getByRole("dialog", {
+      name: "Captura de tela 2 de The Witcher 3: Wild Hunt",
+    }),
+  ).toBeHidden();
   await expect(firstScreenshot).toBeFocused();
+  await expect(
+    page.getByRole("dialog", { name: "The Witcher 3: Wild Hunt" }),
+  ).toBeVisible();
 
   await page.goBack();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page).toHaveURL(searchUrl);
   await expect(page.getByLabel("Nome do jogo")).toHaveValue("The Witcher 3");
   await expect(page.getByRole("button", { name: /^Ordenar:/ })).toHaveText(
     "Ordenar:Título",
   );
+});
+
+test("a game opened over the results steps through them, and a reload shows its page", async ({
+  page,
+}) => {
+  await page.goto("/en");
+  // The fixture's most popular game is the one with a full detail record.
+  await page
+    .getByRole("link", { name: "The Witcher 3: Wild Hunt", exact: true })
+    .click();
+
+  const game = page.getByRole("dialog", { name: "The Witcher 3: Wild Hunt" });
+  await expect(game).toBeVisible();
+  await expect(page).toHaveURL(
+    `/en/games/${DETAIL_GAME_ID}/${DETAIL_GAME_SLUG}`,
+  );
+  await expect(game.getByText("1 of 24")).toBeVisible();
+
+  // The next result has no detail in the fixture: the modal says so in place.
+  await game.getByRole("link", { name: /^Next/ }).click();
+  await expect(page).not.toHaveURL(new RegExp(`/games/${DETAIL_GAME_ID}/`));
+  await expect(
+    page.getByRole("dialog").getByRole("heading", { name: "Game not found" }),
+  ).toBeVisible();
+
+  await page.keyboard.press("ArrowLeft");
+  await expect(page).toHaveURL(
+    `/en/games/${DETAIL_GAME_ID}/${DETAIL_GAME_SLUG}`,
+  );
+
+  // Stepping replaced the entry, so a reload is the game's own page...
+  await page.reload();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(
+    page.getByRole("main").getByRole("heading", {
+      level: 1,
+      name: "The Witcher 3: Wild Hunt",
+    }),
+  ).toBeVisible();
+
+  // ...and Back from it returns to the home page the game was opened from.
+  await page.goBack();
+  await expect(page).toHaveURL(/\/en$/);
 });
 
 test("game URLs permanently redirect to the canonical slug in the same locale", async ({

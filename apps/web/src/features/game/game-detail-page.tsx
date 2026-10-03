@@ -173,11 +173,17 @@ function firstReleaseYear(detail: GameDetail): number | undefined {
 }
 
 /**
- * The game's page, laid out like the reference's detail dialog: a banner from
- * the first screenshot, the cover over its lower edge beside the title, the
- * facts in the main column and the ratings and links beside them.
+ * Everything about one game, laid out like the reference's detail dialog: a
+ * banner from the first screenshot, the cover over its lower edge beside the
+ * title, the facts in the main column and the ratings and links beside them.
+ *
+ * The page frames it as a card in the page's own `<main>`; the modal opened
+ * from the results is itself the frame, so there it goes edge to edge.
  */
-export function GameDetailPage({ detail }: GameDetailPageProps) {
+export function GameDetailContent({
+  detail,
+  framed = true,
+}: GameDetailPageProps & { framed?: boolean }) {
   const t = useTranslations("Game");
   const locale = useLocale();
   const format = useFormatter();
@@ -193,15 +199,20 @@ export function GameDetailPage({ detail }: GameDetailPageProps) {
   const releaseYear = firstReleaseYear(detail);
 
   return (
-    <main className="mx-auto max-w-6xl px-4 pb-16 text-foreground sm:px-6 lg:px-8">
+    <>
       <GameAnalytics stale={detail.meta.dataMayBeStale} />
       {detail.meta.dataMayBeStale && (
-        <div className="mt-6">
+        <div className={framed ? "mt-6" : "px-5 pt-16 sm:px-8"}>
           <StaleDataNotice meta={detail.meta} />
         </div>
       )}
 
-      <article className="mt-6 overflow-hidden rounded-3xl border border-border bg-card">
+      <article
+        className={cn(
+          "overflow-hidden bg-card",
+          framed && "mt-6 rounded-3xl border border-border",
+        )}
+      >
         <div className="relative aspect-video sm:aspect-31/10">
           {backdrop ? (
             <Image
@@ -475,12 +486,24 @@ export function GameDetailPage({ detail }: GameDetailPageProps) {
         </div>
       </article>
 
-      <DetailSection className="mt-10" title={t("screenshotsHeading")}>
+      <DetailSection
+        className={framed ? "mt-10" : "px-5 pb-8 sm:px-8"}
+        title={t("screenshotsHeading")}
+      >
         <ScreenshotGallery
           screenshots={detail.screenshots}
           title={detail.title}
         />
       </DetailSection>
+    </>
+  );
+}
+
+/** The game's own page: the detail as a card in the page's main region. */
+export function GameDetailPage({ detail }: GameDetailPageProps) {
+  return (
+    <main className="mx-auto max-w-6xl px-4 pb-16 text-foreground sm:px-6 lg:px-8">
+      <GameDetailContent detail={detail} />
     </main>
   );
 }
