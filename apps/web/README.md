@@ -60,24 +60,39 @@ generated `@whattoplaynext/contracts` package; feature code never imports
 serving a visitor use `getVisitorApiClient()`. It sends one `X-Request-ID` per
 render and, with the edge token, the first `X-Forwarded-For` entry as the
 visitor's address (never `X-Real-IP`). The sitemap, which renders outside any
-request, uses the header-free `getApiClient()`. `src/components/ui/` holds shadcn/ui primitives
-(button, input, select, checkbox, slider, sheet, badge, skeleton) themed
-through the CSS variables in `globals.css`, which reuse this project's own
-brand palette rather than shadcn's generic defaults.
+request, uses the header-free `getApiClient()`. `src/components/ui/` holds the shadcn/ui primitives still in use (button,
+checkbox, kbd, sheet, skeleton, slider) themed through the CSS variables in
+`globals.css`.
 
-The home page proves this wiring end to end: it fetches filter metadata on
-the server and renders "Live catalog: N platforms · N genres · N modes" next
-to the primary action. Stop the local API and reload to see the documented
-failure state instead — "Catalog temporarily unavailable" — rather than a
-crashed page; `getCatalogStatus()` treats both a classified API error and a
-rejected fetch (API process unreachable) as the same graceful "unreachable"
-state.
+The site is dark only: `<html>` always carries `.dark`. `globals.css` defines
+the "ink/ember" scale (`--color-ink-*`, `--color-ember-*`, the rating tones
+`good`/`mid`/`low`), maps the shadcn tokens onto it, and adds the motion
+keyframes and the `scrollbar-*` and `grain` utilities. `ink-400`, the muted
+text colour, is lighter than the reference's so it clears 4.5:1 on every card
+and panel surface; text never sits on `ink-700`. Fonts are Geist, Geist Mono,
+and Bricolage Grotesque with its optical-size axis for headings.
 
 ## Search (home page)
 
 `app/[locale]/(browse)/page.tsx` fetches; `features/search/search-page.tsx`
 renders. The home page is the search; `/games` redirects to it with its query. Submitted state lives entirely in the URL — nothing is applied before
-an explicit action, and a copied link restores the same search.
+an explicit action, and a copied link restores the same search. The one
+exception is the genre chip row (`genre-chips.tsx`): each chip is a link to
+the same search with that genre toggled, so it applies at once.
+
+The header (`site-header.tsx`) lives in `(browse)/layout.tsx` on this route,
+so it stays put while a new search loads, and reads the criteria from the URL
+(`header-search.tsx`) to keep them when a name is searched from it. Other
+routes render the same header without autocomplete: only this route loads the
+filter metadata, which `getFilterMetadata` memoizes per render so the layout
+and the page share one call. The language switch is a plain link, a full
+load, so switching locale on a game page is never intercepted into the modal.
+
+`view=list` lays the results out as rows (`ResultRow`); it is parsed with the
+other criteria, carried by every link, and never sent to the API or counted as
+a new search. On the bare home page (no criteria, default sort, first page),
+`features/featured/` features the first four results above them; their
+details stream in behind a same-size placeholder, so the results never wait.
 
 `features/search/browse-params.ts` parses every criterion with Zod against the
 bounds `GET /api/v1/filters` publishes, so the allow-listed platform, genre,
@@ -105,6 +120,30 @@ Three surfaces need a Client Component, and each degrades:
   `app/api/autocomplete/route.ts`, not the API directly, so the API's base URL
   and the typed client stay on the server;
 - **the drawer** owns only whether it is open.
+
+The filter form's release and play-time sliders hold the URL's strings in
+their draft, so an exact date or hour count from a shared link survives until
+its own thumb moves; those values also ride as hidden fields for a submit
+before hydration.
+
+## Game pages and the modal
+
+`app/[locale]/games/[id]/[slug]/page.tsx` renders the full page
+(`GameDetailPage`), with its canonical redirect, metadata, and error
+boundaries. A game opened by a client navigation from inside the site — a
+result card, the featured carousel — is intercepted by
+`app/[locale]/@modal/(.)games/[id]/[slug]/page.tsx` and shown in
+`game-modal.tsx` over the page it came from, with the same
+`GameDetailContent`. A reload or a shared link loads the full page. The
+`@modal` slot's `default.tsx` and `page.tsx` return nothing, so the slot is
+empty on a full load and closes on a client navigation back to the home page.
+
+Previous and next in the modal step through the results page it was opened
+from: `RegisterResultSequence` records the page's games in a context
+(`result-sequence.tsx`) that sits above both the page and the slot. Steps
+replace the open game, so Back closes the modal and returns the search at its
+scroll position. The intercepted route shows failures inside the modal rather
+than throwing, so the page behind it never gives way to an error screen.
 
 `lib/api-failure.ts` classifies one API error response into a state the UI can
 speak about, including the two the envelope cannot express — a request that

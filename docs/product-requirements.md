@@ -129,6 +129,18 @@ Desktop displays filters in a sidebar beside the results. Mobile displays them
 in a drawer opened by a button containing the active-filter count. Apply and
 clear actions remain easy to reach in either layout.
 
+Presentation notes from the interface redesign (2026-10-03), within the
+requirements above:
+
+- A row of genre chips above the results applies a genre on one click (the
+  FR-008 exception); the panel keeps the explicit Apply for everything else.
+- Results can be laid out as a grid or a list; the layout is part of the URL.
+- The bare home page (no criteria, default sort, first page) features up to
+  four of its most popular results above them. This is the first page of the
+  default search, not editorial curation.
+- A game opened from the results shows over them in a modal at the game's own
+  URL; loading that URL directly shows the full game page (FR-032).
+
 ### 3.5 Game details
 
 | ID     | Requirement                                                                                                                                                                                                                                        |

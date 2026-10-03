@@ -79,10 +79,12 @@ reports.
 Add one row per browser and version tested. A journey is only “pass” if it
 completed without a console error.
 
-| Date       | Browser | Version       | OS / device                    | Build (commit) | Journeys passed | Tester                 | Notes                                                                                                           |
-| ---------- | ------- | ------------- | ------------------------------ | -------------- | --------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------- |
-| 2026-09-28 | Chrome  | 154.0.8037.57 | Ubuntu (WSL), desktop/headless | `8ad8c97`      | 37/37 automated | Codex local automation | `pnpm e2e:branded` passed against the local fixture environment; evidence only, not the release-candidate gate. |
-| 2026-09-28 | Edge    | 154.0.4258.37 | Ubuntu (WSL), desktop/headless | `8ad8c97`      | 37/37 automated | Codex local automation | `pnpm e2e:branded` passed against the local fixture environment; evidence only, not the release-candidate gate. |
+| Date       | Browser | Version       | OS / device                    | Build (commit) | Journeys passed | Tester                       | Notes                                                                                                                |
+| ---------- | ------- | ------------- | ------------------------------ | -------------- | --------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-28 | Chrome  | 154.0.8037.57 | Ubuntu (WSL), desktop/headless | `8ad8c97`      | 37/37 automated | Codex local automation       | `pnpm e2e:branded` passed against the local fixture environment; evidence only, not the release-candidate gate.      |
+| 2026-09-28 | Edge    | 154.0.4258.37 | Ubuntu (WSL), desktop/headless | `8ad8c97`      | 37/37 automated | Codex local automation       | `pnpm e2e:branded` passed against the local fixture environment; evidence only, not the release-candidate gate.      |
+| 2026-10-03 | Chrome  | 154.0.8037.97 | Ubuntu (WSL), desktop/headless | `7876399`      | 42/42 automated | Claude Code local automation | Interface redesign closeout; branded projects run with `--workers=1`. Evidence only, not the release-candidate gate. |
+| 2026-10-03 | Edge    | 154.0.4258.53 | Ubuntu (WSL), desktop/headless | `7876399`      | 42/42 automated | Claude Code local automation | Interface redesign closeout; branded projects run with `--workers=1`. Evidence only, not the release-candidate gate. |
 
 Technical debt 14 closes once every row the coverage plan requires reads pass
 for the release candidate. Safari stays owed until an Apple device or a paid

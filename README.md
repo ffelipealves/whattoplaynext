@@ -108,6 +108,17 @@ anonymous analytics. Unreleased and undated games are now excluded. The
 [security review](docs/security-review.md) records accepted risks. The
 [technical debt register](docs/technical-debt.md) tracks the known compromises.
 
+The web interface was then redesigned after a dark "ink/ember" reference: a
+sticky header with the name search, one-click genre chips above the results
+(the one exception to the explicit Apply of FR-008), a pinned results toolbar,
+tall-cover cards with a grid/list toggle, sliders in the filter panel, a
+featured carousel of the most popular games on the bare home page, and game
+pages that open in a modal over the results while their URLs still load the
+full page. The API now serves covers at 2x and screenshots at 1080p. The
+closeout passed `pnpm quality`, the five-project browser matrix one worker at
+a time, and the branded Chrome and Edge runs; Web Vitals stayed inside target
+except the known mobile search INP (technical debt 15).
+
 ## Local development
 
 This section is the complete path from a fresh clone to both applications

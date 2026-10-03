@@ -8,8 +8,9 @@ This is not a bug list: everything here works as designed. Defects go to the
 milestone plans and their outcome notes. Items marked **blocking** must be
 resolved before the release gate that names them.
 
-Last reviewed: 2026-09-28. Milestone 4 partly paid 2, 2b, 9, and 10, and
-added 17, 19, and 20–25. The mobile INP finding (15) was re-measured and now
+Last reviewed: 2026-10-03, at the interface redesign closeout, which
+re-measured 15, reproduced 19, and added 26. Before that, Milestone 4 partly
+paid 2, 2b, 9, and 10, and added 17, 19, and 20–25. The mobile INP finding (15) was re-measured and now
 includes the game page in this environment. Resolved entries are removed; the
 remaining identifiers stay stable because other documents refer to them.
 
@@ -314,6 +315,17 @@ gap from the Milestone 3 numbers is the environment, not a regression, but it
 means the game page is also over 200 ms here. Field data remains the deciding
 measurement.
 
+The interface redesign closeout (2026-10-03, same WSL2 machine) measured the
+first tap at 672 ms on the pre-redesign `main`, 712 ms after the redesign's
+filter panel, and 728–872 ms on the finished redesign; the later interactions
+stay at 104–288 ms. So the redesign adds a few tens of milliseconds, inside
+this environment's spread, and the finding is otherwise unchanged. The
+redesign moved the genre list out of the drawer into the chip row above the
+results, which retires the "mount the genre list lazily" candidate; the
+drawer now mounts two checkbox groups, three sliders, and the rating
+presets. Search LCP was 976 ms desktop and 1.6 s mobile with CLS 0, the game
+page 460 ms and 752 ms with INP 96 and 136 ms, both now inside target here.
+
 ## Continuous integration
 
 ### 16. The browser matrix and pushes to `main` cancel each other
@@ -372,6 +384,26 @@ The autocomplete behaves correctly; the test measures real time on a machine
 it does not control. Paying it off means asserting the debounce with a
 controlled clock (Playwright's `page.clock`), or asserting only that the last
 query was requested rather than the exact list.
+
+The interface redesign closeout reproduced it once in a single-project
+Chromium run and on every project of the parallel matrix; it passed on every
+project run one worker at a time. See 26 for the wider pattern.
+
+### 26. The parallel browser matrix times out on a loaded machine
+
+Found at the interface redesign closeout. `pnpm e2e:browsers` runs five
+projects with Playwright's default workers. On the WSL2 machine, that run
+failed 16 tests on the pre-redesign `main` (`bbe7e16`) and 30 on the finished
+redesign, mostly 30-second timeouts and client navigations that had not
+landed within ten seconds, concentrated on Firefox and WebKit. Every project
+then passed 42/42 (41 plus the deliberately skipped grid/list test on phones)
+when run alone with `--workers=1`, as did branded Chrome and Edge.
+
+Nothing here is a product defect, but a red matrix that is green one worker
+at a time teaches people to ignore red. Paying it off means capping workers
+for the matrix script (or per project), raising the timeouts only for the
+WebKit and Firefox projects, or running the matrix on a CI runner sized for it
+rather than a developer machine.
 
 ## Operations
 
