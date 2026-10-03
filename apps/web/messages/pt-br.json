@@ -125,6 +125,16 @@
     "viewGrid": "Visualizar em grade",
     "viewList": "Visualizar em lista"
   },
+  "Featured": {
+    "label": "Jogos em destaque",
+    "roleDescription": "carrossel",
+    "eyebrow": "Em destaque",
+    "details": "Ver detalhes",
+    "tabsLabel": "Escolher destaque",
+    "pause": "Pausar os destaques",
+    "play": "Retomar os destaques",
+    "detailsLabel": "Ver detalhes: {title}"
+  },
   "Game": {
     "coverAlt": "Capa de {title}",
     "coverPlaceholderLabel": "Capa indisponível para {title}",

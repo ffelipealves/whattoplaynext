@@ -125,6 +125,16 @@
     "viewGrid": "Grid view",
     "viewList": "List view"
   },
+  "Featured": {
+    "label": "Featured games",
+    "roleDescription": "carousel",
+    "eyebrow": "Featured",
+    "details": "View details",
+    "tabsLabel": "Choose a featured game",
+    "pause": "Pause the featured games",
+    "play": "Play the featured games",
+    "detailsLabel": "View details: {title}"
+  },
   "Game": {
     "coverAlt": "{title} cover art",
     "coverPlaceholderLabel": "Cover unavailable for {title}",

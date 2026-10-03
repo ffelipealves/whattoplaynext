@@ -103,6 +103,27 @@ test("the list layout survives paging and a new name search", async ({
   await expect(page).toHaveURL(/view=list/);
 });
 
+test("the bare home features popular games, and a search replaces them", async ({
+  page,
+}) => {
+  await page.goto("/en");
+
+  const featured = page.getByRole("region", { name: "Featured games" });
+  await expect(
+    featured.getByRole("heading", { name: "The Witcher 3: Wild Hunt" }),
+  ).toBeVisible();
+  await expect(
+    featured.getByRole("link", {
+      name: "View details: The Witcher 3: Wild Hunt",
+    }),
+  ).toHaveAttribute("href", `/en/games/${DETAIL_GAME_ID}/${DETAIL_GAME_SLUG}`);
+
+  await page.goto("/en?platform=pc");
+  await expect(
+    page.getByRole("region", { name: "Featured games" }),
+  ).toHaveCount(0);
+});
+
 test("pagination moves through the result set", async ({ page }) => {
   await page.goto("/en?sort=title&direction=asc");
 

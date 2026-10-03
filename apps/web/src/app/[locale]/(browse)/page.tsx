@@ -1,10 +1,17 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
 import { getFilterMetadata } from "@/features/catalog/get-filter-metadata";
 import {
+  FeaturedGames,
+  FeaturedSkeleton,
+} from "@/features/featured/featured-games";
+import { activeFilters } from "@/features/search/active-filters";
+import {
   filterBoundsFrom,
   readBrowseParams,
+  type BrowseParams,
 } from "@/features/search/browse-params";
 import { getSearchResults } from "@/features/search/get-search-results";
 import { SearchPage } from "@/features/search/search-page";
@@ -59,12 +66,44 @@ export default async function LocaleHomePage({
     metadata && filterBoundsFrom(metadata),
   );
 
+  const result = await getSearchResults(params);
+  const featuredIds =
+    isLanding(params) && result.ok
+      ? result.page.items.slice(0, FEATURED_COUNT).map((game) => game.id)
+      : [];
+
   return (
     <SearchPage
+      featured={
+        featuredIds.length > 0 && (
+          // Streamed after the results, so they never wait on it.
+          <Suspense fallback={<FeaturedSkeleton />}>
+            <FeaturedGames ids={featuredIds} />
+          </Suspense>
+        )
+      }
       filters={filters}
       issues={issues}
       params={params}
-      result={await getSearchResults(params)}
+      result={result}
     />
+  );
+}
+
+/** The most popular games, featured above the results on the landing view. */
+const FEATURED_COUNT = 4;
+
+/**
+ * The bare home page: nothing searched or filtered, the default sort, the
+ * first page. Its first results are the most popular games, which is what
+ * the featured section shows; any other search has results of its own to
+ * look at.
+ */
+function isLanding(params: BrowseParams): boolean {
+  return (
+    !params.name &&
+    activeFilters(params).length === 0 &&
+    params.sort === "popularity" &&
+    params.page === 1
   );
 }

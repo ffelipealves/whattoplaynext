@@ -162,6 +162,17 @@
   }
 }
 
+/* The featured carousel's countdown to the next slide. */
+@keyframes featured-progress {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
 @utility scrollbar-thin {
   scrollbar-width: thin;
   scrollbar-color: var(--color-ink-700) transparent;

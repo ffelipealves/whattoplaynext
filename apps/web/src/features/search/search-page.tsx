@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 
 import type { FilterMetadataResult } from "@/features/catalog/get-filter-metadata";
@@ -28,6 +29,8 @@ type SearchPageProps = {
   issues: BrowseParamIssue[];
   result: SearchResult;
   filters: FilterMetadataResult;
+  /** The home page's featured games, when the route offers them. */
+  featured?: ReactNode;
 };
 
 /**
@@ -42,6 +45,7 @@ export function SearchPage({
   issues,
   result,
   filters,
+  featured,
 }: SearchPageProps) {
   const t = useTranslations("Search");
   const metadata = filters.ok ? filters.metadata : undefined;
@@ -78,6 +82,8 @@ export function SearchPage({
         searchKey={searchKey(params)}
         sort={params.sort}
       />
+
+      {featured && <div className="pt-6 sm:pt-8">{featured}</div>}
 
       <div className="mt-8 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-10 xl:gap-14">
         <FilterSidebar filters={filters} params={params} />
