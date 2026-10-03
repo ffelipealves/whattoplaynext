@@ -37,7 +37,9 @@ const DURATION_KIND_LABEL_KEYS: Record<DurationKind, string> = {
   completionist: "durationKindCompletionist",
 };
 
-type IdField = "platformIds" | "genreIds" | "gameModeIds";
+/** The id lists this form edits. Genres are picked from the chip row above
+ * the results instead, and only ride along in the draft. */
+type IdField = "platformIds" | "gameModeIds";
 
 /**
  * The draft the visitor is editing. Ids stay as string arrays and the numeric
@@ -160,7 +162,6 @@ function CheckboxGroup({
   name,
   onToggle,
   options,
-  scrollable,
   selected,
 }: {
   idPrefix: string;
@@ -168,19 +169,12 @@ function CheckboxGroup({
   name: string;
   onToggle: (id: string, checked: boolean) => void;
   options: CatalogOption[];
-  scrollable?: boolean;
   selected: string[];
 }) {
   return (
     <fieldset>
       <FieldLegend>{legend}</FieldLegend>
-      <div
-        className={
-          scrollable
-            ? "mt-3 max-h-52 space-y-2.5 overflow-y-auto pr-1"
-            : "mt-3 space-y-2.5"
-        }
-      >
+      <div className="mt-3 space-y-2.5">
         {options.map((option) => {
           const inputId = `${idPrefix}-${option.id}`;
           return (
@@ -240,7 +234,6 @@ export function FilterForm({
   // every render, which makes React Compiler skip memoizing this component.
   const selected: Record<IdField, string[]> = {
     platformIds: useWatch({ control, name: "platformIds" }),
-    genreIds: useWatch({ control, name: "genreIds" }),
     gameModeIds: useWatch({ control, name: "gameModeIds" }),
   };
   const minimumRating = useWatch({ control, name: "minimumRating" });
@@ -290,6 +283,9 @@ export function FilterForm({
       {params.name && <input name="name" type="hidden" value={params.name} />}
       <input name="sort" type="hidden" value={params.sort} />
       <input name="direction" type="hidden" value={params.direction} />
+      {params.genreIds.map((id) => (
+        <input key={id} name="genre" type="hidden" value={id} />
+      ))}
 
       <CheckboxGroup
         idPrefix={`${formId}-platform`}
@@ -298,16 +294,6 @@ export function FilterForm({
         onToggle={toggle("platformIds")}
         options={metadata.platforms}
         selected={selected.platformIds}
-      />
-
-      <CheckboxGroup
-        idPrefix={`${formId}-genre`}
-        legend={t("genreLegend")}
-        name="genre"
-        onToggle={toggle("genreIds")}
-        options={metadata.genres}
-        scrollable
-        selected={selected.genreIds}
       />
 
       <CheckboxGroup

@@ -53,15 +53,18 @@ test("a shared URL restores the same search, and back and forward keep it", asyn
   await page.goto("/en?name=Hollow&sort=title&direction=asc&page=1");
 
   await expect(page.getByLabel("Game name")).toHaveValue("Hollow");
-  await expect(page.getByRole("link", { name: "Title" })).toHaveAttribute(
-    "aria-current",
-    "true",
-  );
+  const sortMenu = page.getByRole("button", { name: /^Sort:/ });
+  await expect(sortMenu).toHaveText("Sort:Title");
   await expect(
     page.getByRole("status").filter({ hasText: "games" }),
   ).toHaveText("2 games");
 
-  await page.getByRole("link", { name: "Rating" }).click();
+  await sortMenu.click();
+  await expect(page.getByRole("menuitem", { name: "Title" })).toHaveAttribute(
+    "aria-current",
+    "true",
+  );
+  await page.getByRole("menuitem", { name: "Rating" }).click();
   await expect(page).toHaveURL(/sort=rating/);
 
   await page.goBack();
@@ -237,9 +240,8 @@ test("a result opens its canonical game page and back restores the localized sea
   await page.goBack();
   await expect(page).toHaveURL(searchUrl);
   await expect(page.getByLabel("Nome do jogo")).toHaveValue("The Witcher 3");
-  await expect(page.getByRole("link", { name: "Título" })).toHaveAttribute(
-    "aria-current",
-    "true",
+  await expect(page.getByRole("button", { name: /^Ordenar:/ })).toHaveText(
+    "Ordenar:Título",
   );
 });
 

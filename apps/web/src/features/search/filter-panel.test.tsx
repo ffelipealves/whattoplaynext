@@ -174,7 +174,7 @@ test("both layouts submit the identical URL for the same selection", async () =>
     withIntl(<FilterSidebar filters={availableFilters} params={applied} />),
   );
   fireEvent.click(screen.getByRole("checkbox", { name: "PC" }));
-  fireEvent.click(screen.getByRole("checkbox", { name: "Shooter" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Co-operative" }));
   fireEvent.click(screen.getByRole("button", { name: "Apply filters" }));
   await waitFor(() => expect(pushMock).toHaveBeenCalledTimes(1));
   const fromSidebar = lastPushedQuery().toString();
@@ -185,7 +185,7 @@ test("both layouts submit the identical URL for the same selection", async () =>
   );
   fireEvent.click(screen.getByRole("button", { name: "Filters" }));
   fireEvent.click(await screen.findByRole("checkbox", { name: "PC" }));
-  fireEvent.click(screen.getByRole("checkbox", { name: "Shooter" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Co-operative" }));
   fireEvent.click(screen.getByRole("button", { name: "Apply filters" }));
   await waitFor(() => expect(pushMock).toHaveBeenCalledTimes(2));
 

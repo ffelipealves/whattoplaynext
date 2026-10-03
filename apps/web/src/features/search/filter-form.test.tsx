@@ -82,13 +82,14 @@ test("renders one control per published option", () => {
   expect(
     screen.getByRole("checkbox", { name: "Nintendo Switch" }),
   ).toBeDefined();
-  expect(screen.getByRole("checkbox", { name: "Shooter" })).toBeDefined();
   expect(screen.getByRole("checkbox", { name: "Co-operative" })).toBeDefined();
   expect(screen.getByRole("radio", { name: "Completionist" })).toBeDefined();
+  // Genres are picked from the chip row above the results, not here.
+  expect(screen.queryByRole("checkbox", { name: "Shooter" })).toBeNull();
 });
 
 test("checks the boxes for the filters already applied in the URL", () => {
-  renderForm({ platform: ["pc"], genre: ["indie"] });
+  renderForm({ platform: ["pc"], gameMode: ["co-operative"] });
 
   expect(
     screen.getByRole("checkbox", { name: "PC" }).getAttribute("aria-checked"),
@@ -100,9 +101,33 @@ test("checks the boxes for the filters already applied in the URL", () => {
   ).toBe("false");
   expect(
     screen
-      .getByRole("checkbox", { name: "Indie" })
+      .getByRole("checkbox", { name: "Co-operative" })
       .getAttribute("aria-checked"),
   ).toBe("true");
+});
+
+test("applying keeps the genres chosen from the chip row", async () => {
+  renderForm({ genre: ["indie"] });
+
+  fireEvent.click(screen.getByRole("checkbox", { name: "PC" }));
+  apply();
+
+  await waitFor(() => expect(pushMock).toHaveBeenCalled());
+  expect(lastPushedQuery().getAll("genre")).toEqual(["indie"]);
+});
+
+test("carries applied genres as fields for a submit before hydration", () => {
+  const { container } = renderForm({ genre: ["indie", "shooter"] });
+
+  expect(
+    Array.from(
+      container.querySelectorAll<HTMLInputElement>(
+        'input[type="hidden"][name="genre"]',
+      ),
+    )
+      .map((input) => input.value)
+      .sort(),
+  ).toEqual(["indie", "shooter"]);
 });
 
 test("no selection reaches the URL before Apply", () => {
@@ -131,10 +156,9 @@ test("applying several values in one category repeats that param (OR within)", a
 });
 
 test("applying values across categories sends one param each (AND across)", async () => {
-  renderForm();
+  renderForm({ genre: ["shooter"] });
 
   fireEvent.click(screen.getByRole("checkbox", { name: "PC" }));
-  fireEvent.click(screen.getByRole("checkbox", { name: "Shooter" }));
   fireEvent.click(screen.getByRole("checkbox", { name: "Co-operative" }));
   apply();
 

@@ -1,7 +1,7 @@
 # Product Requirements
 
 Status: approved product baseline
-Last updated: 2026-09-09
+Last updated: 2026-10-03
 
 ## 1. Product definition
 
@@ -74,7 +74,7 @@ rating, or available play time, but has not selected a specific title.
 | FR-005 | Selecting multiple values within one filter category applies OR logic.                                                                            |
 | FR-006 | Selecting values across different categories applies AND logic.                                                                                   |
 | FR-007 | Filters are strict. The MVP does not return approximate matches.                                                                                  |
-| FR-008 | The visitor applies filter changes using an explicit `Apply filters` action.                                                                      |
+| FR-008 | The visitor applies filter changes using an explicit `Apply filters` action. Exception: the genre chips above the results apply on one click.     |
 | FR-009 | The visitor can remove an active filter individually or clear all filters.                                                                        |
 | FR-010 | Submitted filters, sorting, language, and page are represented in the URL and restored on reload or shared access.                                |
 | FR-011 | Unknown query parameters and invalid values produce a controlled validation response rather than being silently interpreted.                      |

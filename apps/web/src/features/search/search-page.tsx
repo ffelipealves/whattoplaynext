@@ -13,7 +13,8 @@ import { FilterSidebar } from "./filter-sidebar";
 import { IgnoredCriteria } from "./ignored-criteria";
 import { PaginationLinks } from "./pagination-links";
 import { ResultsGrid } from "./results-grid";
-import { SortLinks } from "./sort-links";
+import { GenreChips } from "./genre-chips";
+import { SortMenu } from "./sort-menu";
 import {
   MAX_PAGE,
   type BrowseParamIssue,
@@ -120,15 +121,28 @@ export function SearchPage({
             </div>
           )}
 
-          <div className="mt-6 flex flex-wrap items-center gap-3">
+          {metadata && (
+            <div className="mt-5">
+              <GenreChips genres={metadata.genres} params={params} />
+            </div>
+          )}
+
+          {/* Pinned under the header while the results scroll. */}
+          <div className="sticky top-16 z-30 -mx-4 mt-4 flex flex-wrap items-center gap-3 bg-ink-950/95 px-4 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
             <FilterDrawer filters={filters} params={params} />
-            <SortLinks params={params} />
+            {hasActiveFilters && (
+              <div className="order-last w-full sm:order-none sm:w-auto sm:flex-1">
+                <ActiveFilterChips metadata={metadata} params={params} />
+              </div>
+            )}
+            <div className="ml-auto flex items-center gap-2">
+              <SortMenu params={params} />
+            </div>
           </div>
 
-          {(hasActiveFilters || durationWasNarrowed) && (
-            <div className="mt-4 space-y-4">
-              <ActiveFilterChips metadata={metadata} params={params} />
-              {result.ok && <DurationNotice meta={result.page.meta} />}
+          {result.ok && durationWasNarrowed && (
+            <div className="mt-4">
+              <DurationNotice meta={result.page.meta} />
             </div>
           )}
 
@@ -138,14 +152,16 @@ export function SearchPage({
             </div>
           )}
 
-          <div className="mt-6">
+          <div className="mt-4">
             <ResultsGrid params={params} result={result} />
           </div>
 
           {result.ok && (
-            <div className="mt-8">
+            <div className="mt-12">
               <PaginationLinks
+                pageSize={result.page.pagination.pageSize}
                 params={params}
+                totalItems={result.page.pagination.totalItems}
                 totalPages={result.page.pagination.totalPages}
               />
             </div>

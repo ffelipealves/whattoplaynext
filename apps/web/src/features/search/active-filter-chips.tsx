@@ -13,6 +13,7 @@ import {
   type ActiveFilter,
 } from "./active-filters";
 import {
+  clearedFilters,
   withBrowseParams,
   type BrowseParams,
   type DurationKind,
@@ -103,7 +104,10 @@ export function ActiveFilterChips({
   }
 
   return (
-    <nav aria-label={t("activeNavLabel")} className="flex flex-wrap gap-2">
+    <nav
+      aria-label={t("activeNavLabel")}
+      className="flex flex-wrap items-center gap-2"
+    >
       {filters.map((filter) => {
         const label = describe(filter, t, metadata);
         return (
@@ -111,7 +115,7 @@ export function ActiveFilterChips({
           // client JS exactly like the sort and pagination links.
           <Link
             aria-label={t("removeChipLabel", { label })}
-            className="inline-flex items-center gap-1.5 rounded-full border border-ink-700 bg-ink-850 px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:border-destructive hover:text-destructive"
+            className="group inline-flex items-center gap-1.5 rounded-lg border border-ink-700 bg-ink-850 py-1 pr-1.5 pl-2.5 text-[0.8125rem] text-ink-100 transition-colors hover:border-primary/60"
             href={{
               pathname: "/",
               query: withBrowseParams(params, {
@@ -122,10 +126,24 @@ export function ActiveFilterChips({
             key={keyFor(filter)}
           >
             <span>{label}</span>
-            <XIcon aria-hidden className="size-3.5" />
+            <XIcon
+              aria-hidden
+              className="size-3.5 text-muted-foreground group-hover:text-ember-300"
+            />
           </Link>
         );
       })}
+      {/* Clears the criteria, keeping the name and sort, like the panel's
+          own clear action. */}
+      <Link
+        className="px-1.5 text-[0.8125rem] text-muted-foreground underline-offset-4 hover:text-ember-300 hover:underline"
+        href={{
+          pathname: "/",
+          query: withBrowseParams(params, { ...clearedFilters(), page: 1 }),
+        }}
+      >
+        {t("clearAllLabel")}
+      </Link>
     </nav>
   );
 }

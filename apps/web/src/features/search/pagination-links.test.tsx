@@ -13,11 +13,28 @@ function browseParams(overrides: Partial<BrowseParams>): BrowseParams {
   return { ...baseline, ...overrides };
 }
 
-function renderPagination(params: BrowseParams, totalPages: number) {
+const PAGE_SIZE = 24;
+
+function renderPagination(
+  params: BrowseParams,
+  totalPages: number,
+  totalItems = totalPages * PAGE_SIZE,
+) {
   return render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
-      <PaginationLinks params={params} totalPages={totalPages} />
+      <PaginationLinks
+        pageSize={PAGE_SIZE}
+        params={params}
+        totalItems={totalItems}
+        totalPages={totalPages}
+      />
     </NextIntlClientProvider>,
+  );
+}
+
+function pageWindow(): string[] {
+  return Array.from(screen.getByRole("list").querySelectorAll("li")).map(
+    (item) => item.textContent ?? "",
   );
 }
 
@@ -34,7 +51,8 @@ test("renders nothing for a single-page result set", () => {
 test("disables Previous on the first page and Next on the last page", () => {
   renderPagination(browseParams({ page: 1 }), 5);
 
-  expect(screen.getByText("Previous").tagName).toBe("SPAN");
+  expect(screen.getByText("Previous")).toBeDefined();
+  expect(screen.queryByRole("link", { name: "Previous" })).toBeNull();
   expect(screen.getByRole("link", { name: "Next" })).toBeDefined();
 });
 
@@ -70,4 +88,24 @@ test("keeps the active name filter across a page link", () => {
   expect(query.get("name")).toBe("Hollow Knight");
   expect(query.get("sort")).toBe("title");
   expect(query.get("page")).toBe("2");
+});
+
+test("shows every page when there are few, and a steady window when there are many", () => {
+  renderPagination(browseParams({ page: 2 }), 6);
+  expect(pageWindow()).toEqual(["1", "2", "3", "4", "5", "6"]);
+});
+
+test.each([
+  [1, ["1", "2", "3", "4", "…", "100"]],
+  [50, ["1", "…", "49", "50", "51", "…", "100"]],
+  [100, ["1", "…", "97", "98", "99", "100"]],
+])("windows page %i of 100 as %j", (page, expected) => {
+  renderPagination(browseParams({ page }), 100);
+  expect(pageWindow()).toEqual(expected);
+});
+
+test("says which slice of the results the page holds", () => {
+  renderPagination(browseParams({ page: 2 }), 5, 110);
+
+  expect(screen.getByText(/^Showing/).textContent).toBe("Showing 25–48 of 110");
 });

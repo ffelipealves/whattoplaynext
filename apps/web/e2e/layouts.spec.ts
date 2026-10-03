@@ -46,20 +46,27 @@ test("each viewport gets its own filter layout", async ({ page }) => {
   }
 });
 
-test("a filter reaches the URL only on Apply, combined with AND across categories", async ({
+test("a genre chip applies at once, a panel filter only on Apply, and both combine", async ({
   page,
 }) => {
   await page.goto("/en");
   await expect(resultCount(page)).toHaveText("60 games");
 
+  // The chip row is the one place filters apply immediately.
+  await page
+    .getByRole("navigation", { name: "Genres" })
+    .getByRole("link", { name: "Shooter" })
+    .click();
+  await expect(page).toHaveURL(/genre=shooter/);
+  await expect(resultCount(page)).toHaveText("20 games");
+
   const filters = await openFilters(page);
   await filters.getByRole("checkbox", { name: "PC" }).click();
-  await filters.getByRole("checkbox", { name: "Shooter" }).click();
 
   // A selected box is a draft: nothing has been searched for yet.
   await expect(filters.getByRole("checkbox", { name: "PC" })).toBeChecked();
   expect(new URL(page.url()).searchParams.has("platform")).toBe(false);
-  await expect(resultCount(page)).toHaveText("60 games");
+  await expect(resultCount(page)).toHaveText("20 games");
 
   await filters.getByRole("button", { name: "Apply filters" }).click();
 
