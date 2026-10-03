@@ -43,7 +43,7 @@ test("autocomplete waits for the real debounce, announces options, and selects b
     await route.continue();
   });
 
-  await page.goto("/en/games");
+  await page.goto("/en");
   const name = page.getByRole("combobox", { name: "Game name" });
   await name.fill("W");
   await page.waitForTimeout(350);
@@ -65,7 +65,7 @@ test("autocomplete waits for the real debounce, announces options, and selects b
   await expect(option).toHaveAttribute("aria-selected", "true");
   await name.press("Enter");
   await expect(name).toHaveValue("The Witcher 3: Wild Hunt");
-  await expect(page).toHaveURL(/\/en\/games$/);
+  await expect(page).toHaveURL(/\/en$/);
   await name.press("Enter");
   await expect(page).toHaveURL(/name=The\+Witcher\+3%3A\+Wild\+Hunt/);
   await expect(
@@ -79,7 +79,7 @@ test("autocomplete failure leaves an accessible plain search field", async ({
   await page.route("**/api/autocomplete?**", (route) =>
     route.fulfill({ status: 502, body: "{}" }),
   );
-  await page.goto("/en/games");
+  await page.goto("/en");
   await page.waitForLoadState("networkidle");
   const name = page.getByLabel("Game name");
   // A trusted click hydrates the Suspense boundary. The field's enhanced
@@ -104,7 +104,7 @@ for (const locale of ["en", "pt-br"] as const) {
     if (locale === "pt-br") {
       await page.setViewportSize({ width: 390, height: 844 });
     }
-    await page.goto(`/${locale}/games`);
+    await page.goto(`/${locale}`);
     await page.waitForLoadState("networkidle");
     // Firefox may leave keyboard focus in browser chrome after navigation.
     // A click on empty page space places it in the document; the journey

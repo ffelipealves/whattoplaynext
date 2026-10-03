@@ -64,7 +64,7 @@ function PageLink({
           ? "rounded-full bg-[#17203a] px-3 py-1.5 text-sm font-semibold text-white"
           : "rounded-full px-3 py-1.5 text-sm font-semibold text-[#17203a] transition-colors hover:bg-[#dce6fb]/50"
       }
-      href={{ pathname: "/games", query: withBrowseParams(params, { page }) }}
+      href={{ pathname: "/", query: withBrowseParams(params, { page }) }}
     >
       {children}
     </Link>

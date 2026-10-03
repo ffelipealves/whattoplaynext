@@ -39,7 +39,7 @@ export function SearchFailure({ failure, params }: SearchFailureProps) {
         // and makes this a real link: an empty href is not exposed as one.
         <Link
           className="mt-2 text-sm font-semibold text-[#3157d5] underline underline-offset-4"
-          href={{ pathname: "/games", query: withBrowseParams(params, {}) }}
+          href={{ pathname: "/", query: withBrowseParams(params, {}) }}
         >
           {t("retryLabel")}
         </Link>

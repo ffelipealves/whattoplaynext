@@ -14,6 +14,7 @@ import { IgnoredCriteria } from "./ignored-criteria";
 import { NameSearchForm } from "./name-search-form";
 import { PaginationLinks } from "./pagination-links";
 import { ResultsGrid } from "./results-grid";
+import { SiteHeader } from "./site-header";
 import { SortLinks } from "./sort-links";
 import type { BrowseParamIssue, BrowseParams } from "./browse-params";
 import type { SearchResult } from "./get-search-results";
@@ -62,9 +63,7 @@ export function SearchPage({
         searchKey={searchKey(params)}
         sort={params.sort}
       />
-      <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-[-0.02em]">
-        {t("heading")}
-      </h1>
+      <SiteHeader />
 
       {issues.length > 0 && (
         <div className="mt-6">

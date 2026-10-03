@@ -43,7 +43,7 @@ test("drops properties and values that are not on the allow-list", () => {
       refinement: "yes",
       query: "hollow knight",
       gameId: 1942,
-      url: "/en/games?name=hollow",
+      url: "/en?name=hollow",
     },
   });
 
@@ -96,7 +96,7 @@ test("maps external-link labels to categories", () => {
 test.each([
   ["/en", "/en"],
   ["/pt-br", "/pt-br"],
-  ["/en/games", "/en/games"],
+  ["/en/games", "/en/[other]"],
   ["/en/games/1942/the-witcher-3-wild-hunt", "/en/games/[game]"],
   ["/pt-br/games/1942", "/pt-br/games/[game]"],
   ["/en/about", "/en/about"],

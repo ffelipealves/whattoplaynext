@@ -23,7 +23,7 @@ const SPOKEN_ALERT = { hasText: /\S/ };
 test("searching by name narrows the results and shows in the URL", async ({
   page,
 }) => {
-  await page.goto("/en/games");
+  await page.goto("/en");
   await expect(
     page.getByRole("status").filter({ hasText: "games" }),
   ).toHaveText("60 games");
@@ -50,7 +50,7 @@ test("searching by name narrows the results and shows in the URL", async ({
 test("a shared URL restores the same search, and back and forward keep it", async ({
   page,
 }) => {
-  await page.goto("/en/games?name=Hollow&sort=title&direction=asc&page=1");
+  await page.goto("/en?name=Hollow&sort=title&direction=asc&page=1");
 
   await expect(page.getByLabel("Game name")).toHaveValue("Hollow");
   await expect(page.getByRole("link", { name: "Title" })).toHaveAttribute(
@@ -74,13 +74,13 @@ test("a shared URL restores the same search, and back and forward keep it", asyn
 });
 
 test("pagination moves through the result set", async ({ page }) => {
-  await page.goto("/en/games?sort=title&direction=asc");
+  await page.goto("/en?sort=title&direction=asc");
 
   const firstOnPageOne = page.locator("article h3").first();
   await expect(firstOnPageOne).toBeVisible();
   const firstTitle = await firstOnPageOne.textContent();
 
-  await page.getByRole("link", { name: "Next" }).click();
+  await page.getByRole("link", { name: "Next", exact: true }).click();
 
   await expect(page).toHaveURL(/page=2/);
   await expect(page.locator("article h3").first()).not.toHaveText(firstTitle!);
@@ -92,7 +92,7 @@ test("pagination moves through the result set", async ({ page }) => {
 test("an upstream failure is an alert, not an empty result set", async ({
   page,
 }) => {
-  await page.goto(`/en/games?name=${UPSTREAM_FAILURE_NAME}`);
+  await page.goto(`/en?name=${UPSTREAM_FAILURE_NAME}`);
 
   const alert = page.getByRole("alert").filter(SPOKEN_ALERT);
   await expect(alert).toContainText("The game catalog is unavailable");
@@ -109,7 +109,7 @@ test("an upstream failure is an alert, not an empty result set", async ({
 test("stale saved results are shown with a localized warning, not as current", async ({
   page,
 }) => {
-  await page.goto(`/en/games?name=${STALE_DATA_NAME}`);
+  await page.goto(`/en?name=${STALE_DATA_NAME}`);
 
   const warning = page.getByRole("note");
   await expect(warning).toContainText("may be out of date");
@@ -120,7 +120,7 @@ test("stale saved results are shown with a localized warning, not as current", a
   await expect(page.locator("article h3").first()).toBeVisible();
   await expect(page.getByRole("alert").filter(SPOKEN_ALERT)).toHaveCount(0);
 
-  await page.goto(`/pt-br/games?name=${STALE_DATA_NAME}`);
+  await page.goto(`/pt-br?name=${STALE_DATA_NAME}`);
   await expect(page.getByRole("note")).toContainText(
     "podem estar desatualizados",
   );
@@ -129,7 +129,7 @@ test("stale saved results are shown with a localized warning, not as current", a
 test("a genuine zero-result search says so and suggests a way out", async ({
   page,
 }) => {
-  await page.goto("/en/games?name=zzzznothing");
+  await page.goto("/en?name=zzzznothing");
 
   await expect(page.getByText("No games matched “zzzznothing”")).toBeVisible();
   await expect(
@@ -144,19 +144,32 @@ test("switching language carries over to the search page", async ({ page }) => {
   await page.getByRole("link", { name: "Português" }).click();
   await expect(page).toHaveURL(/\/pt-br$/);
 
-  await page.goto("/pt-br/games");
-  await expect(page.getByRole("heading", { name: "Ver jogos" })).toBeVisible();
+  await page.goto("/pt-br");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "What To Play Next" }),
+  ).toBeVisible();
   await expect(page.getByLabel("Nome do jogo")).toBeVisible();
   await expect(
     page.getByRole("status").filter({ hasText: "jogos" }),
   ).toHaveText("60 jogos");
 });
 
+test("the old listing route redirects to the home search and keeps its query", async ({
+  request,
+}) => {
+  const response = await request.get("/en/games?platform=pc&page=2", {
+    maxRedirects: 0,
+  });
+
+  expect(response.status()).toBe(308);
+  expect(response.headers()["location"]).toBe("/en?platform=pc&page=2");
+});
+
 test("a result opens its canonical game page and back restores the localized search", async ({
   page,
 }) => {
   const searchUrl =
-    "/pt-br/games?name=The%20Witcher%203&sort=title&direction=asc&page=1";
+    "/pt-br?name=The%20Witcher%203&sort=title&direction=asc&page=1";
   await page.goto(searchUrl);
 
   await page.getByRole("link", { name: /The Witcher 3: Wild Hunt/ }).click();

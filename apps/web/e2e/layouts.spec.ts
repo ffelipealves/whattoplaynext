@@ -31,7 +31,7 @@ async function openFilters(page: Page) {
 }
 
 test("each viewport gets its own filter layout", async ({ page }) => {
-  await page.goto("/en/games");
+  await page.goto("/en");
   await expect(resultCount(page)).toHaveText("60 games");
 
   const sidebar = page.getByRole("complementary", { name: "Filters" });
@@ -49,7 +49,7 @@ test("each viewport gets its own filter layout", async ({ page }) => {
 test("a filter reaches the URL only on Apply, combined with AND across categories", async ({
   page,
 }) => {
-  await page.goto("/en/games");
+  await page.goto("/en");
   await expect(resultCount(page)).toHaveText("60 games");
 
   const filters = await openFilters(page);
@@ -73,7 +73,7 @@ test("a filter reaches the URL only on Apply, combined with AND across categorie
 });
 
 test("removing one chip clears only that criterion", async ({ page }) => {
-  await page.goto("/en/games?platform=pc&genre=shooter");
+  await page.goto("/en?platform=pc&genre=shooter");
   await expect(resultCount(page)).toHaveText("10 games");
 
   await page

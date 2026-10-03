@@ -44,7 +44,7 @@ test("the localized footer reaches every indexable information draft", async ({
 test("catalog-backed pages show the planned text-only IGDB attribution", async ({
   page,
 }) => {
-  for (const path of ["/en", "/en/games", `/en${DETAIL_PATH}`]) {
+  for (const path of ["/en", "/en", `/en${DETAIL_PATH}`]) {
     await page.goto(path);
 
     const footer = page.getByRole("contentinfo");

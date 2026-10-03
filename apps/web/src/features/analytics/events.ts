@@ -203,9 +203,7 @@ export function routeTemplate(pathname: string): string {
     return "/[other]";
   }
   if (!section) return `/${locale}`;
-  if (section === "games") {
-    return id ? `/${locale}/games/[game]` : `/${locale}/games`;
-  }
+  if (section === "games" && id) return `/${locale}/games/[game]`;
   if (["about", "privacy", "terms"].includes(section) && !id && !rest.length) {
     return `/${locale}/${section}`;
   }

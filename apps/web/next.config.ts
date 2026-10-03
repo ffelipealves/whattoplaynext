@@ -12,6 +12,18 @@ const nextConfig: NextConfig = {
     remotePatterns: [new URL("https://images.igdb.com/igdb/image/upload/**")],
   },
   poweredByHeader: false,
+  // The home page is the search, so the old listing route moves there. Next
+  // passes the query string through, so shared filter links keep working.
+  async redirects() {
+    return [
+      { source: "/games", destination: "/", permanent: true },
+      {
+        source: "/:locale(en|pt-br)/games",
+        destination: "/:locale",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {

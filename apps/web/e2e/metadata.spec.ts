@@ -90,7 +90,7 @@ test("home and information metadata are localized and canonical", async ({
 
 test("every localized search URL is noindex", async ({ page }) => {
   for (const locale of ["en", "pt-br"] as const) {
-    await page.goto(`/${locale}/games?name=Hollow&page=2`);
+    await page.goto(`/${locale}?name=Hollow&page=2`);
 
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
       "content",

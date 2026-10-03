@@ -113,7 +113,7 @@ export function ActiveFilterChips({
             aria-label={t("removeChipLabel", { label })}
             className="inline-flex items-center gap-1.5 rounded-full border border-[#17203a]/20 bg-white px-3 py-1.5 text-xs font-semibold text-[#17203a] transition-colors hover:border-[var(--danger)] hover:text-[var(--danger)]"
             href={{
-              pathname: "/games",
+              pathname: "/",
               query: withBrowseParams(params, {
                 ...withoutFilter(params, filter),
                 page: 1,

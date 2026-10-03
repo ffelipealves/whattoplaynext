@@ -45,7 +45,7 @@ export function SortLinks({ params }: SortLinksProps) {
                 : "rounded-full border border-[#17203a]/20 px-4 py-2 text-sm font-semibold text-[#17203a] transition-colors hover:border-[#3157d5] hover:bg-[#dce6fb]/50"
             }
             href={{
-              pathname: "/games",
+              pathname: "/",
               query: withBrowseParams(params, {
                 sort: option,
                 direction: defaultDirectionFor(option),

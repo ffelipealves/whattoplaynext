@@ -15,7 +15,7 @@ const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
 vi.mock("next/navigation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("next/navigation")>()),
   useRouter: () => ({ push: pushMock, replace: vi.fn(), prefetch: vi.fn() }),
-  usePathname: () => "/en/games",
+  usePathname: () => "/en",
 }));
 
 const metadata: FilterMetadata = {

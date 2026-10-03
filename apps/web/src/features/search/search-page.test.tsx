@@ -12,7 +12,7 @@ import type { GamePage, SearchResult } from "./get-search-results";
 vi.mock("next/navigation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("next/navigation")>()),
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
-  usePathname: () => "/en/games",
+  usePathname: () => "/en",
 }));
 
 const metadata: FilterMetadata = {

@@ -53,7 +53,7 @@ test("sends an allowed event once enabled", () => {
 test("holds events until the script loads, then delivers them in order", () => {
   enableAnalytics();
   track(event);
-  trackPageview("/en/games");
+  trackPageview("/en");
 
   installUmami();
   flushAnalytics();
@@ -79,7 +79,7 @@ test("a page view sends the route template, no title, and only the first referre
   enableAnalytics();
 
   trackPageview("/en/games/1942/the-witcher-3-wild-hunt");
-  trackPageview("/en/games");
+  trackPageview("/en");
 
   const defaults = {
     website: "site",
@@ -105,7 +105,7 @@ test("a page view sends the route template, no title, and only the first referre
     referrer: "www.google.com",
     title: "",
   });
-  expect(payloads[1]).toMatchObject({ url: "/en/games", referrer: "" });
+  expect(payloads[1]).toMatchObject({ url: "/en", referrer: "" });
 });
 
 test("a result page is a new search, a sort change, or neither", () => {

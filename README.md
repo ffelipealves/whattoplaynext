@@ -72,8 +72,8 @@ actions tracked separately in
 [External prerequisites](docs/external-prerequisites.md); they do not block
 the next engineering milestone.
 
-Milestone 2 (search experience) is complete. `GET /[locale]/games` is a
-working faceted search: name search with debounced autocomplete, structured
+Milestone 2 (search experience) is complete. The home page (`/[locale]`) is a
+working faceted search (`/[locale]/games` redirects to it): name search with debounced autocomplete, structured
 filters in a desktop sidebar and a mobile drawer, removable active-filter
 chips, sorting, pagination, and distinct states for validation, rate limits,
 and upstream failures — all driven by the URL rather than client-side state,

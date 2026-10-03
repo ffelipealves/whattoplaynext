@@ -265,7 +265,7 @@ export function FilterForm({
     markSearchSubmitted();
     startTransition(() => {
       router.push({
-        pathname: "/games",
+        pathname: "/",
         // A new filter selection always returns to the first page: the old
         // page number has no meaning against a different result set.
         query: withBrowseParams(params, { ...criteriaFrom(values), page: 1 }),
@@ -486,7 +486,7 @@ export function FilterForm({
           <Link
             className="text-sm font-semibold text-[#3157d5] underline underline-offset-4"
             href={{
-              pathname: "/games",
+              pathname: "/",
               query: withBrowseParams(params, {
                 ...clearedFilters(),
                 page: 1,

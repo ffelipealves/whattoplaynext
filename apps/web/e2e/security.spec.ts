@@ -8,7 +8,7 @@ import { expect, test } from "@playwright/test";
 const PAGES = [
   "/en",
   "/pt-br",
-  "/en/games?platform=pc",
+  "/en?platform=pc",
   "/en/games/1942/the-witcher-3-wild-hunt",
   "/en/about",
 ];

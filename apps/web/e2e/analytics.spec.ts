@@ -65,12 +65,12 @@ test("a search and the game it leads to send only allow-listed events", async ({
   page,
 }) => {
   await page.goto(
-    "/en/games?name=The%20Witcher%203&platform=pc&sort=title&direction=asc&page=1",
+    "/en?name=The%20Witcher%203&platform=pc&sort=title&direction=asc&page=1",
   );
   const searchCalls = await waitForEvent(page, "search-submitted");
 
   const pageview = searchCalls.find(([name]) => name === "pageview")!;
-  expect(pageview[1]).toMatchObject({ url: "/en/games", title: "" });
+  expect(pageview[1]).toMatchObject({ url: "/en", title: "" });
   const search = searchCalls.find(([name]) => name === "search-submitted")!;
   expect(search[1]).toMatchObject({
     locale: "en",
@@ -111,7 +111,7 @@ test("a search and the game it leads to send only allow-listed events", async ({
 test("a failed search reports its failure category, never its query", async ({
   page,
 }) => {
-  await page.goto("/en/games?name=trigger-upstream-failure");
+  await page.goto("/en?name=trigger-upstream-failure");
 
   const calls = await waitForEvent(page, "failure-shown");
 
@@ -124,7 +124,7 @@ test("a failed search reports its failure category, never its query", async ({
 });
 
 test("stale results are counted without their content", async ({ page }) => {
-  await page.goto("/pt-br/games?name=trigger-stale-data");
+  await page.goto("/pt-br?name=trigger-stale-data");
 
   const calls = await waitForEvent(page, "stale-data-shown");
 

@@ -113,7 +113,7 @@ test("the search page meets its Core Web Vitals targets @vitals", async ({
   const isDesktop = (page.viewportSize()?.width ?? 0) >= DESKTOP_MIN_WIDTH;
   await throttleMobileCpu(page);
 
-  await page.goto("/en/games", { waitUntil: "load" });
+  await page.goto("/en", { waitUntil: "load" });
   await expect(
     page.getByRole("status").filter({ hasText: /games$/ }),
   ).not.toHaveText("");

@@ -22,7 +22,7 @@ export function SystemNotFound({ kind }: SystemNotFoundProps) {
       </p>
       <Link
         className="mt-3 text-sm font-semibold text-[#3157d5] underline underline-offset-4"
-        href={isGame ? "/games" : "/"}
+        href="/"
       >
         {isGame ? game("backToGames") : system("backHome")}
       </Link>

@@ -73,10 +73,10 @@ crashed page; `getCatalogStatus()` treats both a classified API error and a
 rejected fetch (API process unreachable) as the same graceful "unreachable"
 state.
 
-## Search (`/games`)
+## Search (home page)
 
-`app/[locale]/games/page.tsx` fetches; `features/search/search-page.tsx`
-renders. Submitted state lives entirely in the URL — nothing is applied before
+`app/[locale]/(browse)/page.tsx` fetches; `features/search/search-page.tsx`
+renders. The home page is the search; `/games` redirects to it with its query. Submitted state lives entirely in the URL — nothing is applied before
 an explicit action, and a copied link restores the same search.
 
 `features/search/browse-params.ts` parses every criterion with Zod against the
