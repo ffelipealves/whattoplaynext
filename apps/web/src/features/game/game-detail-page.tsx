@@ -27,10 +27,10 @@ function DetailSection({ children, title }: DetailSectionProps) {
   return (
     <section
       aria-labelledby={headingId}
-      className="rounded-2xl border border-[#17203a]/10 bg-white p-5 shadow-sm sm:p-6"
+      className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6"
     >
       <h2
-        className="mb-4 font-[family-name:var(--font-display)] text-xl font-semibold tracking-[-0.02em]"
+        className="mb-4 font-display text-xl font-semibold tracking-[-0.02em]"
         id={headingId}
       >
         {title}
@@ -41,7 +41,7 @@ function DetailSection({ children, title }: DetailSectionProps) {
 }
 
 function EmptyState({ children }: { children: ReactNode }) {
-  return <p className="text-sm text-[#17203a]/75">{children}</p>;
+  return <p className="text-sm text-muted-foreground">{children}</p>;
 }
 
 function TagList({ items }: { items: string[] }) {
@@ -67,18 +67,18 @@ function RatingCard({
   const t = useTranslations("Game");
 
   return (
-    <li className="rounded-xl bg-[#f4f7ff] p-4">
-      <h3 className="text-sm font-semibold text-[#17203a]/75">{label}</h3>
+    <li className="rounded-xl bg-ink-850 p-4">
+      <h3 className="text-sm font-semibold text-muted-foreground">{label}</h3>
       {rating ? (
         <>
-          <p className="mt-1 font-[family-name:var(--font-display)] text-2xl font-semibold">
+          <p className="mt-1 font-display text-2xl font-semibold">
             {format.number(rating.value, {
               maximumFractionDigits: 1,
               minimumFractionDigits: 1,
             })}
           </p>
-          <p className="mt-1 text-xs text-[#17203a]/75">{rating.source}</p>
-          <p className="text-xs text-[#17203a]/75">
+          <p className="mt-1 text-xs text-muted-foreground">{rating.source}</p>
+          <p className="text-xs text-muted-foreground">
             {t("ratingVotes", { count: rating.count })}
           </p>
         </>
@@ -99,14 +99,14 @@ function DurationCard({
   const t = useTranslations("Game");
 
   return (
-    <li className="rounded-xl bg-[#f4f7ff] p-4">
-      <h3 className="text-sm font-semibold text-[#17203a]/75">{label}</h3>
+    <li className="rounded-xl bg-ink-850 p-4">
+      <h3 className="text-sm font-semibold text-muted-foreground">{label}</h3>
       {duration ? (
         <>
-          <p className="mt-1 font-[family-name:var(--font-display)] text-2xl font-semibold">
+          <p className="mt-1 font-display text-2xl font-semibold">
             {formatDuration(duration.seconds, t)}
           </p>
-          <p className="mt-1 text-xs text-[#17203a]/75">
+          <p className="mt-1 text-xs text-muted-foreground">
             {t("durationSubmissions", { count: duration.submissionCount })}
           </p>
         </>
@@ -148,7 +148,7 @@ export function GameDetailPage({ detail }: GameDetailPageProps) {
     locale.split("-")[0] !== detail.summaryLanguage;
 
   return (
-    <main className="mx-auto max-w-7xl px-5 py-10 text-[#17203a] sm:px-8 lg:px-12">
+    <main className="mx-auto max-w-7xl px-5 py-10 text-foreground sm:px-8 lg:px-12">
       <GameAnalytics stale={detail.meta.dataMayBeStale} />
       {detail.meta.dataMayBeStale && (
         <div className="mb-8">
@@ -159,20 +159,20 @@ export function GameDetailPage({ detail }: GameDetailPageProps) {
         <GameCover cover={detail.cover} title={detail.title} />
 
         <div>
-          <h1 className="font-[family-name:var(--font-display)] text-4xl font-semibold tracking-[-0.03em] sm:text-5xl lg:text-6xl">
+          <h1 className="font-display text-4xl font-semibold tracking-[-0.03em] sm:text-5xl lg:text-6xl">
             {detail.title}
           </h1>
           <div className="mt-6 max-w-3xl">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-[#3157d5]">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">
               {t("summaryHeading")}
             </h2>
             {detail.summary ? (
               <>
-                <p className="mt-2 text-base leading-7 text-[#17203a]/75">
+                <p className="mt-2 text-base leading-7 text-muted-foreground">
                   {detail.summary}
                 </p>
                 {summaryLanguageDiffers && (
-                  <p className="mt-2 text-xs font-medium text-[#17203a]/75">
+                  <p className="mt-2 text-xs font-medium text-muted-foreground">
                     {t("summaryLanguageEnglish")}
                   </p>
                 )}
@@ -182,11 +182,11 @@ export function GameDetailPage({ detail }: GameDetailPageProps) {
             )}
           </div>
           <div className="mt-5">
-            <h2 className="text-sm font-semibold text-[#17203a]/75">
+            <h2 className="text-sm font-semibold text-muted-foreground">
               {t("alternativeNamesHeading")}
             </h2>
             {detail.alternativeNames.length > 0 ? (
-              <p className="mt-1 text-sm text-[#17203a]/75">
+              <p className="mt-1 text-sm text-muted-foreground">
                 {detail.alternativeNames.join(" · ")}
               </p>
             ) : (
@@ -199,7 +199,7 @@ export function GameDetailPage({ detail }: GameDetailPageProps) {
       <div className="mt-10 grid gap-5 lg:grid-cols-2">
         <DetailSection title={t("releasesHeading")}>
           {detail.releases.length > 0 ? (
-            <ul className="divide-y divide-[#17203a]/10">
+            <ul className="divide-y divide-border">
               {detail.releases.map((release, index) => (
                 <li
                   className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
@@ -208,7 +208,7 @@ export function GameDetailPage({ detail }: GameDetailPageProps) {
                   <span className="font-medium">{release.platform.label}</span>
                   {release.releaseDate ? (
                     <time
-                      className="text-sm text-[#17203a]/75"
+                      className="text-sm text-muted-foreground"
                       dateTime={release.releaseDate}
                     >
                       {format.dateTime(
@@ -261,7 +261,7 @@ export function GameDetailPage({ detail }: GameDetailPageProps) {
           {multiplayerFeatures.length > 0 ? (
             <>
               <TagList items={multiplayerFeatures} />
-              <p className="mt-4 text-sm text-[#17203a]/75">
+              <p className="mt-4 text-sm text-muted-foreground">
                 {detail.multiplayer.maxPlayers == null
                   ? t("maxPlayersUnavailable")
                   : t("maxPlayers", {
@@ -337,7 +337,7 @@ export function GameDetailPage({ detail }: GameDetailPageProps) {
                   <a
                     aria-label={t("externalLinkLabel", { label: link.label })}
                     data-analytics-link={link.label}
-                    className="inline-flex rounded-full border border-[#3157d5]/25 px-4 py-2 text-sm font-semibold text-[#3157d5] underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3157d5]"
+                    className="inline-flex rounded-full border border-primary/40 px-4 py-2 text-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     href={link.url}
                     rel="noopener noreferrer"
                     target="_blank"
@@ -370,7 +370,9 @@ function DetailTags({
 }) {
   return (
     <div>
-      <h3 className="mb-2 text-sm font-semibold text-[#17203a]/75">{title}</h3>
+      <h3 className="mb-2 text-sm font-semibold text-muted-foreground">
+        {title}
+      </h3>
       {items.length > 0 ? (
         <TagList items={items} />
       ) : (

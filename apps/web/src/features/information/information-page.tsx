@@ -8,9 +8,9 @@ function DraftNotice() {
   const t = useTranslations("Information");
 
   return (
-    <aside className="rounded-2xl border border-[#ff694f]/40 bg-[#fff4f1] p-5">
-      <p className="font-semibold text-[#17203a]">{t("draftLabel")}</p>
-      <p className="mt-1 text-sm leading-6 text-[#17203a]/75">
+    <aside className="rounded-2xl border border-primary/40 bg-primary/10 p-5">
+      <p className="font-semibold text-foreground">{t("draftLabel")}</p>
+      <p className="mt-1 text-sm leading-6 text-muted-foreground">
         {t("draftNotice")}
       </p>
     </aside>
@@ -26,10 +26,10 @@ function Section({
 }) {
   return (
     <section>
-      <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold tracking-[-0.02em]">
+      <h2 className="font-display text-2xl font-semibold tracking-[-0.02em]">
         {title}
       </h2>
-      <div className="mt-3 space-y-3 text-base leading-7 text-[#17203a]/72">
+      <div className="mt-3 space-y-3 text-base leading-7 text-muted-foreground">
         {children}
       </div>
     </section>
@@ -107,11 +107,11 @@ export function InformationPage({ kind }: { kind: InformationPageKind }) {
   } satisfies Record<InformationPageKind, string>;
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-5 py-12 text-[#17203a] sm:px-8 sm:py-16 lg:px-12">
-      <p className="text-xs font-bold tracking-[0.18em] text-[#3157d5] uppercase">
+    <main className="mx-auto w-full max-w-4xl px-5 py-12 text-foreground sm:px-8 sm:py-16 lg:px-12">
+      <p className="text-xs font-bold tracking-[0.18em] text-primary uppercase">
         {t("eyebrow")}
       </p>
-      <h1 className="mt-3 font-[family-name:var(--font-display)] text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
+      <h1 className="mt-3 font-display text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
         {titles[kind]}
       </h1>
       <div className="mt-8">

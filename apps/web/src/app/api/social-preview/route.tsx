@@ -7,8 +7,8 @@ export function GET() {
     <div
       style={{
         alignItems: "center",
-        background: "#f4f7ff",
-        color: "#17203a",
+        background: "#0c0c0e",
+        color: "#f6f5f1",
         display: "flex",
         flexDirection: "column",
         height: "100%",
@@ -17,7 +17,7 @@ export function GET() {
         width: "100%",
       }}
     >
-      <div style={{ color: "#3157d5", display: "flex", fontSize: 28 }}>
+      <div style={{ color: "#ff6a3d", display: "flex", fontSize: 28 }}>
         STRUCTURED GAME DISCOVERY
       </div>
       <div
@@ -34,7 +34,7 @@ export function GET() {
       </div>
       <div
         style={{
-          color: "#526079",
+          color: "#a3a3ad",
           display: "flex",
           fontSize: 32,
           marginTop: 24,

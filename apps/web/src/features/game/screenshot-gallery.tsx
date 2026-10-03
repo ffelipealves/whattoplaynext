@@ -62,7 +62,7 @@ export function ScreenshotGallery({
       <ul className="grid gap-4 md:grid-cols-2">
         {screenshots.map((screenshot, index) => (
           <li
-            className="overflow-hidden rounded-xl bg-[#dce6fb]"
+            className="overflow-hidden rounded-xl bg-muted"
             key={screenshot.url}
             style={{
               aspectRatio: `${screenshot.width} / ${screenshot.height}`,
@@ -74,7 +74,7 @@ export function ScreenshotGallery({
                   number: index + 1,
                   title,
                 })}
-                className="block h-full w-full cursor-zoom-in focus-visible:outline-3 focus-visible:-outline-offset-3 focus-visible:outline-[#3157d5]"
+                className="block h-full w-full cursor-zoom-in focus-visible:outline-3 focus-visible:-outline-offset-3 focus-visible:outline-ring"
                 onClick={(event) => {
                   openerRef.current = event.currentTarget;
                   setSelectedIndex(index);
@@ -97,7 +97,7 @@ export function ScreenshotGallery({
       </ul>
 
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-[#080d1d]/85 backdrop-blur-sm" />
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm" />
         <Dialog.Content
           aria-describedby={undefined}
           className="fixed top-1/2 left-1/2 z-50 flex max-h-[94vh] w-[min(94vw,72rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-3 outline-none"
@@ -127,10 +127,10 @@ export function ScreenshotGallery({
               width={selected.width}
             />
           )}
-          <div className="flex items-center justify-center gap-3 text-white">
+          <div className="flex items-center justify-center gap-3 text-ink-50">
             <Button
               aria-label={t("previousScreenshot")}
-              className="border-white/30 bg-[#17203a] text-white hover:bg-[#26375f]"
+              className="border-ink-700 bg-ink-900 text-ink-50 hover:bg-ink-800"
               onClick={() => moveSelection(-1)}
               size="icon"
               type="button"
@@ -146,7 +146,7 @@ export function ScreenshotGallery({
             </span>
             <Button
               aria-label={t("nextScreenshot")}
-              className="border-white/30 bg-[#17203a] text-white hover:bg-[#26375f]"
+              className="border-ink-700 bg-ink-900 text-ink-50 hover:bg-ink-800"
               onClick={() => moveSelection(1)}
               size="icon"
               type="button"
@@ -158,7 +158,7 @@ export function ScreenshotGallery({
           <Dialog.Close asChild>
             <Button
               aria-label={t("closeScreenshotViewer")}
-              className="absolute -top-3 -right-3 bg-white text-[#17203a] hover:bg-[#edf2ff]"
+              className="absolute -top-3 -right-3 bg-ink-50 text-ink-950 hover:bg-ink-100"
               size="icon"
               type="button"
             >

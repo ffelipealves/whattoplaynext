@@ -24,7 +24,7 @@ export function DurationNotice({ meta }: DurationNoticeProps) {
   }
 
   return (
-    <p className="flex items-start gap-2 rounded-xl bg-[#dce6fb]/50 px-4 py-3 text-xs font-semibold text-[#17203a]/75">
+    <p className="flex items-start gap-2 rounded-xl bg-ink-850 px-4 py-3 text-xs font-semibold text-muted-foreground">
       <InfoIcon aria-hidden className="mt-px size-4 shrink-0" />
       {t("excludedUnknownDuration")}
     </p>

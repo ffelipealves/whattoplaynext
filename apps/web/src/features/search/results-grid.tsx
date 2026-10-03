@@ -25,13 +25,13 @@ export function ResultsGrid({ result, params }: ResultsGridProps) {
 
   if (result.page.items.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-2xl border border-[#17203a]/15 bg-white px-6 py-16 text-center">
-        <p className="font-[family-name:var(--font-display)] text-lg font-semibold">
+      <div className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card px-6 py-16 text-center">
+        <p className="font-display text-lg font-semibold">
           {name
             ? t("zeroResultsTitleWithName", { name })
             : t("zeroResultsTitle")}
         </p>
-        <p className="text-sm text-[#17203a]/75">
+        <p className="text-sm text-muted-foreground">
           {hasActiveFilters
             ? t("zeroResultsFilterDescription")
             : t("zeroResultsDescription")}

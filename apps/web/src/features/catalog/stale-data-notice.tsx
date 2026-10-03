@@ -32,7 +32,7 @@ export function StaleDataNotice({ meta }: StaleDataNoticeProps) {
 
   return (
     <p
-      className="flex items-start gap-2 rounded-xl bg-[#fdf1d8] px-4 py-3 text-sm font-semibold text-[#17203a]/80"
+      className="flex items-start gap-2 rounded-xl border border-mid/30 bg-mid/10 px-4 py-3 text-sm font-semibold text-ink-100"
       role="note"
     >
       <HistoryIcon aria-hidden className="mt-0.5 size-4 shrink-0" />

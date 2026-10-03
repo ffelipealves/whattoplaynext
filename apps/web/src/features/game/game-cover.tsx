@@ -19,7 +19,7 @@ export function GameCover({ cover, title }: GameCoverProps) {
 
   return (
     <div
-      className="overflow-hidden rounded-2xl bg-[#dce6fb] shadow-sm"
+      className="overflow-hidden rounded-2xl bg-muted shadow-sm"
       style={{ aspectRatio: `${width} / ${height}` }}
     >
       {cover ? (

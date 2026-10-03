@@ -50,7 +50,7 @@ function PageLink({
 }) {
   if (disabled) {
     return (
-      <span className="rounded-full px-3 py-1.5 text-sm font-semibold text-[#17203a]/75">
+      <span className="rounded-full px-3 py-1.5 text-sm font-semibold text-muted-foreground">
         {children}
       </span>
     );
@@ -61,8 +61,8 @@ function PageLink({
       aria-current={isActive ? "page" : undefined}
       className={
         isActive
-          ? "rounded-full bg-[#17203a] px-3 py-1.5 text-sm font-semibold text-white"
-          : "rounded-full px-3 py-1.5 text-sm font-semibold text-[#17203a] transition-colors hover:bg-[#dce6fb]/50"
+          ? "rounded-full bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground"
+          : "rounded-full px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-ink-850"
       }
       href={{ pathname: "/", query: withBrowseParams(params, { page }) }}
     >
@@ -94,7 +94,7 @@ export function PaginationLinks({ params, totalPages }: PaginationLinksProps) {
       {pageWindow.map((entry, index) =>
         entry === "ellipsis" ? (
           <span
-            className="px-2 text-sm text-[#17203a]/75"
+            className="px-2 text-sm text-muted-foreground"
             key={`ellipsis-${index}`}
           >
             …

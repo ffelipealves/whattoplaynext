@@ -20,13 +20,13 @@ export function ResultCard({ game }: ResultCardProps) {
   const t = useTranslations("Search");
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-[#17203a]/15 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+    <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
       <Link
-        className="flex h-full flex-col focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3157d5]"
+        className="flex h-full flex-col focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         data-analytics-entry="search-result"
         href={`/games/${game.id}/${game.slug}`}
       >
-        <div className="relative aspect-[264/374] w-full bg-[#dce6fb]">
+        <div className="relative aspect-[264/374] w-full bg-muted">
           {game.cover ? (
             <Image
               alt={t("coverAlt", { title: game.title })}
@@ -36,18 +36,18 @@ export function ResultCard({ game }: ResultCardProps) {
               src={game.cover.url}
             />
           ) : (
-            <div className="flex h-full items-center justify-center px-4 text-center text-xs font-semibold text-[#17203a]/75">
+            <div className="flex h-full items-center justify-center px-4 text-center text-xs font-semibold text-muted-foreground">
               {t("noCover")}
             </div>
           )}
         </div>
 
         <div className="flex flex-1 flex-col gap-2 p-4">
-          <h3 className="line-clamp-2 font-[family-name:var(--font-display)] text-base font-semibold tracking-[-0.01em]">
+          <h3 className="line-clamp-2 font-display text-base font-semibold tracking-[-0.01em]">
             {game.title}
           </h3>
 
-          <p className="text-xs font-medium text-[#17203a]/75">
+          <p className="text-xs font-medium text-muted-foreground">
             {game.releaseYear ?? "—"}
           </p>
 
@@ -62,12 +62,12 @@ export function ResultCard({ game }: ResultCardProps) {
           )}
 
           {game.genres.length > 0 && (
-            <p className="text-xs text-[#17203a]/75">
+            <p className="text-xs text-muted-foreground">
               {game.genres.map((genre) => genre.label).join(" · ")}
             </p>
           )}
 
-          <div className="mt-auto flex items-center justify-between gap-2 pt-2 text-xs font-semibold text-[#17203a]/75">
+          <div className="mt-auto flex items-center justify-between gap-2 pt-2 text-xs font-semibold text-muted-foreground">
             <span>
               {game.rating
                 ? `${Math.round(game.rating.value)} · ${t("ratingVotes", { count: game.rating.count })}`
@@ -83,7 +83,7 @@ export function ResultCard({ game }: ResultCardProps) {
           </div>
 
           {game.gameModes.length > 0 && (
-            <p className="text-xs text-[#17203a]/75">
+            <p className="text-xs text-muted-foreground">
               {game.gameModes.map((mode) => mode.label).join(" · ")}
             </p>
           )}

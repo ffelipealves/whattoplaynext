@@ -37,13 +37,13 @@ export function IgnoredCriteria({ issues }: IgnoredCriteriaProps) {
 
   return (
     <div
-      className="rounded-xl border border-[#ff694f]/35 bg-[#ff694f]/5 px-4 py-3"
+      className="rounded-xl border border-primary/35 bg-primary/5 px-4 py-3"
       role="status"
     >
-      <p className="text-sm font-semibold text-[#17203a]">
+      <p className="text-sm font-semibold text-foreground">
         {t("ignoredTitle")}
       </p>
-      <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs text-[#17203a]/75">
+      <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs text-muted-foreground">
         {issues.map((issue) => (
           <li key={issue}>{t(LABELS[issue])}</li>
         ))}

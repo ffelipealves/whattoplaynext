@@ -123,7 +123,9 @@ function criteriaFrom(values: FilterFormValues): FilterCriteria {
 
 function FieldLegend({ children }: { children: string }) {
   return (
-    <legend className="text-sm font-semibold text-[#17203a]">{children}</legend>
+    <legend className="text-sm font-semibold text-foreground">
+      {children}
+    </legend>
   );
 }
 
@@ -136,7 +138,7 @@ function FieldLabel({
 }) {
   return (
     <label
-      className="block text-xs font-semibold text-[#17203a]/75"
+      className="block text-xs font-semibold text-muted-foreground"
       htmlFor={htmlFor}
     >
       {children}
@@ -146,11 +148,7 @@ function FieldLabel({
 
 function ErrorMessage({ children, id }: { children: string; id: string }) {
   return (
-    <p
-      className="text-xs font-semibold text-[var(--danger)]"
-      id={id}
-      role="alert"
-    >
+    <p className="text-xs font-semibold text-destructive" id={id} role="alert">
       {children}
     </p>
   );
@@ -196,7 +194,7 @@ function CheckboxGroup({
                 }
                 value={option.id}
               />
-              <label className="text-sm text-[#17203a]/80" htmlFor={inputId}>
+              <label className="text-sm text-ink-300" htmlFor={inputId}>
                 {/* Option labels come from the catalog, not from the message
                     catalog: provider text is never machine-translated. */}
                 {option.label}
@@ -374,7 +372,7 @@ export function FilterForm({
             step={RATING_STEP}
             value={[minimumRating]}
           />
-          <p className="text-xs font-semibold text-[#17203a]/75">
+          <p className="text-xs font-semibold text-muted-foreground">
             {minimumRating > MIN_RATING
               ? t("ratingAtLeast", { value: minimumRating })
               : t("ratingAny")}
@@ -387,7 +385,7 @@ export function FilterForm({
 
         <div className="mt-3 space-y-3">
           <fieldset>
-            <legend className="text-xs font-semibold text-[#17203a]/75">
+            <legend className="text-xs font-semibold text-muted-foreground">
               {t("durationKindLegend")}
             </legend>
             <div className="mt-2 flex flex-wrap gap-3">
@@ -402,17 +400,14 @@ export function FilterForm({
                     <div className="flex items-center gap-2" key={kind}>
                       <input
                         checked={durationKind === kind}
-                        className="size-4 accent-[#3157d5] focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-[var(--signal)]"
+                        className="size-4 accent-primary focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-ring"
                         id={inputId}
                         name="durationKind"
                         onChange={() => setValue("durationKind", kind)}
                         type="radio"
                         value={kind}
                       />
-                      <label
-                        className="text-sm text-[#17203a]/80"
-                        htmlFor={inputId}
-                      >
+                      <label className="text-sm text-ink-300" htmlFor={inputId}>
                         {t(DURATION_KIND_LABEL_KEYS[kind])}
                       </label>
                     </div>
@@ -474,7 +469,7 @@ export function FilterForm({
         className={cn(
           "flex flex-wrap items-center gap-4",
           stickyActions &&
-            "sticky bottom-0 -mx-4 border-t border-[#17203a]/10 bg-popover px-4 py-4",
+            "sticky bottom-0 -mx-4 border-t border-border bg-popover px-4 py-4",
         )}
       >
         <Button disabled={isApplying} type="submit">
@@ -484,7 +479,7 @@ export function FilterForm({
           // Clearing everything is a plain navigable URL, like sorting and
           // pagination: it needs no draft state to compute.
           <Link
-            className="text-sm font-semibold text-[#3157d5] underline underline-offset-4"
+            className="text-sm font-semibold text-primary underline underline-offset-4"
             href={{
               pathname: "/",
               query: withBrowseParams(params, {

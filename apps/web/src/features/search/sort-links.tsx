@@ -41,8 +41,8 @@ export function SortLinks({ params }: SortLinksProps) {
             aria-current={isActive ? "true" : undefined}
             className={
               isActive
-                ? "rounded-full bg-[#17203a] px-4 py-2 text-sm font-semibold text-white"
-                : "rounded-full border border-[#17203a]/20 px-4 py-2 text-sm font-semibold text-[#17203a] transition-colors hover:border-[#3157d5] hover:bg-[#dce6fb]/50"
+                ? "rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+                : "rounded-full border border-ink-700 px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:border-primary hover:bg-ink-850"
             }
             href={{
               pathname: "/",

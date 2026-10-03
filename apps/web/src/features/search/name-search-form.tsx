@@ -142,7 +142,7 @@ export function NameSearchForm({
         {isListOpen && (
           <ul
             aria-label={t("suggestionsLabel")}
-            className="absolute top-full right-0 left-0 z-20 mt-1 overflow-hidden rounded-xl border border-[#17203a]/15 bg-white shadow-lg"
+            className="absolute top-full right-0 left-0 z-20 mt-1 overflow-hidden rounded-xl border border-border bg-card shadow-lg"
             id={listId}
             role="listbox"
           >
@@ -151,7 +151,7 @@ export function NameSearchForm({
                 aria-selected={index === activeIndex}
                 className={
                   index === activeIndex
-                    ? "flex items-center gap-3 bg-[#dce6fb] px-3 py-2"
+                    ? "flex items-center gap-3 bg-muted px-3 py-2"
                     : "flex items-center gap-3 px-3 py-2"
                 }
                 id={`${listId}-${index}`}
@@ -165,7 +165,7 @@ export function NameSearchForm({
                 onMouseEnter={() => setActiveIndex(index)}
                 role="option"
               >
-                <span className="relative h-12 w-9 shrink-0 overflow-hidden rounded bg-[#dce6fb]">
+                <span className="relative h-12 w-9 shrink-0 overflow-hidden rounded bg-muted">
                   {suggestion.cover && (
                     <Image
                       alt={t("coverAlt", { title: suggestion.title })}
@@ -177,10 +177,10 @@ export function NameSearchForm({
                   )}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold text-[#17203a]">
+                  <span className="block truncate text-sm font-semibold text-foreground">
                     {suggestion.title}
                   </span>
-                  <span className="block text-xs text-[#17203a]/75">
+                  <span className="block text-xs text-muted-foreground">
                     {suggestion.releaseYear ?? "—"}
                   </span>
                 </span>

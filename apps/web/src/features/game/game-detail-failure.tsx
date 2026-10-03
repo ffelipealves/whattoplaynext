@@ -21,15 +21,13 @@ export function GameDetailFailure({ failure, retry }: GameDetailFailureProps) {
       <GameFailureAnalytics code={failure.code} />
       <meta content="noindex" name="robots" />
       <div
-        className="flex flex-col items-center gap-2 rounded-2xl border border-[#17203a]/15 bg-white px-6 py-16 text-center"
+        className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card px-6 py-16 text-center"
         role="alert"
       >
-        <h1 className="font-[family-name:var(--font-display)] text-lg font-semibold">
-          {t(copy.title)}
-        </h1>
-        <p className="text-sm text-[#17203a]/75">{t(copy.description)}</p>
+        <h1 className="font-display text-lg font-semibold">{t(copy.title)}</h1>
+        <p className="text-sm text-muted-foreground">{t(copy.description)}</p>
         {failure.retryAfterSeconds !== undefined && (
-          <p className="text-sm font-semibold text-[#17203a]/75">
+          <p className="text-sm font-semibold text-muted-foreground">
             {t("rateLimitedRetryIn", {
               seconds: failure.retryAfterSeconds,
             })}
@@ -41,7 +39,7 @@ export function GameDetailFailure({ failure, retry }: GameDetailFailureProps) {
           </Button>
         )}
         {failure.requestId && (
-          <p className="mt-2 text-xs text-[#17203a]/75">
+          <p className="mt-2 text-xs text-muted-foreground">
             {t("requestIdLabel", { requestId: failure.requestId })}
           </p>
         )}

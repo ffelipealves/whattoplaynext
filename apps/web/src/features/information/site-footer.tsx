@@ -23,7 +23,7 @@ export function SiteFooter() {
   const t = useTranslations("Footer");
 
   return (
-    <footer className="border-t border-[#17203a]/15 bg-white px-5 py-8 text-[#17203a] sm:px-8 lg:px-12">
+    <footer className="border-t border-border bg-card px-5 py-8 text-foreground sm:px-8 lg:px-12">
       <div className="mx-auto flex max-w-[88rem] flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <nav aria-label={t("informationNavLabel")}>
@@ -54,9 +54,11 @@ export function SiteFooter() {
               </li>
             </ul>
           </nav>
-          <p className="mt-3 text-xs text-[#17203a]/75">{t("draftStatus")}</p>
+          <p className="mt-3 text-xs text-muted-foreground">
+            {t("draftStatus")}
+          </p>
         </div>
-        <IgdbAttribution className="text-sm text-[#17203a]/75" />
+        <IgdbAttribution className="text-sm text-muted-foreground" />
       </div>
     </footer>
   );

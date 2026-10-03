@@ -14,14 +14,14 @@ export function SystemNotFound({ kind }: SystemNotFoundProps) {
   return (
     <main className="mx-auto flex max-w-3xl flex-col items-center gap-3 px-5 py-24 text-center sm:px-8">
       <meta content="noindex" name="robots" />
-      <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-[-0.02em]">
+      <h1 className="font-display text-3xl font-semibold tracking-[-0.02em]">
         {isGame ? game("notFoundTitle") : system("notFoundTitle")}
       </h1>
-      <p className="text-sm text-[#17203a]/75">
+      <p className="text-sm text-muted-foreground">
         {isGame ? game("notFoundDescription") : system("notFoundDescription")}
       </p>
       <Link
-        className="mt-3 text-sm font-semibold text-[#3157d5] underline underline-offset-4"
+        className="mt-3 text-sm font-semibold text-primary underline underline-offset-4"
         href="/"
       >
         {isGame ? game("backToGames") : system("backHome")}
