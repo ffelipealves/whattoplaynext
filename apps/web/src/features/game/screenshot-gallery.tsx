@@ -59,10 +59,10 @@ export function ScreenshotGallery({
       onOpenChange={(open) => !open && setSelectedIndex(null)}
       open={selected != null}
     >
-      <ul className="grid gap-4 md:grid-cols-2">
+      <ul className="grid grid-cols-2 gap-3 md:grid-cols-3">
         {screenshots.map((screenshot, index) => (
           <li
-            className="overflow-hidden rounded-xl bg-muted"
+            className="overflow-hidden rounded-xl bg-muted ring-1 ring-ink-800 transition-shadow hover:ring-ink-600"
             key={screenshot.url}
             style={{
               aspectRatio: `${screenshot.width} / ${screenshot.height}`,
@@ -83,10 +83,10 @@ export function ScreenshotGallery({
               >
                 <Image
                   alt={t("screenshotAlt", { number: index + 1, title })}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-cover transition-transform duration-500 ease-out-quart hover:scale-[1.03]"
                   height={screenshot.height}
                   loading="lazy"
-                  sizes="(min-width: 1280px) 36rem, (min-width: 768px) 50vw, calc(100vw - 2.5rem)"
+                  sizes="(min-width: 72rem) 23rem, (min-width: 768px) 33vw, 50vw"
                   src={screenshot.url}
                   width={screenshot.width}
                 />
@@ -97,10 +97,10 @@ export function ScreenshotGallery({
       </ul>
 
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm" />
+        <Dialog.Overlay className="fixed inset-0 z-50 animate-[fade-in_200ms] bg-black/80 backdrop-blur-sm" />
         <Dialog.Content
           aria-describedby={undefined}
-          className="fixed top-1/2 left-1/2 z-50 flex max-h-[94vh] w-[min(94vw,72rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-3 outline-none"
+          className="fixed top-1/2 left-1/2 z-50 flex max-h-[94vh] w-[min(94vw,72rem)] -translate-x-1/2 -translate-y-1/2 animate-[pop-in_240ms_var(--ease-out-quart)] flex-col gap-3 outline-none"
           onCloseAutoFocus={(event) => {
             event.preventDefault();
             openerRef.current?.focus();
@@ -119,7 +119,7 @@ export function ScreenshotGallery({
           {selected && (
             <Image
               alt={selectedLabel}
-              className="max-h-[82vh] w-full rounded-xl object-contain"
+              className="max-h-[82vh] w-full rounded-2xl object-contain shadow-2xl shadow-black"
               height={selected.height}
               loading="eager"
               sizes="94vw"

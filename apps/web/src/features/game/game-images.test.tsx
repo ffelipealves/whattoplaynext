@@ -40,7 +40,7 @@ test("the above-fold cover is responsive, dimensioned, and not lazy", () => {
   });
   expect(image.getAttribute("width")).toBe("264");
   expect(image.getAttribute("height")).toBe("374");
-  expect(image.getAttribute("sizes")).toContain("18rem");
+  expect(image.getAttribute("sizes")).toContain("9rem");
   expect(image.getAttribute("loading")).not.toBe("lazy");
 });
 

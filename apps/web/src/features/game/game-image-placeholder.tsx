@@ -14,13 +14,13 @@ export function GameImagePlaceholder({
   return (
     <div
       aria-label={label}
-      className="flex h-full w-full flex-col items-center justify-center gap-3 overflow-hidden rounded-[inherit] bg-linear-to-br from-ink-800 to-ink-900 px-5 text-center text-muted-foreground"
+      className="flex h-full w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-[inherit] bg-linear-to-br from-ink-800 to-ink-900 px-3 text-center text-muted-foreground"
       role="img"
       style={{ aspectRatio: `${width} / ${height}` }}
     >
       <svg
         aria-hidden="true"
-        className="h-auto w-20 text-ink-600"
+        className="h-auto w-1/2 max-w-20 text-ink-600"
         fill="none"
         viewBox="0 0 96 72"
       >
@@ -38,7 +38,7 @@ export function GameImagePlaceholder({
         />
         <circle cx="70" cy="18" r="8" fill="currentColor" />
       </svg>
-      <span aria-hidden="true" className="text-sm font-semibold">
+      <span aria-hidden="true" className="text-xs font-semibold">
         {message}
       </span>
     </div>

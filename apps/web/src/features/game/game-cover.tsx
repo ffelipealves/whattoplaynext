@@ -19,7 +19,7 @@ export function GameCover({ cover, title }: GameCoverProps) {
 
   return (
     <div
-      className="overflow-hidden rounded-2xl bg-muted shadow-sm"
+      className="overflow-hidden rounded-xl bg-muted shadow-2xl ring-1 shadow-black ring-ink-700"
       style={{ aspectRatio: `${width} / ${height}` }}
     >
       {cover ? (
@@ -28,7 +28,7 @@ export function GameCover({ cover, title }: GameCoverProps) {
           className="h-full w-full object-cover"
           height={cover.height}
           preload
-          sizes="(min-width: 640px) 18rem, calc(100vw - 2.5rem)"
+          sizes="(min-width: 640px) 9rem, 6rem"
           src={cover.url}
           width={cover.width}
         />
