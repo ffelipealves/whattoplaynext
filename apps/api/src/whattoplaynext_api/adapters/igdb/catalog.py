@@ -1724,7 +1724,10 @@ def _normalize_cover(value: object) -> GameCover | None:
 
 
 def _normalize_screenshot(value: object) -> GameCover | None:
-    return _normalize_image(value, transform="screenshot_big", width=889, height=500)
+    # Full HD: the first screenshot is the detail page's full-width banner,
+    # which the smaller sizes blur on high-density screens. The web resizes
+    # it for the gallery's thumbnails.
+    return _normalize_image(value, transform="1080p", width=1920, height=1080)
 
 
 def _normalize_record_options(

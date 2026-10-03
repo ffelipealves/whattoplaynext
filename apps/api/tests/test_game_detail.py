@@ -45,12 +45,9 @@ def _sample_detail() -> GameDetail:
         ),
         screenshots=[
             GameCover(
-                url=(
-                    "https://images.igdb.com/igdb/image/upload/"
-                    "t_screenshot_big/sc1abc.jpg"
-                ),
-                width=889,
-                height=500,
+                url=("https://images.igdb.com/igdb/image/upload/t_1080p/sc1abc.jpg"),
+                width=1920,
+                height=1080,
             )
         ],
         releases=[
@@ -172,12 +169,9 @@ async def test_returns_normalized_detail_for_a_valid_game_id() -> None:
         },
         "screenshots": [
             {
-                "url": (
-                    "https://images.igdb.com/igdb/image/upload/"
-                    "t_screenshot_big/sc1abc.jpg"
-                ),
-                "width": 889,
-                "height": 500,
+                "url": ("https://images.igdb.com/igdb/image/upload/t_1080p/sc1abc.jpg"),
+                "width": 1920,
+                "height": 1080,
             }
         ],
         "releases": [
