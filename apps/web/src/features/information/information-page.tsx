@@ -1,4 +1,5 @@
 import { useTranslations } from "next-intl";
+import { FilePenLineIcon } from "lucide-react";
 
 import { IgdbAttribution } from "./site-footer";
 
@@ -8,11 +9,19 @@ function DraftNotice() {
   const t = useTranslations("Information");
 
   return (
-    <aside className="rounded-2xl border border-primary/40 bg-primary/10 p-5">
-      <p className="font-semibold text-foreground">{t("draftLabel")}</p>
-      <p className="mt-1 text-sm leading-6 text-muted-foreground">
-        {t("draftNotice")}
-      </p>
+    <aside className="flex gap-4 rounded-2xl border border-primary/30 bg-primary/5 p-5">
+      <span
+        aria-hidden
+        className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/15 text-ember-300"
+      >
+        <FilePenLineIcon className="size-5" />
+      </span>
+      <div>
+        <p className="font-semibold text-ink-50">{t("draftLabel")}</p>
+        <p className="mt-1 text-sm leading-6 text-ink-300">
+          {t("draftNotice")}
+        </p>
+      </div>
     </aside>
   );
 }
@@ -25,11 +34,11 @@ function Section({
   title: string;
 }) {
   return (
-    <section>
-      <h2 className="font-display text-2xl font-semibold tracking-[-0.02em]">
+    <section className="border-t border-border pt-8">
+      <h2 className="font-display text-2xl font-bold tracking-tight text-ink-50">
         {title}
       </h2>
-      <div className="mt-3 space-y-3 text-base leading-7 text-muted-foreground">
+      <div className="mt-3 space-y-3 text-[0.9375rem] leading-7 text-ink-300">
         {children}
       </div>
     </section>
@@ -107,14 +116,15 @@ export function InformationPage({ kind }: { kind: InformationPageKind }) {
   } satisfies Record<InformationPageKind, string>;
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-5 py-12 text-foreground sm:px-8 sm:py-16 lg:px-12">
-      <p className="text-xs font-bold tracking-[0.18em] text-primary uppercase">
+    <main className="mx-auto w-full max-w-3xl px-4 pt-12 pb-20 text-foreground sm:px-6 sm:pt-16">
+      <p className="mb-4 flex items-center gap-3 font-mono text-xs tracking-[0.2em] text-ember-400 uppercase">
+        <span aria-hidden className="h-px w-8 bg-ember-400" />
         {t("eyebrow")}
       </p>
-      <h1 className="mt-3 font-display text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
+      <h1 className="font-display text-4xl leading-[0.95] font-extrabold tracking-tight text-ink-50 sm:text-5xl lg:text-6xl">
         {titles[kind]}
       </h1>
-      <div className="mt-8">
+      <div className="mt-10">
         <DraftNotice />
       </div>
       <div className="mt-10 space-y-10">

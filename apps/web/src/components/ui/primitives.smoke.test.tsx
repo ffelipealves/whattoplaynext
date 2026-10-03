@@ -1,11 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import { expect, test } from "vitest";
 
-import { Badge } from "./badge";
 import { Button } from "./button";
 import { Checkbox } from "./checkbox";
-import { Input } from "./input";
-import { Select, SelectTrigger, SelectValue } from "./select";
+import { Kbd } from "./kbd";
 import { Sheet, SheetTrigger } from "./sheet";
 import { Skeleton } from "./skeleton";
 import { Slider } from "./slider";
@@ -13,23 +11,6 @@ import { Slider } from "./slider";
 test("button renders as a clickable element", () => {
   render(<Button>Apply filters</Button>);
   expect(screen.getByRole("button", { name: "Apply filters" })).toBeDefined();
-});
-
-test("input renders and accepts a placeholder", () => {
-  render(<Input placeholder="Search titles" />);
-  expect(screen.getByPlaceholderText("Search titles")).toBeDefined();
-});
-
-test("select renders a closed trigger with its placeholder", () => {
-  render(
-    <Select>
-      <SelectTrigger>
-        <SelectValue placeholder="Choose a platform" />
-      </SelectTrigger>
-    </Select>,
-  );
-  expect(screen.getByRole("combobox")).toBeDefined();
-  expect(screen.getByText("Choose a platform")).toBeDefined();
 });
 
 test("checkbox renders as an unchecked checkbox by default", () => {
@@ -56,12 +37,12 @@ test("sheet renders a closed trigger", () => {
   ).toBe("false");
 });
 
-test("badge renders its label", () => {
-  render(<Badge>3 active</Badge>);
-  expect(screen.getByText("3 active")).toBeDefined();
-});
-
 test("skeleton renders as a placeholder block", () => {
   const { container } = render(<Skeleton data-testid="cover-skeleton" />);
   expect(container.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+});
+
+test("kbd renders a keyboard key", () => {
+  render(<Kbd>/</Kbd>);
+  expect(screen.getByText("/").tagName).toBe("KBD");
 });

@@ -87,9 +87,10 @@ export default async function LocaleLayout({
       className={`dark ${displayFont.variable} ${bodyFont.variable} ${monoFont.variable}`}
       lang={locale}
     >
-      <body>
+      {/* A column, so the footer sits at the foot of a short page. */}
+      <body className="flex flex-col">
         <NextIntlClientProvider>
-          {children}
+          <div className="flex-1">{children}</div>
           <SiteFooter />
           {analytics && (
             <>
