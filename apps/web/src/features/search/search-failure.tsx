@@ -1,4 +1,7 @@
 import { useTranslations } from "next-intl";
+import { CloudOffIcon } from "lucide-react";
+
+import { buttonVariants } from "@/components/ui/button";
 
 import type { ApiFailure } from "@/lib/api-failure";
 import { failureCopy, isRecoverableFailure } from "@/lib/failure-presentation";
@@ -19,12 +22,22 @@ export function SearchFailure({ failure, params }: SearchFailureProps) {
 
   return (
     <div
-      className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card px-6 py-16 text-center"
+      className="flex flex-col items-center gap-2 rounded-3xl border border-ink-700 bg-card px-6 py-20 text-center"
       role="alert"
     >
       <meta content="noindex" name="robots" />
-      <h2 className="font-display text-lg font-semibold">{t(copy.title)}</h2>
-      <p className="text-sm text-muted-foreground">{t(copy.description)}</p>
+      <span
+        aria-hidden
+        className="mb-3 grid size-14 place-items-center rounded-2xl bg-ink-850 text-ember-400"
+      >
+        <CloudOffIcon className="size-6" />
+      </span>
+      <h2 className="font-display text-2xl font-bold text-ink-50">
+        {t(copy.title)}
+      </h2>
+      <p className="max-w-md text-sm text-muted-foreground">
+        {t(copy.description)}
+      </p>
 
       {failure.retryAfterSeconds !== undefined && (
         <p className="text-sm font-semibold text-muted-foreground">
@@ -36,7 +49,7 @@ export function SearchFailure({ failure, params }: SearchFailureProps) {
         // Spelling the criteria out keeps every applied filter on the retry
         // and makes this a real link: an empty href is not exposed as one.
         <Link
-          className="mt-2 text-sm font-semibold text-primary underline underline-offset-4"
+          className={buttonVariants({ className: "mt-4", variant: "outline" })}
           href={{ pathname: "/", query: withBrowseParams(params, {}) }}
         >
           {t("retryLabel")}

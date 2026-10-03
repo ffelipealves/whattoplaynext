@@ -86,7 +86,7 @@
     "ratingUnknown": "Ainda sem nota",
     "ratingVotes": "{count, plural, one {# avaliação} other {# avaliações}}",
     "durationUnknown": "Duração desconhecida",
-    "durationHours": "{hours}h",
+    "durationHours": "{hours, number}h",
     "zeroResultsTitleWithName": "Nenhum jogo encontrado para “{name}”",
     "zeroResultsTitle": "Nenhum jogo encontrado",
     "zeroResultsDescription": "Tente um título diferente ou mais curto.",
@@ -103,7 +103,12 @@
     "headingAll": "Todos os jogos",
     "headingName": "Resultados para “{name}”",
     "headingFiltered": "Resultados filtrados",
-    "pageStatus": "página {page} de {totalPages}"
+    "pageStatus": "página {page} de {totalPages}",
+    "ratingLabel": "Nota {value} de 100",
+    "platformsLabel": "Plataformas",
+    "zeroResultsWithoutFilters": "Buscar “{name}” sem filtros",
+    "zeroResultsClearFilters": "Limpar filtros",
+    "zeroResultsShowAll": "Ver todos os jogos"
   },
   "Game": {
     "coverAlt": "Capa de {title}",

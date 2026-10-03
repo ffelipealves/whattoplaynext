@@ -83,3 +83,30 @@ test("suggests relaxing a filter when filters are what emptied the page", () => 
   ).toBeDefined();
   expect(screen.queryByText("Try a different or shorter title.")).toBeNull();
 });
+
+test.each([
+  [
+    { name: "Hollow", platform: ["pc"] },
+    "Search “Hollow” without filters",
+    "/en?sort=popularity&direction=desc&page=1&name=Hollow",
+  ],
+  [
+    { platform: ["pc"] },
+    "Clear filters",
+    "/en?sort=popularity&direction=desc&page=1",
+  ],
+  [
+    { name: "Hollow" },
+    "Browse all games",
+    "/en?sort=popularity&direction=desc&page=1",
+  ],
+] satisfies [RawSearchParams, string, string][])(
+  "offers one way out of a zero for %j",
+  (searchParams, label, href) => {
+    renderGrid({ ok: true, page: { ...samplePage, items: [] } }, searchParams);
+
+    expect(screen.getByRole("link", { name: label }).getAttribute("href")).toBe(
+      href,
+    );
+  },
+);

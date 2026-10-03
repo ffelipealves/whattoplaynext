@@ -262,7 +262,7 @@ export function NameSearchForm({
                 onMouseEnter={() => setActiveIndex(index)}
                 role="option"
               >
-                <span className="relative aspect-[2/3] w-8 shrink-0 overflow-hidden rounded-md bg-ink-800">
+                <span className="relative aspect-2/3 w-8 shrink-0 overflow-hidden rounded-md bg-ink-800">
                   {suggestion.cover && (
                     <Image
                       alt={t("coverAlt", { title: suggestion.title })}

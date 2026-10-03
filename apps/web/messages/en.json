@@ -86,7 +86,7 @@
     "ratingUnknown": "Not yet rated",
     "ratingVotes": "{count, plural, one {# vote} other {# votes}}",
     "durationUnknown": "Duration unknown",
-    "durationHours": "{hours}h",
+    "durationHours": "{hours, number}h",
     "zeroResultsTitleWithName": "No games matched “{name}”",
     "zeroResultsTitle": "No games matched this search",
     "zeroResultsDescription": "Try a different or shorter title.",
@@ -103,7 +103,12 @@
     "headingAll": "All games",
     "headingName": "Results for “{name}”",
     "headingFiltered": "Filtered results",
-    "pageStatus": "page {page} of {totalPages}"
+    "pageStatus": "page {page} of {totalPages}",
+    "ratingLabel": "Rating {value} of 100",
+    "platformsLabel": "Platforms",
+    "zeroResultsWithoutFilters": "Search “{name}” without filters",
+    "zeroResultsClearFilters": "Clear filters",
+    "zeroResultsShowAll": "Browse all games"
   },
   "Game": {
     "coverAlt": "{title} cover art",
