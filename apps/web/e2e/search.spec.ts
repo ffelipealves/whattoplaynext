@@ -76,6 +76,33 @@ test("a shared URL restores the same search, and back and forward keep it", asyn
   await expect(page.getByLabel("Game name")).toHaveValue("Hollow");
 });
 
+test("the list layout survives paging and a new name search", async ({
+  page,
+}) => {
+  test.skip(
+    (page.viewportSize()?.width ?? 0) < 640,
+    "The layout switch shows from the `sm` breakpoint up.",
+  );
+  await page.goto("/en");
+
+  await page.getByRole("link", { name: "List view" }).click();
+  await expect(page).toHaveURL(/view=list/);
+  await expect(page.getByRole("link", { name: "List view" })).toHaveAttribute(
+    "aria-current",
+    "true",
+  );
+
+  await page.getByRole("link", { name: "Next", exact: true }).click();
+  await expect(page).toHaveURL(/page=2/);
+  await expect(page).toHaveURL(/view=list/);
+
+  const name = page.getByLabel("Game name");
+  await name.fill("Hollow");
+  await name.press("Enter");
+  await expect(page).toHaveURL(/name=Hollow/);
+  await expect(page).toHaveURL(/view=list/);
+});
+
 test("pagination moves through the result set", async ({ page }) => {
   await page.goto("/en?sort=title&direction=asc");
 

@@ -110,3 +110,13 @@ test.each([
     );
   },
 );
+
+test("lays the page out as rows in the list view", () => {
+  renderGrid({ ok: true, page: samplePage }, { view: "list" });
+
+  const link = screen.getByRole("link", { name: "The Witcher 3: Wild Hunt" });
+  expect(link.closest("ul")!.className).toContain("flex-col");
+  // Absent values stay stated in a row too.
+  expect(screen.getByText("Not yet rated")).toBeDefined();
+  expect(screen.getByText("Duration unknown")).toBeDefined();
+});

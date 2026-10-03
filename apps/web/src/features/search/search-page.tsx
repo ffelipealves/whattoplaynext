@@ -15,6 +15,7 @@ import { PaginationLinks } from "./pagination-links";
 import { ResultsGrid } from "./results-grid";
 import { GenreChips } from "./genre-chips";
 import { SortMenu } from "./sort-menu";
+import { ViewToggle } from "./view-toggle";
 import {
   MAX_PAGE,
   type BrowseParamIssue,
@@ -137,6 +138,7 @@ export function SearchPage({
             )}
             <div className="ml-auto flex items-center gap-2">
               <SortMenu params={params} />
+              <ViewToggle params={params} />
             </div>
           </div>
 
@@ -205,5 +207,7 @@ function searchKey(params: BrowseParams): string {
     page: undefined,
     sort: undefined,
     direction: undefined,
+    // Changing the layout is not a new search.
+    view: undefined,
   });
 }

@@ -126,6 +126,7 @@ test("defaults to the zero-filter baseline when nothing is provided", () => {
     sort: "popularity",
     direction: "desc",
     page: 1,
+    view: "grid",
   });
 });
 
@@ -517,4 +518,24 @@ test("parseBrowseParams stays the issue-free view of the same parse", () => {
   expect(parseBrowseParams(searchParams, catalogBounds)).toEqual(
     readBrowseParams(searchParams, catalogBounds).params,
   );
+});
+
+test("reads the list layout and defaults to the grid", () => {
+  expect(parseBrowseParams({ view: "list" }).view).toBe("list");
+  expect(parseBrowseParams({}).view).toBe("grid");
+  expect(readBrowseParams({ view: "grid" }).issues).toEqual([]);
+});
+
+test("ignores an unknown layout and says so", () => {
+  const { params, issues } = readBrowseParams({ view: "mosaic" });
+
+  expect(params.view).toBe("grid");
+  expect(issues).toEqual(["view"]);
+});
+
+test("withBrowseParams carries the list layout and leaves the default out", () => {
+  const list = parseBrowseParams({ view: "list", page: "3" });
+
+  expect(withBrowseParams(list, { page: 4 }).view).toBe("list");
+  expect(withBrowseParams(list, { view: "grid" }).view).toBeUndefined();
 });

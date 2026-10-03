@@ -120,7 +120,10 @@
     "genresSelected": "{count, plural, =0 {Combine several genres} one {# selected} other {# selected}}",
     "genresClear": "Clear",
     "genresDone": "Done",
-    "paginationRange": "Showing <number>{from, number}–{to, number}</number> of <number>{total, number}</number>"
+    "paginationRange": "Showing <number>{from, number}–{to, number}</number> of <number>{total, number}</number>",
+    "viewNavLabel": "Results layout",
+    "viewGrid": "Grid view",
+    "viewList": "List view"
   },
   "Game": {
     "coverAlt": "{title} cover art",
@@ -210,7 +213,8 @@
     "ignoredGameMode": "A game mode in the link is not one we filter by.",
     "ignoredRelease": "The release dates were not a usable range.",
     "ignoredRating": "The minimum rating was outside 0 to 100, or not a whole number.",
-    "ignoredDuration": "The play time was not a usable range."
+    "ignoredDuration": "The play time was not a usable range.",
+    "ignoredView": "The layout in the link is not one we offer."
   },
   "Filters": {
     "heading": "Filters",

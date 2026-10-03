@@ -5,7 +5,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 
 import { activeFilters } from "./active-filters";
-import { ResultCard } from "./result-card";
+import { ResultCard, ResultRow } from "./result-card";
 import { SearchFailure } from "./search-failure";
 import {
   clearedFilters,
@@ -78,6 +78,18 @@ export function ResultsGrid({ result, params }: ResultsGridProps) {
 
   if (result.page.items.length === 0) {
     return <ZeroResults params={params} />;
+  }
+
+  if (params.view === "list") {
+    return (
+      <ul className="flex flex-col gap-3">
+        {result.page.items.map((game) => (
+          <li key={game.id}>
+            <ResultRow game={game} />
+          </li>
+        ))}
+      </ul>
+    );
   }
 
   return (

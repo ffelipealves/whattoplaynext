@@ -13,6 +13,7 @@ const LABELS: Record<BrowseParamIssue, string> = {
   release: "ignoredRelease",
   rating: "ignoredRating",
   duration: "ignoredDuration",
+  view: "ignoredView",
 };
 
 type IgnoredCriteriaProps = {

@@ -19,6 +19,7 @@ import { markSearchSubmitted } from "@/features/analytics/track";
 import { activeFilters } from "./active-filters";
 import {
   DEFAULT_DURATION_KIND,
+  DEFAULT_VIEW,
   MIN_RATING,
   MAX_RATING,
   clearedFilters,
@@ -563,6 +564,9 @@ export function FilterForm({
       {params.name && <input name="name" type="hidden" value={params.name} />}
       <input name="sort" type="hidden" value={params.sort} />
       <input name="direction" type="hidden" value={params.direction} />
+      {params.view !== DEFAULT_VIEW && (
+        <input name="view" type="hidden" value={params.view} />
+      )}
       {params.genreIds.map((id) => (
         <input key={id} name="genre" type="hidden" value={id} />
       ))}

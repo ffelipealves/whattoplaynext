@@ -112,3 +112,86 @@ export function ResultCard({ game }: ResultCardProps) {
     </article>
   );
 }
+
+/**
+ * The same game as a list row: a small cover, then everything the card says,
+ * laid out across the width with the rating at the end, for scanning down.
+ */
+export function ResultRow({ game }: ResultCardProps) {
+  const t = useTranslations("Search");
+  const genres = game.genres.slice(0, 3).map((genre) => genre.label);
+  const modes = game.gameModes.slice(0, MAX_LISTED).map((mode) => mode.label);
+
+  return (
+    <article className="group relative flex items-center gap-4 rounded-2xl border border-border bg-card/60 p-3 transition-colors hover:border-ink-700 hover:bg-card has-focus-visible:ring-2 has-focus-visible:ring-ring sm:gap-5">
+      <div className="relative aspect-2/3 w-16 shrink-0 overflow-hidden rounded-lg bg-ink-850 sm:w-20">
+        {game.cover ? (
+          <Image
+            alt=""
+            className="object-cover"
+            fill
+            sizes="5rem"
+            src={game.cover.url}
+          />
+        ) : (
+          <span className="grid h-full place-items-center p-1 text-center text-[0.625rem] font-semibold text-ink-300">
+            {t("noCover")}
+          </span>
+        )}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <h3 className="font-display text-base leading-tight font-bold text-ink-50 sm:text-lg">
+          <Link
+            className="line-clamp-2 outline-none after:absolute after:inset-0 after:content-[''] sm:line-clamp-1"
+            data-analytics-entry="search-result"
+            href={`/games/${game.id}/${game.slug}`}
+          >
+            {game.title}
+          </Link>
+        </h3>
+        <p className="mt-0.5 truncate text-xs text-muted-foreground sm:text-sm">
+          <span>{game.releaseYear ?? "—"}</span>
+          {genres.length > 0 && <span> · {genres.join(" · ")}</span>}
+        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
+          {game.platforms.length > 0 && (
+            <PlatformPills
+              label={t("platformsLabel")}
+              platforms={game.platforms}
+            />
+          )}
+          <span className="inline-flex items-center gap-1">
+            <ClockIcon aria-hidden className="size-3" />
+            {game.normalDurationSeconds != null
+              ? t("durationHours", {
+                  hours: toHours(game.normalDurationSeconds),
+                })
+              : t("durationUnknown")}
+          </span>
+          {modes.length > 0 && (
+            <span className="hidden md:inline">{modes.join(" · ")}</span>
+          )}
+        </div>
+      </div>
+
+      <div className="flex shrink-0 flex-col items-end gap-1 text-right">
+        {game.rating ? (
+          <>
+            <ScoreBadge
+              label={t("ratingLabel", { value: Math.round(game.rating.value) })}
+              value={game.rating.value}
+            />
+            <span className="text-xs text-muted-foreground">
+              {t("ratingVotes", { count: game.rating.count })}
+            </span>
+          </>
+        ) : (
+          <span className="text-xs text-muted-foreground">
+            {t("ratingUnknown")}
+          </span>
+        )}
+      </div>
+    </article>
+  );
+}

@@ -54,11 +54,17 @@ export type FilterCriteria = {
   maximumDurationHours?: number;
 };
 
+/** How the results are laid out. Only the page reads it; the API never sees it. */
+export type ResultView = "grid" | "list";
+
+export const DEFAULT_VIEW: ResultView = "grid";
+
 export type BrowseParams = FilterCriteria & {
   name?: string;
   sort: SortOption;
   direction: SortDirection;
   page: number;
+  view: ResultView;
 };
 
 export type RawSearchParams = Record<string, string | string[] | undefined>;
@@ -78,7 +84,8 @@ export type BrowseParamIssue =
   | "gameMode"
   | "release"
   | "rating"
-  | "duration";
+  | "duration"
+  | "view";
 
 export type BrowseParamsReading = {
   params: BrowseParams;
@@ -382,6 +389,12 @@ export function readBrowseParams(
     issues.push("duration");
   }
 
+  const rawView = firstValue(searchParams.view);
+  const view: ResultView = rawView === "list" ? "list" : DEFAULT_VIEW;
+  if (rawView !== undefined && rawView !== "list" && rawView !== "grid") {
+    issues.push("view");
+  }
+
   return {
     params: {
       name,
@@ -397,6 +410,7 @@ export function readBrowseParams(
       sort,
       direction,
       page,
+      view,
     },
     issues,
   };
@@ -456,6 +470,9 @@ export function withBrowseParams(
   }
   if (merged.maximumDurationHours !== undefined) {
     query.maximumDurationHours = String(merged.maximumDurationHours);
+  }
+  if (merged.view !== DEFAULT_VIEW) {
+    query.view = merged.view;
   }
   return query;
 }
