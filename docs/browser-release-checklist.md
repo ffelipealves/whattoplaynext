@@ -1,6 +1,7 @@
 # Browser Release Checklist
 
-Status: prepared on 2026-09-27; no release-time pass recorded yet
+Status: prepared on 2026-09-27; local current-stable Chrome and Edge pass
+recorded on 2026-09-28; no release-time pass recorded yet
 Requirement: NFR-013, the two latest stable releases of Chrome, Edge,
 Firefox, and Safari at release time
 Tracks: [technical debt 14](technical-debt.md#14-no-retail-browser-has-been-checked--blocking-for-closed-beta)
@@ -78,8 +79,10 @@ reports.
 Add one row per browser and version tested. A journey is only “pass” if it
 completed without a console error.
 
-| Date | Browser | Version | OS / device | Build (commit) | Journeys passed | Tester | Notes |
-| ---- | ------- | ------- | ----------- | -------------- | --------------- | ------ | ----- |
+| Date       | Browser | Version       | OS / device                    | Build (commit) | Journeys passed | Tester                 | Notes                                                                                                           |
+| ---------- | ------- | ------------- | ------------------------------ | -------------- | --------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------- |
+| 2026-09-28 | Chrome  | 154.0.8037.57 | Ubuntu (WSL), desktop/headless | `8ad8c97`      | 37/37 automated | Codex local automation | `pnpm e2e:branded` passed against the local fixture environment; evidence only, not the release-candidate gate. |
+| 2026-09-28 | Edge    | 154.0.4258.37 | Ubuntu (WSL), desktop/headless | `8ad8c97`      | 37/37 automated | Codex local automation | `pnpm e2e:branded` passed against the local fixture environment; evidence only, not the release-candidate gate. |
 
 Technical debt 14 closes once every row the coverage plan requires reads pass
 for the release candidate. Safari stays owed until an Apple device or a paid

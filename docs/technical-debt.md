@@ -237,10 +237,10 @@ candidate.
 NFR-013 promises the two latest stable releases of Chrome, Edge, Firefox, and
 Safari. Milestone 2.10's matrix drives the engines Playwright ships — one build
 each of Chromium, Firefox, and WebKit — at desktop and mobile viewports. That
-catches engine-level breakage, but it is not the requirement: no branded
-release was run, none of the second-latest releases was, Edge was covered only
-through the Chromium engine it shares with Chrome, and WebKit is Safari's
-engine rather than Safari, which runs only on Apple platforms.
+catches engine-level breakage, but it is not the requirement: branded
+current-stable Chrome and Edge have only been run locally, no release candidate
+was run, none of the second-latest releases was, and WebKit is Safari's engine
+rather than Safari, which runs only on Apple platforms.
 
 Paying it off is a manual pass at release time on real installs of all four
 browsers at both versions, recorded against the same journeys the suite
@@ -252,6 +252,12 @@ decision for the beta milestones, not an engineering blocker now.
 run every journey in the installed Chrome and Edge. The
 [browser release checklist](browser-release-checklist.md) holds the manual
 journeys for Firefox and the record table for every browser and version.
+On 2026-09-28, the installed Chrome 154.0.8037.57 and Edge 154.0.4258.37 ran
+all 37 automated journeys successfully (74 browser runs total) on Ubuntu in
+WSL against the local fixture environment. This is useful current-stable
+evidence, recorded in the checklist, but it does not satisfy the release gate:
+the same checks still need a closed-beta preview, and the remaining browser and
+version coverage is still owed.
 Safari is owed: the owner has no Apple device, so it needs a Mac, an iPhone,
 or a paid service before the gate can close. Previous-stable versions need
 kept installers or a cloud service as well. The pass has to run against the
