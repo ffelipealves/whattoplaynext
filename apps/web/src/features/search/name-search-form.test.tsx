@@ -382,3 +382,58 @@ function hiddenFields(): [string, string][] {
       .querySelectorAll<HTMLInputElement>('input[type="hidden"]'),
   ).map((input) => [input.name, input.value]);
 }
+
+test("searches on the localized home page from wherever the field is", () => {
+  renderForm();
+
+  expect(field().closest("form")!.getAttribute("action")).toBe("/en");
+});
+
+test("clearing empties the field and keeps focus in it", () => {
+  renderForm({ name: "Hollow Knight" });
+
+  fireEvent.click(screen.getByRole("button", { name: "Clear name" }));
+
+  expect(field().value).toBe("");
+  expect(document.activeElement).toBe(field());
+});
+
+test("'/' and Ctrl+K focus the field from anywhere on the page", () => {
+  renderForm();
+
+  fireEvent.keyDown(document.body, { key: "/" });
+  expect(document.activeElement).toBe(field());
+
+  field().blur();
+  fireEvent.keyDown(document.body, { key: "k", ctrlKey: true });
+  expect(document.activeElement).toBe(field());
+});
+
+test("'/' typed into another field stays in that field", () => {
+  renderForm();
+  const other = document.createElement("input");
+  document.body.append(other);
+  other.focus();
+
+  const event = new KeyboardEvent("keydown", {
+    bubbles: true,
+    cancelable: true,
+    key: "/",
+  });
+  other.dispatchEvent(event);
+
+  expect(event.defaultPrevented).toBe(false);
+  expect(document.activeElement).toBe(other);
+  other.remove();
+});
+
+test("marks the typed text inside each suggestion, ignoring accents", async () => {
+  respondWith([{ ...hollowKnight, title: "Pokémon Legends" }]);
+  renderForm();
+
+  await type("pokemon");
+  await settleDebounce();
+
+  const option = await screen.findByRole("option");
+  expect(option.querySelector("mark")?.textContent).toBe("Pokémon");
+});

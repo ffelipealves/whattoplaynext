@@ -146,7 +146,7 @@ test("switching language carries over to the search page", async ({ page }) => {
 
   await page.goto("/pt-br");
   await expect(
-    page.getByRole("heading", { level: 1, name: "What To Play Next" }),
+    page.getByRole("heading", { level: 1, name: "Todos os jogos" }),
   ).toBeVisible();
   await expect(page.getByLabel("Nome do jogo")).toBeVisible();
   await expect(
@@ -163,6 +163,25 @@ test("the old listing route redirects to the home search and keeps its query", a
 
   expect(response.status()).toBe(308);
   expect(response.headers()["location"]).toBe("/en?platform=pc&page=2");
+});
+
+test("the header switches language in place and searches from any page", async ({
+  page,
+}) => {
+  const gamePath = `/games/${DETAIL_GAME_ID}/${DETAIL_GAME_SLUG}`;
+  await page.goto(`/en${gamePath}`);
+
+  await page.getByRole("link", { name: "Português" }).click();
+  await expect(page).toHaveURL(`/pt-br${gamePath}`);
+
+  const name = page.getByLabel("Nome do jogo");
+  await name.fill("Hollow");
+  await name.press("Enter");
+
+  await expect(page).toHaveURL(/\/pt-br\?(?:.*&)?name=Hollow$/);
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Resultados para “Hollow”" }),
+  ).toBeVisible();
 });
 
 test("a result opens its canonical game page and back restores the localized search", async ({

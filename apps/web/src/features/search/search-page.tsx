@@ -11,13 +11,15 @@ import { DurationNotice } from "./duration-notice";
 import { FilterDrawer } from "./filter-drawer";
 import { FilterSidebar } from "./filter-sidebar";
 import { IgnoredCriteria } from "./ignored-criteria";
-import { NameSearchForm } from "./name-search-form";
 import { PaginationLinks } from "./pagination-links";
 import { ResultsGrid } from "./results-grid";
-import { SiteHeader } from "./site-header";
 import { SortLinks } from "./sort-links";
-import type { BrowseParamIssue, BrowseParams } from "./browse-params";
-import type { SearchResult } from "./get-search-results";
+import {
+  MAX_PAGE,
+  type BrowseParamIssue,
+  type BrowseParams,
+} from "./browse-params";
+import type { GamePage, SearchResult } from "./get-search-results";
 
 type SearchPageProps = {
   params: BrowseParams;
@@ -41,12 +43,23 @@ export function SearchPage({
 }: SearchPageProps) {
   const t = useTranslations("Search");
   const metadata = filters.ok ? filters.metadata : undefined;
-  const hasActiveFilters = activeFilters(params).length > 0;
+  const applied = activeFilters(params);
+  const hasActiveFilters = applied.length > 0;
   const durationWasNarrowed =
     result.ok && Boolean(result.page.meta.excludedUnknownDuration);
+  // A lone genre names the page after itself, as a genre chip would.
+  const onlyFilter = applied.length === 1 ? applied[0] : undefined;
+  const genreId = onlyFilter?.kind === "genre" ? onlyFilter.id : undefined;
+  const genreLabel = metadata?.genres.find(
+    (genre) => genre.id === genreId,
+  )?.label;
+  const heading = params.name
+    ? t("headingName", { name: params.name })
+    : (genreLabel ??
+      (hasActiveFilters ? t("headingFiltered") : t("headingAll")));
 
   return (
-    <main className="mx-auto max-w-[88rem] px-5 py-10 sm:px-8 lg:px-12">
+    <main className="mx-auto max-w-360 px-4 pb-16 sm:px-6 lg:px-8">
       <SearchAnalytics
         categories={filterCategories(params)}
         direction={params.direction}
@@ -63,44 +76,53 @@ export function SearchPage({
         searchKey={searchKey(params)}
         sort={params.sort}
       />
-      <SiteHeader />
 
-      {issues.length > 0 && (
-        <div className="mt-6">
-          <IgnoredCriteria issues={issues} />
-        </div>
-      )}
-
-      <div className="mt-6">
-        <NameSearchForm
-          minimumQueryLength={metadata?.limits.minimumAutocompleteLength}
-          params={params}
-        />
-      </div>
-
-      <div className="mt-8 flex gap-8">
+      <div className="mt-8 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-10 xl:gap-14">
         <FilterSidebar filters={filters} params={params} />
 
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <FilterDrawer filters={filters} params={params} />
-              <SortLinks params={params} />
-            </div>
+        <section aria-labelledby="results-heading" className="min-w-0">
+          <h1
+            className="font-display text-3xl font-extrabold tracking-tight text-ink-50 sm:text-4xl"
+            id="results-heading"
+          >
+            {heading}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             {/* Applying a filter is a client navigation: without a live
                 region the results change with nothing said about it. The
                 region is always present so a later change is announced. */}
-            <p
-              aria-live="polite"
-              className="text-sm font-semibold text-muted-foreground"
-              role="status"
-            >
+            <span aria-live="polite" role="status">
               {result.ok
-                ? t("resultsCount", {
+                ? t.rich("resultsCount", {
                     count: result.page.pagination.totalItems,
+                    number: (chunks) => (
+                      <span className="font-mono text-ink-100 tabular-nums">
+                        {chunks}
+                      </span>
+                    ),
                   })
                 : ""}
-            </p>
+            </span>
+            {result.ok && reachablePages(result.page) > 1 && (
+              <>
+                {" · "}
+                {t("pageStatus", {
+                  page: result.page.pagination.page,
+                  totalPages: reachablePages(result.page),
+                })}
+              </>
+            )}
+          </p>
+
+          {issues.length > 0 && (
+            <div className="mt-6">
+              <IgnoredCriteria issues={issues} />
+            </div>
+          )}
+
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <FilterDrawer filters={filters} params={params} />
+            <SortLinks params={params} />
           </div>
 
           {(hasActiveFilters || durationWasNarrowed) && (
@@ -128,10 +150,15 @@ export function SearchPage({
               />
             </div>
           )}
-        </div>
+        </section>
       </div>
     </main>
   );
+}
+
+/** Only the first MAX_PAGE pages can be reached, so that is the count shown. */
+function reachablePages(page: GamePage): number {
+  return Math.min(page.pagination.totalPages, MAX_PAGE);
 }
 
 /** Which kinds of criteria a search used, never their values. */

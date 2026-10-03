@@ -150,3 +150,58 @@ test("shows no freshness warning for fresh results", () => {
 
   expect(screen.queryByRole("note")).toBeNull();
 });
+
+test.each([
+  [{}, "All games"],
+  [{ name: "Hollow" }, "Results for “Hollow”"],
+  // A lone genre names the page after itself.
+  [{ genre: ["shooter"] }, "Shooter"],
+  [{ genre: ["shooter"], platform: ["pc"] }, "Filtered results"],
+  [{ platform: ["pc"] }, "Filtered results"],
+] satisfies [RawSearchParams, string][])(
+  "headings the results for %j as %s",
+  (searchParams, heading) => {
+    renderPage(searchParams);
+
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(heading);
+  },
+);
+
+test("states the page beside the count only when there is more than one", () => {
+  const page = pageWith(60);
+  renderPage(
+    {},
+    {
+      ok: true,
+      page: {
+        ...page,
+        pagination: { ...page.pagination, page: 2, totalPages: 3 },
+      },
+    },
+  );
+
+  const status = screen
+    .getAllByRole("status")
+    .find((node) => node.textContent === "60 games")!;
+  expect(status.parentElement!.textContent).toBe("60 games · page 2 of 3");
+});
+
+test("counts only the pages that can be reached", () => {
+  const page = pageWith(240_000);
+  renderPage(
+    {},
+    {
+      ok: true,
+      page: {
+        ...page,
+        pagination: { ...page.pagination, totalPages: 10_000 },
+      },
+    },
+  );
+
+  expect(
+    screen.getByText(
+      (_, node) => node?.textContent === "240,000 games · page 1 of 100",
+    ),
+  ).toBeDefined();
+});

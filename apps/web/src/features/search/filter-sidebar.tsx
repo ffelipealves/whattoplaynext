@@ -54,10 +54,7 @@ export function FilterSidebar({ filters, params }: FilterPanelProps) {
   const t = useTranslations("Filters");
 
   return (
-    <aside
-      aria-label={t("heading")}
-      className="hidden lg:block lg:w-64 lg:shrink-0"
-    >
+    <aside aria-label={t("heading")} className="hidden lg:block">
       <h2 className="font-display text-lg font-semibold tracking-[-0.01em]">
         {t("heading")}
       </h2>
