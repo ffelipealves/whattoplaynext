@@ -37,10 +37,10 @@ class FakeCatalog:
                     cover=GameCover(
                         url=(
                             "https://images.igdb.com/igdb/image/upload/"
-                            "t_cover_big/co1wyy.jpg"
+                            "t_cover_big_2x/co1wyy.jpg"
                         ),
-                        width=264,
-                        height=374,
+                        width=528,
+                        height=748,
                     ),
                 )
             ],
@@ -101,10 +101,10 @@ async def test_returns_normalized_suggestions_for_a_valid_query() -> None:
                 "cover": {
                     "url": (
                         "https://images.igdb.com/igdb/image/upload/"
-                        "t_cover_big/co1wyy.jpg"
+                        "t_cover_big_2x/co1wyy.jpg"
                     ),
-                    "width": 264,
-                    "height": 374,
+                    "width": 528,
+                    "height": 748,
                 },
             }
         ],

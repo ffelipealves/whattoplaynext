@@ -360,10 +360,10 @@ async def test_browses_complete_game_summaries_with_an_explicit_projection() -> 
                 "cover": {
                     "url": (
                         "https://images.igdb.com/igdb/image/upload/"
-                        "t_cover_big/co1wyy.jpg"
+                        "t_cover_big_2x/co1wyy.jpg"
                     ),
-                    "width": 264,
-                    "height": 374,
+                    "width": 528,
+                    "height": 748,
                 },
                 "platforms": [
                     {"id": "pc", "label": "PC"},
@@ -802,10 +802,10 @@ async def test_autocompletes_with_a_normalized_relevance_ordered_projection() ->
                 "cover": {
                     "url": (
                         "https://images.igdb.com/igdb/image/upload/"
-                        "t_cover_big/co1wyy.jpg"
+                        "t_cover_big_2x/co1wyy.jpg"
                     ),
-                    "width": 264,
-                    "height": 374,
+                    "width": 528,
+                    "height": 748,
                 },
             }
         ],
@@ -909,9 +909,11 @@ async def test_returns_complete_normalized_detail_from_a_full_projection() -> No
         "summary": "A story-driven, next-generation open world role-playing game.",
         "summaryLanguage": "en",
         "cover": {
-            "url": ("https://images.igdb.com/igdb/image/upload/t_cover_big/co1wyy.jpg"),
-            "width": 264,
-            "height": 374,
+            "url": (
+                "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co1wyy.jpg"
+            ),
+            "width": 528,
+            "height": 748,
         },
         "screenshots": [
             {

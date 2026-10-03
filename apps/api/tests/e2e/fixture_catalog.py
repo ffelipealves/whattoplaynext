@@ -135,9 +135,9 @@ DETAIL_SUMMARY = GameSummary(
     title="The Witcher 3: Wild Hunt",
     release_year=2015,
     cover=GameCover(
-        url="https://images.igdb.com/igdb/image/upload/t_cover_big/co1wyy.jpg",
-        width=264,
-        height=374,
+        url="https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co1wyy.jpg",
+        width=528,
+        height=748,
     ),
     platforms=[CatalogOption(id="pc", label="PC")],
     genres=[CatalogOption(id="role-playing-rpg", label="Role-playing (RPG)")],

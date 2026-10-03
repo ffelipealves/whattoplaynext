@@ -114,7 +114,7 @@ test("game metadata uses its canonical slug, localized copy, and cover", async (
   );
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
     "content",
-    "https://images.igdb.com/igdb/image/upload/t_cover_big/co1wyy.jpg",
+    "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co1wyy.jpg",
   );
   await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute(
     "content",

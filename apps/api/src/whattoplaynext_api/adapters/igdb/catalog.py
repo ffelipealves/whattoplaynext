@@ -1718,7 +1718,9 @@ def _normalize_image(
 
 
 def _normalize_cover(value: object) -> GameCover | None:
-    return _normalize_image(value, transform="cover_big", width=264, height=374)
+    # The 2x cover: result cards are about 260 CSS pixels wide, so the 1x
+    # (264 px) source blurs on any high-density screen. The web resizes it.
+    return _normalize_image(value, transform="cover_big_2x", width=528, height=748)
 
 
 def _normalize_screenshot(value: object) -> GameCover | None:

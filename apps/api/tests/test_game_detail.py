@@ -39,9 +39,9 @@ def _sample_detail() -> GameDetail:
         summary="A story-driven, next-generation open world role-playing game.",
         summary_language="en",
         cover=GameCover(
-            url=("https://images.igdb.com/igdb/image/upload/t_cover_big/co1wyy.jpg"),
-            width=264,
-            height=374,
+            url=("https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co1wyy.jpg"),
+            width=528,
+            height=748,
         ),
         screenshots=[
             GameCover(
@@ -164,9 +164,11 @@ async def test_returns_normalized_detail_for_a_valid_game_id() -> None:
         "summary": "A story-driven, next-generation open world role-playing game.",
         "summaryLanguage": "en",
         "cover": {
-            "url": ("https://images.igdb.com/igdb/image/upload/t_cover_big/co1wyy.jpg"),
-            "width": 264,
-            "height": 374,
+            "url": (
+                "https://images.igdb.com/igdb/image/upload/t_cover_big_2x/co1wyy.jpg"
+            ),
+            "width": 528,
+            "height": 748,
         },
         "screenshots": [
             {
