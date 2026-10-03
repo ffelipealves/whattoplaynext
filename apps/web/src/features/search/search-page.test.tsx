@@ -1,5 +1,5 @@
 import { NextIntlClientProvider } from "next-intl";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
 
 import enMessages from "../../../messages/en.json";
@@ -105,23 +105,6 @@ test("announces a failure as an alert and leaves the count silent", () => {
       .getAllByRole("status")
       .some((node) => node.textContent?.includes("games")),
   ).toBe(false);
-});
-
-test("announces a filter validation message as an alert", async () => {
-  renderPage();
-
-  fireEvent.change(screen.getByLabelText("Minimum hours"), {
-    target: { value: "1001" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Apply filters" }));
-
-  await waitFor(() =>
-    expect(
-      screen
-        .getAllByRole("alert")
-        .some((node) => node.textContent === "Enter 1 to 1000 hours."),
-    ).toBe(true),
-  );
 });
 
 test("warns above the results when they were served from stale saved data", () => {

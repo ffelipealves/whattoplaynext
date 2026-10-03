@@ -1,5 +1,11 @@
 import { NextIntlClientProvider } from "next-intl";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { beforeEach, expect, test, vi } from "vitest";
 
 import enMessages from "../../../messages/en.json";
@@ -71,6 +77,19 @@ function lastPushedQuery(): URLSearchParams {
   return new URL(href, "http://localhost").searchParams;
 }
 
+function thumb(name: string): HTMLElement {
+  return screen.getByRole("slider", { name });
+}
+
+/** Keys go to the focused thumb, as for a keyboard user: Radix moves the
+ * thumb that last took focus, so a range needs the right one focused. */
+function press(target: HTMLElement, key: string, times = 1) {
+  act(() => target.focus());
+  for (let count = 0; count < times; count += 1) {
+    fireEvent.keyDown(target, { key });
+  }
+}
+
 function apply() {
   fireEvent.click(screen.getByRole("button", { name: "Apply filters" }));
 }
@@ -134,9 +153,7 @@ test("no selection reaches the URL before Apply", () => {
   renderForm();
 
   fireEvent.click(screen.getByRole("checkbox", { name: "PC" }));
-  fireEvent.change(screen.getByLabelText("From"), {
-    target: { value: "2020-01-01" },
-  });
+  press(thumb("From"), "ArrowRight");
 
   expect(pushMock).not.toHaveBeenCalled();
 });
@@ -183,31 +200,40 @@ test("applying keeps the active name and sort but returns to page 1", async () =
   expect(query.get("page")).toBe("1");
 });
 
-test("applies the release range, rating, and duration the visitor typed", async () => {
+test("applies the release years and play time the visitor slid to", async () => {
   renderForm();
 
-  fireEvent.change(screen.getByLabelText("From"), {
-    target: { value: "2020-01-01" },
-  });
-  fireEvent.change(screen.getByLabelText("To"), {
-    target: { value: "2024-12-31" },
-  });
-  fireEvent.change(screen.getByLabelText("Minimum hours"), {
-    target: { value: "5" },
-  });
-  fireEvent.change(screen.getByLabelText("Maximum hours"), {
-    target: { value: "40" },
-  });
+  press(thumb("From"), "ArrowRight");
+  press(thumb("To"), "ArrowLeft");
+  // The hours slider steps through 1, 2, 3, 4, 5, 6, 8, 10, … 300; its ends
+  // mean "no minimum" and "no maximum".
+  press(thumb("Minimum hours"), "ArrowRight", 5);
+  press(thumb("Maximum hours"), "ArrowLeft", 8);
   fireEvent.click(screen.getByRole("radio", { name: "Completionist" }));
   apply();
 
   await waitFor(() => expect(pushMock).toHaveBeenCalled());
   const query = lastPushedQuery();
-  expect(query.get("releaseFrom")).toBe("2020-01-01");
-  expect(query.get("releaseTo")).toBe("2024-12-31");
+  expect(query.get("releaseFrom")).toBe("1971-01-01");
+  expect(query.get("releaseTo")).toBe(
+    `${new Date().getUTCFullYear() - 1}-12-31`,
+  );
   expect(query.get("minimumDurationHours")).toBe("5");
   expect(query.get("maximumDurationHours")).toBe("40");
   expect(query.get("durationKind")).toBe("completionist");
+});
+
+test("names each hours thumb by what its value means", () => {
+  renderForm();
+
+  expect(thumb("Minimum hours").getAttribute("aria-valuetext")).toBe(
+    "No minimum",
+  );
+  press(thumb("Minimum hours"), "ArrowRight", 7);
+  expect(thumb("Minimum hours").getAttribute("aria-valuetext")).toBe("8 hours");
+  expect(thumb("Maximum hours").getAttribute("aria-valuetext")).toBe(
+    "No maximum",
+  );
 });
 
 test("omits the duration kind when no duration bound qualifies it", async () => {
@@ -223,7 +249,7 @@ test("omits the duration kind when no duration bound qualifies it", async () => 
 test("applies a minimum rating moved off zero and omits it at zero", async () => {
   renderForm();
 
-  fireEvent.keyDown(screen.getByRole("slider"), { key: "ArrowRight" });
+  press(thumb("Minimum rating out of 100"), "ArrowRight");
   apply();
 
   await waitFor(() => expect(pushMock).toHaveBeenCalled());
@@ -239,54 +265,57 @@ test("keeps a zero minimum rating out of the URL", async () => {
   expect(lastPushedQuery().get("minimumRating")).toBeNull();
 });
 
-test("refuses an inverted release range instead of navigating", async () => {
+test("a rating preset sets the minimum, and pressing it again clears it", async () => {
   renderForm();
 
-  fireEvent.change(screen.getByLabelText("From"), {
-    target: { value: "2024-01-01" },
-  });
-  fireEvent.change(screen.getByLabelText("To"), {
-    target: { value: "2020-01-01" },
-  });
+  const preset = screen.getByRole("button", { name: "85+" });
+  fireEvent.click(preset);
+  expect(preset.getAttribute("aria-pressed")).toBe("true");
+  fireEvent.click(preset);
+  fireEvent.click(screen.getByRole("button", { name: "90+" }));
   apply();
 
-  expect(
-    await screen.findByText("The start date must not be after the end date."),
-  ).toBeDefined();
-  expect(pushMock).not.toHaveBeenCalled();
+  await waitFor(() => expect(pushMock).toHaveBeenCalled());
+  expect(lastPushedQuery().get("minimumRating")).toBe("90");
 });
 
-test("refuses an inverted duration range instead of navigating", async () => {
-  renderForm();
+test("keeps an exact date and hours from the URL until their thumb moves", async () => {
+  renderForm({
+    releaseFrom: "2015-03-10",
+    releaseTo: "2020-06-30",
+    minimumDurationHours: "7",
+  });
 
-  fireEvent.change(screen.getByLabelText("Minimum hours"), {
-    target: { value: "40" },
-  });
-  fireEvent.change(screen.getByLabelText("Maximum hours"), {
-    target: { value: "5" },
-  });
+  press(thumb("To"), "ArrowRight");
   apply();
 
-  expect(
-    await screen.findByText("Minimum hours must not exceed maximum hours."),
-  ).toBeDefined();
-  expect(pushMock).not.toHaveBeenCalled();
+  await waitFor(() => expect(pushMock).toHaveBeenCalled());
+  const query = lastPushedQuery();
+  expect(query.get("releaseFrom")).toBe("2015-03-10");
+  expect(query.get("releaseTo")).toBe("2021-12-31");
+  expect(query.get("minimumDurationHours")).toBe("7");
 });
 
-test("refuses a duration bound outside the published limits", async () => {
-  renderForm();
+test("resetting the release range drops both of its bounds", async () => {
+  renderForm({ releaseFrom: "2015-01-01", releaseTo: "2020-12-31" });
 
-  fireEvent.change(screen.getByLabelText("Minimum hours"), {
-    target: { value: "1001" },
-  });
+  fireEvent.click(screen.getByRole("button", { name: "Reset" }));
   apply();
 
-  expect(await screen.findByText("Enter 1 to 1000 hours.")).toBeDefined();
-  expect(pushMock).not.toHaveBeenCalled();
+  await waitFor(() => expect(pushMock).toHaveBeenCalled());
+  const query = lastPushedQuery();
+  expect(query.get("releaseFrom")).toBeNull();
+  expect(query.get("releaseTo")).toBeNull();
 });
 
 test("degrades to a valid filtered URL if Apply lands before hydration", () => {
-  renderForm({ name: "Hollow Knight", sort: "title", page: "5" });
+  renderForm({
+    name: "Hollow Knight",
+    sort: "title",
+    page: "5",
+    releaseFrom: "2015-03-10",
+    maximumDurationHours: "40",
+  });
 
   const form = screen
     .getByRole("button", { name: "Apply filters" })
@@ -309,6 +338,10 @@ test("degrades to a valid filtered URL if Apply lands before hydration", () => {
   expect(submitted.get("direction")).toBe("asc");
   expect(submitted.get("page")).toBeNull();
   expect(submitted.get("durationKind")).toBe("normal");
+  // The sliders' own values are positions; the text bounds ride as fields.
+  expect(submitted.get("releaseFrom")).toBe("2015-03-10");
+  expect(submitted.get("maximumDurationHours")).toBe("40");
+  expect(submitted.has("releaseTo")).toBe(false);
   expect([...submitted.keys()].every((key) => !key.includes(":"))).toBe(true);
 });
 

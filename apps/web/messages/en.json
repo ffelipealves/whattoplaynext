@@ -229,7 +229,7 @@
     "ratingLegend": "Minimum rating",
     "ratingSliderLabel": "Minimum rating out of 100",
     "ratingAny": "Any rating",
-    "ratingAtLeast": "{value} or higher",
+    "ratingAtLeast": "{value}+",
     "durationLegend": "Play time",
     "durationKindLegend": "Measure",
     "durationKindFast": "Fast",
@@ -240,9 +240,6 @@
     "applyLabel": "Apply filters",
     "applyPendingLabel": "Applying…",
     "clearAllLabel": "Clear all",
-    "invalidReleaseRange": "The start date must not be after the end date.",
-    "invalidDurationRange": "Minimum hours must not exceed maximum hours.",
-    "invalidDurationBound": "Enter {minimum} to {maximum} hours.",
     "unavailableTitle": "Filters unavailable",
     "unavailableDescription": "We couldn't load the filter options right now, so only name search and sorting are available.",
     "activeNavLabel": "Active filters",
@@ -260,7 +257,13 @@
     "durationRangeMinimum": "{minimum} h or more",
     "durationRangeMaximum": "up to {maximum} h",
     "removeChipLabel": "Remove filter: {label}",
-    "excludedUnknownDuration": "Games with no recorded play time are excluded while a play-time filter is active."
+    "excludedUnknownDuration": "Games with no recorded play time are excluded while a play-time filter is active.",
+    "ratingPresetsLabel": "Quick minimums",
+    "resetLabel": "Reset",
+    "durationAny": "Any length",
+    "durationNoMinimum": "No minimum",
+    "durationNoMaximum": "No maximum",
+    "durationHoursValue": "{hours, plural, one {# hour} other {# hours}}"
   },
   "Freshness": {
     "staleWithDate": "The game catalog is not answering right now, so this shows data saved on <time>{savedAt}</time>. It may be out of date.",

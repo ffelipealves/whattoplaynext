@@ -1,13 +1,13 @@
 "use client";
 
-import { useId, useTransition } from "react";
+import { useId, useTransition, type ReactNode } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useTranslations } from "next-intl";
+import { RotateCcwIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import type {
   CatalogOption,
@@ -30,6 +30,24 @@ import {
 } from "./browse-params";
 
 const RATING_STEP = 5;
+const RATING_PRESETS = [75, 85, 90] as const;
+
+/**
+ * The release slider's span. Its ends mean "no bound": the catalog's current
+ * platforms hold nothing older than 1970, and nothing past this year is out.
+ */
+const FIRST_YEAR = 1970;
+const LAST_YEAR = new Date().getUTCFullYear();
+
+/**
+ * Play time is spread over orders of magnitude, so the slider steps through
+ * these hours rather than a linear 1–1000: a few hours apart near the bottom,
+ * where the choices matter, and hundreds apart at the top.
+ */
+const DURATION_STOPS = [
+  1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50, 60, 80, 100, 150, 200,
+  300,
+];
 
 const DURATION_KIND_LABEL_KEYS: Record<DurationKind, string> = {
   fast: "durationKindFast",
@@ -42,9 +60,9 @@ const DURATION_KIND_LABEL_KEYS: Record<DurationKind, string> = {
 type IdField = "platformIds" | "gameModeIds";
 
 /**
- * The draft the visitor is editing. Ids stay as string arrays and the numeric
- * inputs stay as strings so a half-typed value is never coerced into a
- * criterion; both are converted only once Apply passes validation.
+ * The draft the visitor is editing. Dates and hours stay as the strings the
+ * URL carries, so a value the sliders cannot land on exactly (a shared link's
+ * 2015-03-10, say) survives untouched until the visitor moves that thumb.
  */
 type FilterFormValues = {
   platformIds: string[];
@@ -64,10 +82,11 @@ type FilterFormProps = {
   /** Lets a host (the mobile drawer) close itself once Apply navigates. */
   onApplied?: () => void;
   /**
-   * Pins the actions to the bottom of a scrolling host, so Apply and Clear all
-   * stay reachable inside the drawer without scrolling past every group.
+   * Where the form sits. The sidebar pins its actions to the bottom of its
+   * own scroll; the drawer gives them a footer outside the scrolling groups.
+   * Either way Apply and Clear all stay reachable without scrolling.
    */
-  stickyActions?: boolean;
+  layout?: "sidebar" | "drawer";
 };
 
 function draftFrom(params: BrowseParams): FilterFormValues {
@@ -123,81 +142,96 @@ function criteriaFrom(values: FilterFormValues): FilterCriteria {
   };
 }
 
-function FieldLegend({ children }: { children: string }) {
-  return (
-    <legend className="text-sm font-semibold text-foreground">
-      {children}
-    </legend>
-  );
+function yearOf(date: string): number | undefined {
+  return date ? Number(date.slice(0, 4)) : undefined;
 }
 
-function FieldLabel({
+/** The stop closest to `hours`, as a slider position (stops start at 1). */
+function positionOf(stops: number[], hours: number): number {
+  let best = 0;
+  stops.forEach((stop, index) => {
+    if (Math.abs(stop - hours) < Math.abs(stops[best] - hours)) {
+      best = index;
+    }
+  });
+  return best + 1;
+}
+
+/**
+ * One group of the panel. The divider lives on a wrapper, not the fieldset,
+ * whose border a legend would otherwise sit inside. The aside (a current
+ * value, a reset) shares the legend's line without being inside it, so it
+ * never joins the group's name.
+ */
+function Section({
+  title,
+  aside,
   children,
-  htmlFor,
 }: {
-  children: string;
-  htmlFor: string;
+  title: string;
+  aside?: ReactNode;
+  children: ReactNode;
 }) {
   return (
-    <label
-      className="block text-xs font-semibold text-muted-foreground"
-      htmlFor={htmlFor}
-    >
-      {children}
-    </label>
-  );
-}
-
-function ErrorMessage({ children, id }: { children: string; id: string }) {
-  return (
-    <p className="text-xs font-semibold text-destructive" id={id} role="alert">
-      {children}
-    </p>
+    <div className="group/section relative border-t border-border py-5 first:border-t-0 first:pt-0">
+      <fieldset>
+        <legend className="mb-3 text-xs leading-4 font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+          {title}
+        </legend>
+        {children}
+      </fieldset>
+      {aside && (
+        <div className="absolute top-5 right-0 flex h-4 items-center group-first/section:top-0">
+          {aside}
+        </div>
+      )}
+    </div>
   );
 }
 
 function CheckboxGroup({
   idPrefix,
-  legend,
   name,
   onToggle,
   options,
   selected,
 }: {
   idPrefix: string;
-  legend: string;
   name: string;
   onToggle: (id: string, checked: boolean) => void;
   options: CatalogOption[];
   selected: string[];
 }) {
   return (
-    <fieldset>
-      <FieldLegend>{legend}</FieldLegend>
-      <div className="mt-3 space-y-2.5">
-        {options.map((option) => {
-          const inputId = `${idPrefix}-${option.id}`;
-          return (
-            <div className="flex items-center gap-2.5" key={option.id}>
-              <Checkbox
-                checked={selected.includes(option.id)}
-                id={inputId}
-                name={name}
-                onCheckedChange={(checked) =>
-                  onToggle(option.id, checked === true)
-                }
-                value={option.id}
-              />
-              <label className="text-sm text-ink-300" htmlFor={inputId}>
-                {/* Option labels come from the catalog, not from the message
-                    catalog: provider text is never machine-translated. */}
-                {option.label}
-              </label>
-            </div>
-          );
-        })}
-      </div>
-    </fieldset>
+    <div className="space-y-0.5">
+      {options.map((option) => {
+        const inputId = `${idPrefix}-${option.id}`;
+        return (
+          <div
+            className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-ink-850"
+            key={option.id}
+          >
+            <Checkbox
+              checked={selected.includes(option.id)}
+              id={inputId}
+              name={name}
+              onCheckedChange={(checked) =>
+                onToggle(option.id, checked === true)
+              }
+              value={option.id}
+            />
+            <label
+              className="flex-1 cursor-pointer text-sm text-ink-100"
+              htmlFor={inputId}
+            >
+              {/* Option labels come from the catalog, not from the message
+                  catalog: provider text is never machine-translated. */}
+              {option.label}
+            </label>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -205,30 +239,15 @@ export function FilterForm({
   params,
   metadata,
   onApplied,
-  stickyActions,
+  layout = "sidebar",
 }: FilterFormProps) {
   const t = useTranslations("Filters");
   const router = useRouter();
   const [isApplying, startTransition] = useTransition();
   const formId = useId();
-  const {
-    control,
-    formState: { errors },
-    getValues,
-    handleSubmit,
-    register,
-    setValue,
-  } = useForm<FilterFormValues>({ defaultValues: draftFrom(params) });
-
-  const { minimumDurationHours, maximumDurationHours } = metadata.limits;
-  const outOfBoundsMessage = t("invalidDurationBound", {
-    minimum: minimumDurationHours,
-    maximum: maximumDurationHours,
+  const { control, handleSubmit, setValue } = useForm<FilterFormValues>({
+    defaultValues: draftFrom(params),
   });
-  const boundRules = {
-    min: { value: minimumDurationHours, message: outOfBoundsMessage },
-    max: { value: maximumDurationHours, message: outOfBoundsMessage },
-  };
 
   // `useWatch` rather than `watch()`: the latter hands back a fresh function on
   // every render, which makes React Compiler skip memoizing this component.
@@ -237,19 +256,76 @@ export function FilterForm({
     gameModeIds: useWatch({ control, name: "gameModeIds" }),
   };
   const minimumRating = useWatch({ control, name: "minimumRating" });
+  const releaseFrom = useWatch({ control, name: "releaseFrom" });
+  const releaseTo = useWatch({ control, name: "releaseTo" });
   const durationKind = useWatch({ control, name: "durationKind" });
+  const minimumHours = useWatch({ control, name: "minimumDurationHours" });
+  const maximumHours = useWatch({ control, name: "maximumDurationHours" });
   const hasAppliedFilters = activeFilters(params).length > 0;
 
-  const releaseErrorId = `${formId}-release-error`;
-  const durationErrorId = `${formId}-duration-error`;
-  const releaseError = errors.releaseFrom?.message;
-  const durationError =
-    errors.minimumDurationHours?.message ??
-    errors.maximumDurationHours?.message;
+  const fromYear = yearOf(releaseFrom) ?? FIRST_YEAR;
+  const toYear = yearOf(releaseTo) ?? LAST_YEAR;
+
+  const durationStops = DURATION_STOPS.filter(
+    (hours) =>
+      hours >= metadata.limits.minimumDurationHours &&
+      hours <= metadata.limits.maximumDurationHours,
+  );
+  // Position 0 is "no minimum" and the last is "no maximum"; the stops sit
+  // between them.
+  const noMaximumPosition = durationStops.length + 1;
+  const minimumPosition = minimumHours
+    ? positionOf(durationStops, Number(minimumHours))
+    : 0;
+  const maximumPosition = maximumHours
+    ? positionOf(durationStops, Number(maximumHours))
+    : noMaximumPosition;
 
   function toggle(field: IdField) {
     return (id: string, checked: boolean) =>
       setValue(field, toggled(selected[field], id, checked));
+  }
+
+  function moveRelease([from, to]: number[]) {
+    // Only the thumb that moved is rewritten, so an exact date on the other
+    // end survives.
+    if (from !== fromYear) {
+      setValue("releaseFrom", from <= FIRST_YEAR ? "" : `${from}-01-01`);
+    }
+    if (to !== toYear) {
+      setValue("releaseTo", to >= LAST_YEAR ? "" : `${to}-12-31`);
+    }
+  }
+
+  function moveDuration([from, to]: number[]) {
+    if (from !== minimumPosition) {
+      setValue(
+        "minimumDurationHours",
+        from === 0 ? "" : String(durationStops[from - 1]),
+      );
+    }
+    if (to !== maximumPosition) {
+      setValue(
+        "maximumDurationHours",
+        to === noMaximumPosition ? "" : String(durationStops[to - 1]),
+      );
+    }
+  }
+
+  function durationSummary(): string {
+    if (minimumHours && maximumHours) {
+      return t("durationRangeBoth", {
+        minimum: Number(minimumHours),
+        maximum: Number(maximumHours),
+      });
+    }
+    if (minimumHours) {
+      return t("durationRangeMinimum", { minimum: Number(minimumHours) });
+    }
+    if (maximumHours) {
+      return t("durationRangeMaximum", { maximum: Number(maximumHours) });
+    }
+    return t("durationAny");
   }
 
   function apply(values: FilterFormValues) {
@@ -265,219 +341,260 @@ export function FilterForm({
     });
   }
 
+  const fields = (
+    <>
+      <Section title={t("platformLegend")}>
+        <CheckboxGroup
+          idPrefix={`${formId}-platform`}
+          name="platform"
+          onToggle={toggle("platformIds")}
+          options={metadata.platforms}
+          selected={selected.platformIds}
+        />
+      </Section>
+
+      <Section title={t("gameModeLegend")}>
+        <CheckboxGroup
+          idPrefix={`${formId}-gameMode`}
+          name="gameMode"
+          onToggle={toggle("gameModeIds")}
+          options={metadata.gameModes}
+          selected={selected.gameModeIds}
+        />
+      </Section>
+
+      <Section
+        aside={
+          <span className="font-mono text-sm text-ink-100 tabular-nums">
+            {minimumRating > MIN_RATING
+              ? t("ratingAtLeast", { value: minimumRating })
+              : t("ratingAny")}
+          </span>
+        }
+        title={t("ratingLegend")}
+      >
+        <Slider
+          aria-label={t("ratingSliderLabel")}
+          max={MAX_RATING}
+          min={MIN_RATING}
+          name="minimumRating"
+          onValueChange={([value]) => setValue("minimumRating", value)}
+          step={RATING_STEP}
+          value={[minimumRating]}
+        />
+        <div
+          aria-label={t("ratingPresetsLabel")}
+          className="mt-3 flex gap-1.5"
+          role="group"
+        >
+          {RATING_PRESETS.map((preset) => (
+            <button
+              aria-pressed={minimumRating === preset}
+              className={cn(
+                "flex-1 rounded-md border py-1 font-mono text-xs transition-colors",
+                minimumRating === preset
+                  ? "border-primary text-ember-300"
+                  : "border-ink-700 text-ink-300 hover:border-ink-600 hover:text-ink-100",
+              )}
+              key={preset}
+              onClick={() =>
+                setValue(
+                  "minimumRating",
+                  minimumRating === preset ? MIN_RATING : preset,
+                )
+              }
+              type="button"
+            >
+              {preset}+
+            </button>
+          ))}
+        </div>
+      </Section>
+
+      <Section
+        aside={
+          (releaseFrom || releaseTo) && (
+            <button
+              className="text-xs text-muted-foreground hover:text-ember-300"
+              onClick={() => {
+                setValue("releaseFrom", "");
+                setValue("releaseTo", "");
+              }}
+              type="button"
+            >
+              {t("resetLabel")}
+            </button>
+          )
+        }
+        title={t("releaseLegend")}
+      >
+        <Slider
+          max={LAST_YEAR}
+          min={FIRST_YEAR}
+          minStepsBetweenThumbs={0}
+          onValueChange={moveRelease}
+          step={1}
+          thumbLabels={[t("releaseFromLabel"), t("releaseToLabel")]}
+          value={[fromYear, toYear]}
+        />
+        <div className="mt-2 flex justify-between font-mono text-sm text-ink-300 tabular-nums">
+          <span>{fromYear}</span>
+          <span>{toYear}</span>
+        </div>
+      </Section>
+
+      <Section
+        aside={
+          <span className="font-mono text-sm text-ink-100 tabular-nums">
+            {durationSummary()}
+          </span>
+        }
+        title={t("durationLegend")}
+      >
+        <fieldset>
+          <legend className="mb-2 text-xs text-muted-foreground">
+            {t("durationKindLegend")}
+          </legend>
+          <div className="flex flex-wrap gap-1.5">
+            {metadata.durationKinds
+              .filter(
+                (kind): kind is DurationKind =>
+                  durationKindSchema.safeParse(kind).success,
+              )
+              .map((kind) => (
+                <label
+                  className={cn(
+                    "cursor-pointer rounded-lg border px-2.5 py-1 text-[0.8125rem] transition-colors has-focus-visible:ring-2 has-focus-visible:ring-ring",
+                    durationKind === kind
+                      ? "border-primary bg-primary/10 font-medium text-ember-300"
+                      : "border-ink-700 text-ink-300 hover:border-ink-600 hover:text-ink-100",
+                  )}
+                  key={kind}
+                >
+                  <input
+                    checked={durationKind === kind}
+                    className="sr-only"
+                    name="durationKind"
+                    onChange={() => setValue("durationKind", kind)}
+                    type="radio"
+                    value={kind}
+                  />
+                  {t(DURATION_KIND_LABEL_KEYS[kind])}
+                </label>
+              ))}
+          </div>
+        </fieldset>
+
+        <div className="mt-5">
+          <Slider
+            getValueText={(position, index) =>
+              index === 0
+                ? position === 0
+                  ? t("durationNoMinimum")
+                  : t("durationHoursValue", {
+                      hours: durationStops[position - 1],
+                    })
+                : position === noMaximumPosition
+                  ? t("durationNoMaximum")
+                  : t("durationHoursValue", {
+                      hours: durationStops[position - 1],
+                    })
+            }
+            max={noMaximumPosition}
+            min={0}
+            minStepsBetweenThumbs={1}
+            onValueChange={moveDuration}
+            step={1}
+            thumbLabels={[t("durationMinimumLabel"), t("durationMaximumLabel")]}
+            value={[minimumPosition, maximumPosition]}
+          />
+        </div>
+      </Section>
+    </>
+  );
+
+  const actions = (
+    <>
+      {hasAppliedFilters && (
+        // Clearing everything is a plain navigable URL, like sorting and
+        // pagination: it needs no draft state to compute.
+        <Link
+          className={buttonVariants({
+            // The sidebar is too narrow for two buttons side by side.
+            className: layout === "sidebar" ? "order-last" : undefined,
+            variant: layout === "sidebar" ? "ghost" : "outline",
+          })}
+          href={{
+            pathname: "/",
+            query: withBrowseParams(params, {
+              ...clearedFilters(),
+              page: 1,
+            }),
+          }}
+        >
+          <RotateCcwIcon aria-hidden />
+          {t("clearAllLabel")}
+        </Link>
+      )}
+      <Button
+        className={cn(layout === "drawer" && "flex-1")}
+        disabled={isApplying}
+        type="submit"
+      >
+        {isApplying ? t("applyPendingLabel") : t("applyLabel")}
+      </Button>
+    </>
+  );
+
   return (
     <form
-      className="space-y-7"
-      // Validation is this form's own, so its messages are localized through
-      // next-intl rather than coming from the browser's built-in bubbles (which
-      // follow the browser's language, not the app's, and would block submit
-      // before react-hook-form ever runs).
+      className={cn(layout === "drawer" && "flex min-h-0 flex-1 flex-col")}
+      // Nothing here can hold an invalid value — the sliders and boxes only
+      // offer valid ones — so the browser's own validation has nothing to do.
       noValidate
       onSubmit={handleSubmit(apply)}
     >
       {/* Every control below carries the API's own param name, and these
-          fields carry the criteria the sidebar does not own, so a submit that
-          lands before this component hydrates still produces a valid filtered
-          URL instead of a broken one. Omitting `page` restarts at page 1,
-          exactly as the hydrated path does. */}
+          fields carry the criteria the panel does not edit directly or keeps
+          as text, so a submit that lands before this component hydrates
+          still produces a valid filtered URL instead of a broken one.
+          Omitting `page` restarts at page 1, exactly as the hydrated path
+          does. */}
       {params.name && <input name="name" type="hidden" value={params.name} />}
       <input name="sort" type="hidden" value={params.sort} />
       <input name="direction" type="hidden" value={params.direction} />
       {params.genreIds.map((id) => (
         <input key={id} name="genre" type="hidden" value={id} />
       ))}
+      {releaseFrom && (
+        <input name="releaseFrom" type="hidden" value={releaseFrom} />
+      )}
+      {releaseTo && <input name="releaseTo" type="hidden" value={releaseTo} />}
+      {minimumHours && (
+        <input name="minimumDurationHours" type="hidden" value={minimumHours} />
+      )}
+      {maximumHours && (
+        <input name="maximumDurationHours" type="hidden" value={maximumHours} />
+      )}
 
-      <CheckboxGroup
-        idPrefix={`${formId}-platform`}
-        legend={t("platformLegend")}
-        name="platform"
-        onToggle={toggle("platformIds")}
-        options={metadata.platforms}
-        selected={selected.platformIds}
-      />
-
-      <CheckboxGroup
-        idPrefix={`${formId}-gameMode`}
-        legend={t("gameModeLegend")}
-        name="gameMode"
-        onToggle={toggle("gameModeIds")}
-        options={metadata.gameModes}
-        selected={selected.gameModeIds}
-      />
-
-      <fieldset>
-        <FieldLegend>{t("releaseLegend")}</FieldLegend>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <FieldLabel htmlFor={`${formId}-releaseFrom`}>
-              {t("releaseFromLabel")}
-            </FieldLabel>
-            <Input
-              aria-describedby={releaseError ? releaseErrorId : undefined}
-              aria-invalid={releaseError ? true : undefined}
-              id={`${formId}-releaseFrom`}
-              type="date"
-              {...register("releaseFrom", {
-                validate: (value) =>
-                  !value ||
-                  !getValues("releaseTo") ||
-                  value <= getValues("releaseTo") ||
-                  t("invalidReleaseRange"),
-              })}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <FieldLabel htmlFor={`${formId}-releaseTo`}>
-              {t("releaseToLabel")}
-            </FieldLabel>
-            <Input
-              aria-describedby={releaseError ? releaseErrorId : undefined}
-              aria-invalid={releaseError ? true : undefined}
-              id={`${formId}-releaseTo`}
-              type="date"
-              {...register("releaseTo")}
-            />
-          </div>
-        </div>
-        {releaseError && (
-          <div className="mt-2">
-            <ErrorMessage id={releaseErrorId}>{releaseError}</ErrorMessage>
-          </div>
-        )}
-      </fieldset>
-
-      <fieldset>
-        <FieldLegend>{t("ratingLegend")}</FieldLegend>
-        <div className="mt-3 space-y-2">
-          <Slider
-            aria-label={t("ratingSliderLabel")}
-            name="minimumRating"
-            max={MAX_RATING}
-            min={MIN_RATING}
-            onValueChange={([value]) => setValue("minimumRating", value)}
-            step={RATING_STEP}
-            value={[minimumRating]}
-          />
-          <p className="text-xs font-semibold text-muted-foreground">
-            {minimumRating > MIN_RATING
-              ? t("ratingAtLeast", { value: minimumRating })
-              : t("ratingAny")}
-          </p>
-        </div>
-      </fieldset>
-
-      <fieldset>
-        <FieldLegend>{t("durationLegend")}</FieldLegend>
-
-        <div className="mt-3 space-y-3">
-          <fieldset>
-            <legend className="text-xs font-semibold text-muted-foreground">
-              {t("durationKindLegend")}
-            </legend>
-            <div className="mt-2 flex flex-wrap gap-3">
-              {metadata.durationKinds
-                .filter(
-                  (kind): kind is DurationKind =>
-                    durationKindSchema.safeParse(kind).success,
-                )
-                .map((kind) => {
-                  const inputId = `${formId}-durationKind-${kind}`;
-                  return (
-                    <div className="flex items-center gap-2" key={kind}>
-                      <input
-                        checked={durationKind === kind}
-                        className="size-4 accent-primary focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-ring"
-                        id={inputId}
-                        name="durationKind"
-                        onChange={() => setValue("durationKind", kind)}
-                        type="radio"
-                        value={kind}
-                      />
-                      <label className="text-sm text-ink-300" htmlFor={inputId}>
-                        {t(DURATION_KIND_LABEL_KEYS[kind])}
-                      </label>
-                    </div>
-                  );
-                })}
-            </div>
-          </fieldset>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <FieldLabel htmlFor={`${formId}-minimumDurationHours`}>
-                {t("durationMinimumLabel")}
-              </FieldLabel>
-              <Input
-                aria-describedby={durationError ? durationErrorId : undefined}
-                aria-invalid={durationError ? true : undefined}
-                id={`${formId}-minimumDurationHours`}
-                inputMode="numeric"
-                max={maximumDurationHours}
-                min={minimumDurationHours}
-                step={1}
-                type="number"
-                {...register("minimumDurationHours", {
-                  ...boundRules,
-                  validate: (value) =>
-                    !value ||
-                    !getValues("maximumDurationHours") ||
-                    Number(value) <=
-                      Number(getValues("maximumDurationHours")) ||
-                    t("invalidDurationRange"),
-                })}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <FieldLabel htmlFor={`${formId}-maximumDurationHours`}>
-                {t("durationMaximumLabel")}
-              </FieldLabel>
-              <Input
-                aria-describedby={durationError ? durationErrorId : undefined}
-                aria-invalid={durationError ? true : undefined}
-                id={`${formId}-maximumDurationHours`}
-                inputMode="numeric"
-                max={maximumDurationHours}
-                min={minimumDurationHours}
-                step={1}
-                type="number"
-                {...register("maximumDurationHours", boundRules)}
-              />
-            </div>
-          </div>
-
-          {durationError && (
-            <ErrorMessage id={durationErrorId}>{durationError}</ErrorMessage>
-          )}
-        </div>
-      </fieldset>
-
-      <div
-        className={cn(
-          "flex flex-wrap items-center gap-4",
-          stickyActions &&
-            "sticky bottom-0 -mx-4 border-t border-border bg-popover px-4 py-4",
-        )}
-      >
-        <Button disabled={isApplying} type="submit">
-          {isApplying ? t("applyPendingLabel") : t("applyLabel")}
-        </Button>
-        {hasAppliedFilters && (
-          // Clearing everything is a plain navigable URL, like sorting and
-          // pagination: it needs no draft state to compute.
-          <Link
-            className="text-sm font-semibold text-primary underline underline-offset-4"
-            href={{
-              pathname: "/",
-              query: withBrowseParams(params, {
-                ...clearedFilters(),
-                page: 1,
-              }),
-            }}
+      {layout === "drawer" ? (
+        <>
+          <div
+            className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-5 py-5"
+            data-slot="filter-fields"
           >
-            {t("clearAllLabel")}
-          </Link>
-        )}
-      </div>
+            {fields}
+          </div>
+          <div className="flex gap-3 border-t border-border p-4">{actions}</div>
+        </>
+      ) : (
+        <>
+          {fields}
+          <div className="sticky bottom-0 flex flex-col gap-1 border-t border-border bg-background pt-4 pb-1">
+            {actions}
+          </div>
+        </>
+      )}
     </form>
   );
 }

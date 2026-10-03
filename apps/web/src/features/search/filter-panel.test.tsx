@@ -192,7 +192,7 @@ test("both layouts submit the identical URL for the same selection", async () =>
   expect(lastPushedQuery().toString()).toBe(fromSidebar);
 });
 
-test("the drawer keeps its actions pinned while the groups scroll", async () => {
+test("the drawer keeps its actions outside the scrolling groups", async () => {
   render(
     withIntl(<FilterDrawer filters={availableFilters} params={params()} />),
   );
@@ -200,6 +200,19 @@ test("the drawer keeps its actions pinned while the groups scroll", async () => 
   fireEvent.click(screen.getByRole("button", { name: "Filters" }));
 
   const apply = await screen.findByRole("button", { name: "Apply filters" });
+  const fields = document.querySelector('[data-slot="filter-fields"]')!;
+  expect(fields.contains(screen.getByRole("checkbox", { name: "PC" }))).toBe(
+    true,
+  );
+  expect(fields.contains(apply)).toBe(false);
+});
+
+test("the sidebar pins its actions to the bottom of its own scroll", () => {
+  render(
+    withIntl(<FilterSidebar filters={availableFilters} params={params()} />),
+  );
+
+  const apply = screen.getByRole("button", { name: "Apply filters" });
   expect(apply.parentElement!.className).toContain("sticky");
 });
 

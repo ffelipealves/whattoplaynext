@@ -49,16 +49,19 @@ export function FiltersUnavailable({
   );
 }
 
-/** The desktop layout: filters stay visible beside the results. */
+/**
+ * The desktop layout: filters stay visible beside the results, pinned under
+ * the header with a scroll of their own, so Apply is always in reach.
+ */
 export function FilterSidebar({ filters, params }: FilterPanelProps) {
   const t = useTranslations("Filters");
 
   return (
     <aside aria-label={t("heading")} className="hidden lg:block">
-      <h2 className="font-display text-lg font-semibold tracking-[-0.01em]">
-        {t("heading")}
-      </h2>
-      <div className="mt-4">
+      <div className="scrollbar-thin sticky top-24 max-h-[calc(100dvh-7rem)] overflow-y-auto pr-3">
+        <h2 className="mb-5 font-display text-lg font-bold text-ink-50">
+          {t("heading")}
+        </h2>
         {filters.ok ? (
           <FilterForm
             key={filterSignature(params)}

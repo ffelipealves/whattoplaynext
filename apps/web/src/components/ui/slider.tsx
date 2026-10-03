@@ -14,8 +14,16 @@ function Slider({
   // names nothing: the control itself would ship unnamed.
   "aria-label": ariaLabel,
   "aria-labelledby": ariaLabelledBy,
+  thumbLabels,
+  getValueText,
   ...props
-}: React.ComponentProps<typeof SliderPrimitive.Root>) {
+}: React.ComponentProps<typeof SliderPrimitive.Root> & {
+  /** One name per thumb, for a range whose two ends mean different things. */
+  thumbLabels?: string[];
+  /** What a thumb's value means, when the raw number is not it (a position
+   * on a stepped scale, say). */
+  getValueText?: (value: number, index: number) => string;
+}) {
   const _values = React.useMemo(
     () =>
       Array.isArray(value)
@@ -50,8 +58,9 @@ function Slider({
       </SliderPrimitive.Track>
       {Array.from({ length: _values.length }, (_, index) => (
         <SliderPrimitive.Thumb
-          aria-label={ariaLabel}
+          aria-label={thumbLabels?.[index] ?? ariaLabel}
           aria-labelledby={ariaLabelledBy}
+          aria-valuetext={getValueText?.(_values[index], index)}
           data-slot="slider-thumb"
           key={index}
           className="relative block size-[18px] shrink-0 rounded-full border-2 border-primary bg-ink-50 shadow-lg ring-ring/40 shadow-black/40 transition-[transform,box-shadow] select-none after:absolute after:-inset-2 hover:scale-110 hover:ring-3 focus-visible:scale-110 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:pointer-events-none disabled:opacity-50"

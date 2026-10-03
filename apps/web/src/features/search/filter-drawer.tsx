@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { SlidersHorizontalIcon } from "lucide-react";
+import { SlidersHorizontalIcon, XIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -39,24 +40,35 @@ export function FilterDrawer({ filters, params }: FilterPanelProps) {
             : t("openLabel")}
         </Button>
       </SheetTrigger>
-      <SheetContent className="overflow-y-auto" side="left">
-        <SheetHeader>
+      <SheetContent
+        className="w-full gap-0 p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-sm"
+        showCloseButton={false}
+        side="right"
+      >
+        <SheetHeader className="flex-row items-center justify-between border-b border-border px-5 py-4">
           <SheetTitle>{t("heading")}</SheetTitle>
-          <SheetDescription>{t("drawerDescription")}</SheetDescription>
+          <SheetDescription className="sr-only">
+            {t("drawerDescription")}
+          </SheetDescription>
+          <SheetClose asChild>
+            <Button aria-label={t("closeLabel")} size="icon" variant="ghost">
+              <XIcon aria-hidden className="size-5" />
+            </Button>
+          </SheetClose>
         </SheetHeader>
-        <div className="px-4 pb-8">
-          {filters.ok ? (
-            <FilterForm
-              key={filterSignature(params)}
-              metadata={filters.metadata}
-              onApplied={() => setIsOpen(false)}
-              params={params}
-              stickyActions
-            />
-          ) : (
+        {filters.ok ? (
+          <FilterForm
+            key={filterSignature(params)}
+            layout="drawer"
+            metadata={filters.metadata}
+            onApplied={() => setIsOpen(false)}
+            params={params}
+          />
+        ) : (
+          <div className="p-5">
             <FiltersUnavailable failure={filters.failure} />
-          )}
-        </div>
+          </div>
+        )}
       </SheetContent>
     </Sheet>
   );
