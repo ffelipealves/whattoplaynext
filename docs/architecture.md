@@ -553,7 +553,9 @@ needs it. Testers are told that a first load can be slow. If the beta shows
 the wake-up delay costs too much, Render Starter removes it for about USD 7
 per month. Upstash Free's 500,000 commands and 10 GB of bandwidth per month
 are ample for the closed beta. Render's Hobby workspace keeps logs for 7 days,
-under the 14 of NFR-023, so the log destination remains open (§11).
+under the 14 of NFR-023, so the log destination remains open (§11). The
+[deployment runbook](deployment.md) provisions this environment from
+`render.yaml` and records the Vercel settings and first-deploy checks.
 
 ### Public beta
 

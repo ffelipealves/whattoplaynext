@@ -1,0 +1,49 @@
+# Render Blueprint for the closed-beta API. The web application deploys on
+# Vercel and Redis on Upstash; docs/deployment.md is the full runbook.
+services:
+  - type: web
+    name: whattoplaynext-api
+    runtime: python
+    plan: free
+    # Same area as Vercel's default function region (iad1) and Upstash's
+    # us-east-1, so the web-to-API and API-to-Redis hops stay short.
+    region: virginia
+    rootDir: apps/api
+    buildCommand: poetry install --only main --no-interaction
+    # Uvicorn must import the application itself: `fastapi run` imports it
+    # first, and Uvicorn's logging setup then re-enables the access log, which
+    # prints addresses and query strings. `--no-access-log` keeps it off even
+    # so. The API reads X-Forwarded-For itself through WTPN_TRUSTED_PROXY_HOPS.
+    startCommand: poetry run uvicorn whattoplaynext_api.main:app --host 0.0.0.0 --port $PORT --no-access-log --no-proxy-headers
+    healthCheckPath: /api/v1/health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.14.7
+      - key: POETRY_VERSION
+        value: 2.4.3
+      # Keeps the virtual environment inside the project directory, which is
+      # what survives from the build into the running service.
+      - key: POETRY_VIRTUALENVS_IN_PROJECT
+        value: "true"
+      - key: WTPN_ENVIRONMENT
+        value: production
+      # Render's proxy appends the caller's address; verify with the spoofing
+      # check in the runbook after the first deploy.
+      - key: WTPN_TRUSTED_PROXY_HOPS
+        value: "1"
+      # Play-time data changes slowly, and a one-hour index rarely survives
+      # between closed-beta visits (technical debt 2).
+      - key: WTPN_CACHE_TTL__DURATION_INDEX_FRESH_SECONDS
+        value: "86400"
+      - key: WTPN_IDENTITY_HMAC_KEY
+        generateValue: true
+      # Prompted for when the Blueprint is created; never committed.
+      - key: WTPN_EDGE_TOKEN
+        sync: false
+      - key: WTPN_REDIS_URL
+        sync: false
+      - key: WTPN_TWITCH_CLIENT_ID
+        sync: false
+      - key: WTPN_TWITCH_CLIENT_SECRET
+        sync: false

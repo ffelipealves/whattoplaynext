@@ -286,7 +286,11 @@ message. `http/correlation.py` writes one `http.request` line per request:
 - the rate-limit decision and the circuit state.
 
 Uvicorn's access log is switched off because it printed addresses and query
-strings. `GET /api/v1/health` is liveness and makes no I/O.
+strings. That holds only when Uvicorn imports the application itself:
+`fastapi run` and `fastapi dev` import it before Uvicorn configures its
+logging, which turns the access log back on. Production therefore starts
+`uvicorn` directly with `--no-access-log` (see
+[the deployment runbook](../../docs/deployment.md)). `GET /api/v1/health` is liveness and makes no I/O.
 `GET /api/v1/health/ready` reports the cache and circuit for monitoring
 without calling IGDB.
 
