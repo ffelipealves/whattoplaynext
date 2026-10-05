@@ -156,13 +156,13 @@ date in the Milestone 5 review.
    only allow-listed properties.
 8. **Wake-up.** After at least 15 minutes without traffic, time the first
    page load.
-9. **Images.** Note the image transformations used so far under Vercel's
-   **Usage**. Hobby allows 5,000 a month; past that, new images fail with
-   `402`.
+9. **Images.** The browser's network panel shows game images coming from
+   `images.igdb.com` and no request to `/_next/image`, and Vercel's **Usage**
+   shows no image transformations
+   ([architecture §12](architecture.md#12-deployment)).
 
 ## 4. Still open before inviting testers
 
-- How images are delivered, given Hobby's transformation limit.
 - A log destination: Render's Hobby workspace keeps logs for 7 days, under
   the 14 of NFR-023 ([architecture §11](architecture.md#11-observability)).
 - The branded-browser pass against this deployment

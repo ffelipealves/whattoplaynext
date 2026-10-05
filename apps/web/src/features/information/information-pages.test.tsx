@@ -77,7 +77,13 @@ test.each([
       "Cookies",
       "Service providers",
     ],
-    [/Umami Cloud/, /six months/, /one-way digest/, /up to 14 days/],
+    [
+      /Umami Cloud/,
+      /six months/,
+      /one-way digest/,
+      /up to 14 days/,
+      /images load directly from IGDB/,
+    ],
   ],
   [
     ptMessages,
@@ -88,7 +94,13 @@ test.each([
       "Cookies",
       "Prestadores de serviço",
     ],
-    [/Umami Cloud/, /seis meses/, /resumo criptográfico/, /até 14 dias/],
+    [
+      /Umami Cloud/,
+      /seis meses/,
+      /resumo criptográfico/,
+      /até 14 dias/,
+      /diretamente dos servidores de imagem do IGDB/,
+    ],
   ],
 ] as const)(
   "describes how the closed beta handles data on Privacy",

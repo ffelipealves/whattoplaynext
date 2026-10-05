@@ -557,6 +557,16 @@ under the 14 of NFR-023, so the log destination remains open (§11). The
 [deployment runbook](deployment.md) provisions this environment from
 `render.yaml` and records the Vercel settings and first-deploy checks.
 
+Vercel Hobby also caps image transformations at 5,000 a month, past which new
+images fail with `402`. Since 2026-10-05 a custom `next/image` loader
+(`src/lib/igdb-image-loader.ts`) therefore serves each game image from IGDB's
+CDN at the published size that covers the requested width, and `/_next/image`
+accepts no remote image. Layouts that crop screenshots may use IGDB's cropped
+sizes; the screenshot viewer uses only the sizes that keep the whole image.
+The images are IGDB's JPEGs rather than optimized WebP: on a phone at three
+times density, covers measured about 60 KB and gallery thumbnails about
+95 KB.
+
 ### Public beta
 
 - Vercel Pro;

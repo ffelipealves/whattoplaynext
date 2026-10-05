@@ -24,6 +24,9 @@ Visitor's browser ──HTTPS──► hosting proxy ──► Next.js server �
   ([architecture §8.1](architecture.md#81-rate-limiting)).
 - Only the API holds Twitch credentials. Redis stores digests, response
   payloads, and counters, never an address or a secret.
+- Since 2026-10-05 the browser loads game images directly from IGDB's image
+  CDN, the one third-party origin in the web's `img-src`
+  ([residual risk 8](#4-accepted-residual-risks)).
 
 ## 2. Controls verified
 
@@ -49,6 +52,9 @@ Visitor's browser ──HTTPS──► hosting proxy ──► Next.js server �
   `500 INTERNAL_ERROR`, bypassing the stale fallback (M4.6).
 - Unexpected errors were not logged at all (M4.7).
 - Uvicorn's access log printed client addresses and full query strings (M4.7).
+  On 2026-10-05 the deployment work found that `fastapi run` and
+  `fastapi dev` turn it back on, so production starts Uvicorn directly with
+  `--no-access-log` ([deployment runbook](deployment.md)).
 - `500` responses skipped the security-header middleware, because Starlette's
   server-error handling sits outside every middleware; the handler now sets
   the headers itself (M4.8).
@@ -80,6 +86,12 @@ Visitor's browser ──HTTPS──► hosting proxy ──► Next.js server �
 6. **Process-local resilience state** ([technical debt 17](technical-debt.md#17-resilience-state-is-process-local)).
 7. **No HSTS preload.** Preloading commits the final domain, which is not
    chosen yet.
+8. **Game images load from IGDB's CDN.** Since 2026-10-05, IGDB therefore sees
+   each visitor's address and, under `strict-origin-when-cross-origin`, the
+   site's origin but not the page. Serving the images through `/_next/image`
+   would hide both, but spends the host's image-transformation quota
+   ([architecture §12](architecture.md#12-deployment)). The Privacy page
+   discloses it.
 
 ## 5. Release-gate items for deployment
 

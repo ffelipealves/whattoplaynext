@@ -7,6 +7,7 @@ import { Dialog } from "radix-ui";
 import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { igdbFittedImageLoader } from "@/lib/igdb-image-loader";
 
 import { GameImagePlaceholder } from "./game-image-placeholder";
 import type { GameDetail } from "./get-game-detail";
@@ -121,6 +122,7 @@ export function ScreenshotGallery({
               alt={selectedLabel}
               className="max-h-[82vh] w-full rounded-2xl object-contain shadow-2xl shadow-black"
               height={selected.height}
+              loader={igdbFittedImageLoader}
               loading="eager"
               sizes="94vw"
               src={selected.url}

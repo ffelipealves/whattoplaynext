@@ -98,7 +98,7 @@ async function serveControlledImages(page: Page) {
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAF/gL+X2NDWQAAAABJRU5ErkJggg==",
     "base64",
   );
-  await page.route("**/_next/image?**", async (route) => {
+  await page.route("https://images.igdb.com/**", async (route) => {
     // Keep enough latency for the reserved boxes to be observed before the
     // image paints, without making the metric depend on IGDB's CDN.
     await new Promise((resolve) => setTimeout(resolve, 150));

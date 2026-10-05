@@ -82,5 +82,7 @@ test("analytics origins are allowed for scripts and connections only", () => {
     "script-src 'self' 'unsafe-inline' https://cloud.umami.is",
   );
   expect(policy).toContain("connect-src 'self' https://cloud.umami.is");
-  expect(policy).toContain("img-src 'self' data: blob:;");
+  expect(policy).toContain(
+    "img-src 'self' data: blob: https://images.igdb.com;",
+  );
 });

@@ -1,7 +1,7 @@
 # External Prerequisites
 
 Status: active — owner actions and public-beta blockers remain  
-Last reviewed: 2026-09-15
+Last reviewed: 2026-10-05
 
 This document records operational due diligence for the working product name,
 domain, Twitch application, and IGDB partnership. It is not a legal opinion or
@@ -113,8 +113,9 @@ genre, release date, rating, game mode, and estimated campaign duration.
 
 The application will access IGDB only from a server-side API, cache normalized
 responses to reduce request volume, and will not expose Twitch credentials or
-the IGDB API directly to browsers. It may become a monetized product after its
-beta period.
+the IGDB API directly to browsers. Game images are loaded by visitors' browsers
+directly from images.igdb.com, at the sizes you publish. It may become a
+monetized product after its beta period.
 
 Could you please confirm in writing:
 
@@ -122,8 +123,8 @@ Could you please confirm in writing:
    beta;
 2. whether “Game data and images provided by IGDB” with a link to IGDB.com in a
    persistent site footer and an About/Data Sources page is acceptable;
-3. whether caching and resizing IGDB images for responsive delivery is allowed,
-   and whether you require a particular image-retention policy;
+3. whether loading your published image sizes directly from images.igdb.com
+   in visitors' browsers is acceptable for a public site;
 4. whether there are current logo, attribution, or launch-review requirements
    not covered by the public API documentation; and
 5. what information you need from me to register the project in the partner

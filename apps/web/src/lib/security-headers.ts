@@ -5,8 +5,8 @@
  * bootstrap scripts; a nonce would force every page, including the prerendered
  * information pages, to render per request. That residual risk is recorded in
  * the security review. Every other directive is as narrow as the pages allow:
- * fonts are self-hosted by `next/font`, and IGDB images arrive through the
- * same-origin `/_next/image` optimizer.
+ * fonts are self-hosted by `next/font`, and game images load from IGDB's
+ * image CDN, the only third-party image origin.
  */
 
 type SecurityHeaderOptions = {
@@ -33,7 +33,7 @@ export function contentSecurityPolicy({
     // Hot reloading evaluates code and talks to the dev server over a socket.
     `script-src 'self' 'unsafe-inline'${development ? " 'unsafe-eval'" : ""}${analytics}`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
+    "img-src 'self' data: blob: https://images.igdb.com",
     "font-src 'self'",
     `connect-src 'self'${development ? " ws:" : ""}${analytics}`,
     "object-src 'none'",

@@ -48,7 +48,7 @@
     "privacyCookieTitle": "Cookies",
     "privacyCookieBody": "O site usa um único cookie, e só quando o idioma que você está vendo é diferente do preferido pelo seu navegador: ele guarda esse idioma até você fechar o navegador. Não há cookies de publicidade nem de rastreamento.",
     "privacyProvidersTitle": "Prestadores de serviço",
-    "privacyProvidersBody": "Durante o beta fechado, o site roda na Vercel, o servidor de catálogo no Render, e o cache temporário e os contadores de requisições no Upstash; a análise de uso vai para o Umami Cloud. Dados e imagens de jogos vêm do IGDB por meio dos nossos servidores, então o seu navegador nunca se conecta ao IGDB.",
+    "privacyProvidersBody": "Durante o beta fechado, o site roda na Vercel, o servidor de catálogo no Render, e o cache temporário e os contadores de requisições no Upstash; a análise de uso vai para o Umami Cloud. Os dados de jogos vêm do IGDB por meio dos nossos servidores, mas as imagens dos jogos são carregadas diretamente dos servidores de imagem do IGDB, que por isso recebem o seu endereço IP e o endereço deste site, mas não a página em que você está.",
     "privacyReviewTitle": "Necessário antes do beta público",
     "privacyReviewBody": "Uma política revisada ainda precisa documentar:",
     "privacyReviewProviders": "prestadores de serviço, as informações que processam e por quê;",

@@ -48,7 +48,7 @@
     "privacyCookieTitle": "Cookies",
     "privacyCookieBody": "The site sets a single cookie, and only when the language you are viewing differs from your browser's preferred one: it remembers that language until you close the browser. There are no advertising or tracking cookies.",
     "privacyProvidersTitle": "Service providers",
-    "privacyProvidersBody": "During the closed beta, the website runs on Vercel, the catalog server on Render, and its temporary cache and request counters on Upstash; analytics go to Umami Cloud. Game data and images come from IGDB through our servers, so your browser never connects to IGDB.",
+    "privacyProvidersBody": "During the closed beta, the website runs on Vercel, the catalog server on Render, and its temporary cache and request counters on Upstash; analytics go to Umami Cloud. Game data comes from IGDB through our servers, but game images load directly from IGDB's image servers, which therefore receive your IP address and this site's address, though not the page you are on.",
     "privacyReviewTitle": "Required before public beta",
     "privacyReviewBody": "A reviewed policy still needs to document:",
     "privacyReviewProviders": "service providers, the information they process, and why;",

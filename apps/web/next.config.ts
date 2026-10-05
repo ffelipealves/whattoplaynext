@@ -8,8 +8,12 @@ import {
 import { securityHeaders } from "./src/lib/security-headers";
 
 const nextConfig: NextConfig = {
+  // Images come straight from IGDB's CDN at the size each layout needs. With
+  // no remote patterns, `/_next/image` cannot be used to spend the host's
+  // image-transformation quota on them either.
   images: {
-    remotePatterns: [new URL("https://images.igdb.com/igdb/image/upload/**")],
+    loader: "custom",
+    loaderFile: "./src/lib/igdb-image-loader.ts",
   },
   poweredByHeader: false,
   // The home page is the search, so the old listing route moves there. Next
