@@ -68,6 +68,43 @@ test("puts the planned text-only IGDB attribution on About", () => {
 });
 
 test.each([
+  [
+    enMessages,
+    [
+      "Anonymous usage analytics",
+      "Your IP address and request limits",
+      "Technical logs",
+      "Cookies",
+      "Service providers",
+    ],
+    [/Umami Cloud/, /six months/, /one-way digest/, /up to 14 days/],
+  ],
+  [
+    ptMessages,
+    [
+      "Análise de uso anônima",
+      "Seu endereço IP e os limites de requisições",
+      "Logs técnicos",
+      "Cookies",
+      "Prestadores de serviço",
+    ],
+    [/Umami Cloud/, /seis meses/, /resumo criptográfico/, /até 14 dias/],
+  ],
+] as const)(
+  "describes how the closed beta handles data on Privacy",
+  (messages, headings, facts) => {
+    render(withMessages(<InformationPage kind="privacy" />, messages));
+
+    for (const name of headings) {
+      expect(screen.getByRole("heading", { level: 2, name })).toBeDefined();
+    }
+    for (const fact of facts) {
+      expect(screen.getAllByText(fact).length).toBeGreaterThan(0);
+    }
+  },
+);
+
+test.each([
   [enMessages, "/en/about", "/en/privacy", "/en/terms"],
   [ptMessages, "/pt-br/about", "/pt-br/privacy", "/pt-br/terms"],
 ] as const)(

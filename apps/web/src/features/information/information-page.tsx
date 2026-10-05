@@ -71,6 +71,23 @@ function PrivacyContent() {
       <Section title={t("privacyStatusTitle")}>
         <p>{t("privacyStatusBody")}</p>
       </Section>
+      <Section title={t("privacyAnalyticsTitle")}>
+        <p>{t("privacyAnalyticsBody")}</p>
+        <p>{t("privacyAnalyticsExcluded")}</p>
+        <p>{t("privacyAnalyticsRetention")}</p>
+      </Section>
+      <Section title={t("privacyAddressTitle")}>
+        <p>{t("privacyAddressBody")}</p>
+      </Section>
+      <Section title={t("privacyLogsTitle")}>
+        <p>{t("privacyLogsBody")}</p>
+      </Section>
+      <Section title={t("privacyCookieTitle")}>
+        <p>{t("privacyCookieBody")}</p>
+      </Section>
+      <Section title={t("privacyProvidersTitle")}>
+        <p>{t("privacyProvidersBody")}</p>
+      </Section>
       <Section title={t("privacyReviewTitle")}>
         <p>{t("privacyReviewBody")}</p>
         <ul className="list-disc space-y-2 pl-5">
