@@ -458,9 +458,13 @@ through NFR-032 for expected behavior.
 FastAPI accepts a bounded safe caller identifier or generates a UUID, returns
 it in `X-Request-ID`, and includes it in the stable error envelope. Since
 M4.7 the web sends one identifier per page render, and the API writes
-allow-listed JSON logs with one `http.request` line per request. The log and
-monitoring destinations, and their 14-day retention (NFR-023), remain
-deployment decisions.
+allow-listed JSON logs with one `http.request` line per request. The closed
+beta keeps them in Render for 7 days, which the owner accepted on 2026-10-05;
+the 14-day retention of NFR-023 applies from public beta, when the log and
+monitoring destinations are chosen. The web writes no logs of its own, and
+Vercel Hobby keeps Next.js's runtime output, such as an unexpected render
+error, for 1 hour. Failure states show the request ID as a reference, so a
+tester's report can be matched to the API's log lines.
 
 Implemented in M4.7:
 
@@ -476,9 +480,7 @@ Implemented in M4.7:
   headers other than the request ID, provider payloads, or secrets, and
   redaction tests enforce this;
 - the metrics required by NFR-026 are derived from those structured events
-  first. The log and monitoring destinations, and their 14-day retention, are
-  still open: the closed-beta hosting chosen on 2026-10-05 (§12) keeps
-  Render logs for only 7 days.
+  first.
 
 ## 11a. Analytics
 
@@ -553,7 +555,7 @@ needs it. Testers are told that a first load can be slow. If the beta shows
 the wake-up delay costs too much, Render Starter removes it for about USD 7
 per month. Upstash Free's 500,000 commands and 10 GB of bandwidth per month
 are ample for the closed beta. Render's Hobby workspace keeps logs for 7 days,
-under the 14 of NFR-023, so the log destination remains open (§11). The
+under the 14 of NFR-023, which was accepted for the closed beta (§11). The
 [deployment runbook](deployment.md) provisions this environment from
 `render.yaml` and records the Vercel settings and first-deploy checks.
 

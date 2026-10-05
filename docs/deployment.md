@@ -163,13 +163,14 @@ date in the Milestone 5 review.
 
 ## 4. Still open before inviting testers
 
-- A log destination: Render's Hobby workspace keeps logs for 7 days, under
-  the 14 of NFR-023 ([architecture §11](architecture.md#11-observability)).
 - The branded-browser pass against this deployment
   ([technical debt 14](technical-debt.md#14-no-retail-browser-has-been-checked--blocking-for-closed-beta)
   and the [browser release checklist](browser-release-checklist.md)).
 - Telling testers that the first load after a quiet period can take up to a
-  minute.
+  minute, and that a report about an error should include the “Reference” the
+  page shows. Render keeps the API's logs for 7 days and Vercel keeps the
+  web's runtime output for 1 hour
+  ([architecture §11](architecture.md#11-observability)).
 
 ## 5. Rollback
 
