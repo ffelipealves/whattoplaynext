@@ -2,7 +2,7 @@
 
 Status: accepted MVP architecture baseline; implementation complete through
 Milestone 4
-Last updated: 2026-09-27 (Milestone 4 closeout)
+Last updated: 2026-10-05 (closed-beta hosting decision)
 
 ## 1. Context
 
@@ -19,10 +19,10 @@ Browser ──────── allow-listed events ────────►
   │
   ├── pages, metadata, localized UI, security headers
   ▼
-Next.js web application (deployment target: Vercel or a VPS, undecided)
+Next.js web application (closed-beta target: Vercel Hobby)
   │  generated REST client + X-Request-ID + edge token and visitor address
   ▼
-FastAPI service (deployment target: Render or a VPS, undecided)
+FastAPI service (closed-beta target: Render Free)
   │
   ├── security headers, request correlation, JSON logs
   ├── validation and query normalization
@@ -316,8 +316,9 @@ at 14,464–20,608 B each (17,195 B average), and one live detail at 1,664 B.
 Search entries persist for 25 hours including their stale window. Reserving
 20% of the 256 MB target for Redis overhead, rate-limit counters, details, and
 other cache resources leaves room for 10,420 distinct worst-case search pages
-in that window (12,489 at the measured average). The selected production Redis
-host still needs the same policy and limit verified when deployment is chosen
+in that window (12,489 at the measured average). Upstash Redis Free, chosen
+for the closed beta on 2026-10-05, still needs the same policy and limit
+verified on the first deploy
 ([technical debt 21](technical-debt.md#21-redis-production-policy-still-needs-verification)).
 
 ## 8. Resilience
@@ -476,7 +477,8 @@ Implemented in M4.7:
   redaction tests enforce this;
 - the metrics required by NFR-026 are derived from those structured events
   first. The log and monitoring destinations, and their 14-day retention, are
-  chosen together with the deployment target, which is still open.
+  still open: the closed-beta hosting chosen on 2026-10-05 (§12) keeps
+  Render logs for only 7 days.
 
 ## 11a. Analytics
 
@@ -522,10 +524,36 @@ rechecked before launch.
 
 ### Development and closed testing
 
+Decided for the closed beta on 2026-10-05:
+
 - Docker Compose with Redis bound to loopback for local development;
 - Vercel Hobby for the web application;
 - Render Free for the API, accepting cold starts;
 - Upstash Redis Free.
+
+These tiers make the cold-cache path the common one, which mostly exposes
+[technical debt 2](technical-debt.md#2-a-duration-filter-still-costs-seconds-while-its-shared-index-is-cold--partly-paid-on-2026-09-28)
+and [2b](technical-debt.md#2b-a-broad-platform-release-range-still-has-to-read-its-whole-index--partly-paid-on-2026-09-28):
+
+- with 10–20 testers, most one-hour cache entries expire between visits;
+- Render Free spins the API down after 15 minutes without traffic and takes
+  30–60 s to wake it, so a tester's first request can pay that and a cold
+  query. The web's API calls have no timeout of their own and Vercel Hobby
+  allows a function 300 s, so this is slow rather than failing;
+- Render Free's 0.1 CPU slows the local index work that was measured on a
+  developer machine, and reading the 458,912 B duration index from Upstash
+  must still fit the 200 ms Redis operation timeout (§7.4), or the cache is
+  bypassed and the search walks IGDB again.
+
+The closed-beta API therefore sets
+`WTPN_CACHE_TTL__DURATION_INDEX_FRESH_SECONDS=86400`, since play-time data
+changes slowly, and the first deploy re-measures the debt 2 and 2b queries on
+the host, raising `WTPN_CACHE_OPERATION_TIMEOUT_SECONDS` if the index read
+needs it. Testers are told that a first load can be slow. If the beta shows
+the wake-up delay costs too much, Render Starter removes it for about USD 7
+per month. Upstash Free's 500,000 commands and 10 GB of bandwidth per month
+are ample for the closed beta. Render's Hobby workspace keeps logs for 7 days,
+under the 14 of NFR-023, so the log destination remains open (§11).
 
 ### Public beta
 

@@ -9,7 +9,8 @@ milestone plans and their outcome notes. Items marked **blocking** must be
 resolved before the release gate that names them.
 
 Last reviewed: 2026-10-03, at the interface redesign closeout, which
-re-measured 15, reproduced 19, and added 26. Before that, Milestone 4 partly
+re-measured 15, reproduced 19, and added 26. On 2026-10-05 the closed-beta
+hosting decision updated 2, 2b, and 21. Before that, Milestone 4 partly
 paid 2, 2b, 9, and 10, and added 17, 19, and 20–25. The mobile INP finding (15) was re-measured and now
 includes the game page in this environment. Resolved entries are removed; the
 remaining identifiers stay stable because other documents refer to them.
@@ -51,6 +52,15 @@ the previous 10.47 s bounded path, so the initial population still misses the
 this ~9,300-row provider resource, accept asynchronous results, or limit the
 forms of duration search allowed before the cache is populated.
 
+The closed-beta hosting decided on 2026-10-05 makes this cost more visible:
+with 10–20 testers the one-hour index has usually expired before the next
+duration search, and Render Free's 0.1 CPU and wake-up delay add to the cold
+request. The beta raises the index's fresh lifetime to a day through
+`WTPN_CACHE_TTL__DURATION_INDEX_FRESH_SECONDS`, and the first deploy
+re-measures this query on the host
+([architecture §12](architecture.md#12-deployment)). The product decision can
+wait for the beta's evidence.
+
 ### 2b. A broad platform release range still has to read its whole index — **partly paid on 2026-09-28**
 
 **Resolved for the cross-resource join; still open for the cold index walk.**
@@ -76,6 +86,12 @@ Paying off the remaining cost requires a product-contract choice: drop or
 approximate `totalItems` for this broad shape, cap the browse depth, or make
 the total asynchronous. Keeping exact pagination necessarily retains the
 full-index read.
+
+On the closed-beta hosting decided on 2026-10-05, this cold walk is what most
+testers will meet, because the one-hour search cache rarely survives between
+their visits and Render Free adds its wake-up delay and 0.1 CPU. The first
+deploy re-measures it on the host
+([architecture §12](architecture.md#12-deployment)).
 
 ### 3. The popularity fallback still reads every match
 
@@ -418,8 +434,9 @@ lifetime. Reserving 20% of 256 MB for Redis overhead, rate-limit counters,
 details, and the other cache resources permits 10,420 distinct worst-case
 search pages in that window (12,489 at the measured average).
 
-The deployment target has not been chosen yet. Before its first deploy, set
-and verify the same 256 MB limit and `allkeys-lru` policy on that host. Without
+Upstash Redis Free was chosen for the closed beta on 2026-10-05. Before its
+first deploy, set and verify the same 256 MB limit and `allkeys-lru` policy
+there. Without
 that final check the host could reject cache writes rather than evicting old
 ones; the application would remain safe but would take its 30-second cache
 bypass and become slower.
